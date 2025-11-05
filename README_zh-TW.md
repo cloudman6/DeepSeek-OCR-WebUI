@@ -40,7 +40,7 @@ DeepSeek-OCR-WebUI 是一個基於 DeepSeek-OCR 模型的智慧圖像識別 Web 
 
 <div align="center">
 
-![DeepSeek-OCR-WebUI 介面](./assets/ui_screenshot.png?v=3.3.3)
+![DeepSeek-OCR-WebUI 介面](./assets/ui_screenshot.3.3.3.png)
 
 **現代化的使用者介面，支援多語言切換、批次處理、邊界框視覺化**
 
