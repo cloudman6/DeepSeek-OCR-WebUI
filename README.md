@@ -5,7 +5,7 @@
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/version-v3.2-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v3.3-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-supported-brightgreen.svg)](./docker-compose.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Language](https://img.shields.io/badge/languages-4-orange.svg)](#multilingual-support)
@@ -15,6 +15,20 @@ Intelligent OCR System · Batch Processing · Multi-Mode Support · Bounding Box
 [Features](#features) • [Quick Start](#quick-start) • [Version History](#version-history) • [Documentation](#documentation) • [Contributing](#contributing)
 
 </div>
+
+---
+
+## 🎉 Major Update: Apple Silicon Support!
+
+**🍎 Now fully supports Mac M1/M2/M3/M4 with native MPS acceleration!**
+
+DeepSeek-OCR-WebUI v3.3 brings native Apple Silicon support, enabling Mac users to run high-performance OCR locally with:
+- ✅ **Native MPS Backend** - Metal Performance Shaders acceleration
+- ✅ **Easy Setup** - One-command conda environment installation
+- ✅ **Private Deployment** - Run completely offline on your Mac
+- ✅ **Fast Inference** - ~3s per image on M3 Pro
+
+👉 [Jump to Mac Deployment Guide](#-option-2-mac-native-deployment-apple-silicon)
 
 ---
 
@@ -50,6 +64,7 @@ DeepSeek-OCR-WebUI is an intelligent image recognition web application based on 
 - 📄 **PDF Support** - Upload PDF files, automatically convert to images
 - 🎨 **Modern UI** - Cool gradient backgrounds and animation effects
 - 🌐 **Multilingual Support** - Simplified Chinese, Traditional Chinese, English, Japanese
+- 🍎 **Apple Silicon Support** - Native MPS acceleration for Mac M1/M2/M3/M4
 - 🐳 **Docker Deployment** - One-click startup, ready to use
 - ⚡ **GPU Acceleration** - High-performance inference based on NVIDIA GPU
 - 🌏 **ModelScope Fallback** - Auto-switch to ModelScope when HuggingFace is unavailable
@@ -151,12 +166,29 @@ DeepSeek-OCR-WebUI now supports PDF file uploads! When you upload a PDF file, it
 
 ### Prerequisites
 
+**For Docker (Recommended)**:
 - Docker & Docker Compose
-- NVIDIA GPU + Drivers (recommended)
+- NVIDIA GPU + Drivers (for GPU acceleration)
 - 8GB+ RAM
 - 20GB+ Disk Space
 
-### One-Click Startup
+**For Mac (Apple Silicon)**:
+- macOS with Apple Silicon (M1/M2/M3/M4)
+- Python 3.11+
+- 16GB+ RAM (recommended)
+- 20GB+ Disk Space
+
+**For Linux (Native)**:
+- Python 3.11+
+- NVIDIA GPU + CUDA (optional, for acceleration)
+- 8GB+ RAM
+- 20GB+ Disk Space
+
+---
+
+### 🐳 Option 1: Docker Deployment (Linux/Windows)
+
+**Best for**: Linux servers with NVIDIA GPU, production environments
 
 ```bash
 # 1. Clone repository
@@ -170,6 +202,136 @@ docker compose up -d
 docker logs -f deepseek-ocr-webui
 
 # 4. Access Web UI
+# http://localhost:8001
+```
+
+---
+
+### 🍎 Option 2: Mac Native Deployment (Apple Silicon)
+
+**Best for**: Mac M1/M2/M3/M4 users, local development
+
+**⚠️ Important**: Always use a conda virtual environment to avoid dependency conflicts.
+
+#### Step 1: Install Dependencies
+
+```bash
+# Clone repository
+git clone https://github.com/neosun100/DeepSeek-OCR-WebUI.git
+cd DeepSeek-OCR-WebUI
+
+# Create and activate conda environment (REQUIRED)
+conda create -n deepseek-ocr-mlx python=3.11
+conda activate deepseek-ocr-mlx
+
+# Install PyTorch with MPS support
+pip install torch torchvision
+
+# Install required packages
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# Or install all dependencies at once
+pip install -r requirements-mac.txt
+
+# Verify installation (optional)
+./verify_mac_env.sh
+```
+
+#### Step 2: Start Service
+
+```bash
+# IMPORTANT: Always activate the conda environment first
+conda activate deepseek-ocr-mlx
+
+# Start service (auto-detects MPS backend)
+./start.sh
+
+# Or manually
+python web_service_unified.py
+```
+
+#### Step 3: Access Web UI
+
+Open browser and visit: `http://localhost:8001`
+
+**Note**: First run will download ~7GB model, please be patient.
+
+---
+
+### 🐧 Option 3: Linux Native Deployment
+
+**Best for**: Linux servers, custom configurations
+
+#### With NVIDIA GPU:
+
+```bash
+# Install PyTorch with CUDA
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# Install dependencies
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# Start service (auto-detects CUDA backend)
+./start.sh
+```
+
+#### Without GPU (CPU only):
+
+```bash
+# Install PyTorch CPU version
+pip install torch torchvision
+
+# Install dependencies
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# Start service (auto-detects CPU backend)
+./start.sh
+```
+
+---
+
+### ✅ Verify Installation
+
+```bash
+# Check container status (Docker)
+docker compose ps
+
+# Check health status
+curl http://localhost:8001/health
+
+# Expected response:
+# {
+#   "status": "healthy",
+#   "backend": "mps",  # or "cuda" or "cpu"
+#   "platform": "Darwin",  # or "Linux"
+#   "model_loaded": true
+# }
+```
+
+---
+
+### 🔧 Platform Detection
+
+The service automatically detects your platform and uses the optimal backend:
+
+| Platform | Backend | Acceleration | Auto-Detected |
+|----------|---------|--------------|---------------|
+| Mac M1/M2/M3/M4 | MPS | Metal GPU | ✅ Yes |
+| Linux + NVIDIA GPU | CUDA | CUDA GPU | ✅ Yes |
+| Linux (CPU only) | CPU | None | ✅ Yes |
+| Docker | CUDA | CUDA GPU | ✅ Yes |
+
+**Force specific backend** (optional):
+```bash
+FORCE_BACKEND=mps ./start.sh   # Force MPS (Mac only)
+FORCE_BACKEND=cuda ./start.sh  # Force CUDA (Linux+GPU)
+FORCE_BACKEND=cpu ./start.sh   # Force CPU (any platform)
 # http://localhost:8001
 ```
 
@@ -189,6 +351,33 @@ docker logs deepseek-ocr-webui
 ---
 
 ## 📊 Version History
+
+### v3.3 (2025-11-05) - Apple Silicon Support & Multi-Platform
+
+**🍎 Apple Silicon Support**:
+- ✅ Native MPS (Metal Performance Shaders) backend for Mac M1/M2/M3/M4
+- ✅ Automatic platform detection and backend selection
+- ✅ Optimized float32 precision for MPS compatibility
+- ✅ ~7GB model with automatic download and caching
+
+**🌍 Multi-Platform Architecture**:
+- ✅ Unified backend interface (MPS/CUDA/CPU)
+- ✅ Smart platform detection (Mac/Linux/Docker)
+- ✅ Independent backend implementations (no conflicts)
+- ✅ Universal startup script (`./start.sh`)
+
+**🔧 Technical Improvements**:
+- ✅ Model revision: `1e3401a3d4603e9e71ea0ec850bfead602191ec4` (MPS support)
+- ✅ Transformers 4.46.3 compatibility
+- ✅ Fixed LlamaFlashAttention2 import issues
+- ✅ Unified model inference interface across platforms
+
+**📚 Documentation**:
+- ✅ Multi-platform deployment guide
+- ✅ Platform compatibility documentation
+- ✅ Verification tools (`verify_platform.sh`)
+
+---
 
 ### v3.2 (2025-11-04) - PDF Support & ModelScope Fallback
 
@@ -402,6 +591,6 @@ This project is licensed under the [MIT License](./LICENSE).
 
 Made with ❤️ by [neosun100](https://github.com/neosun100)
 
-DeepSeek-OCR-WebUI v3.1 | © 2025
+DeepSeek-OCR-WebUI v3.3 | © 2025
 
 </div>

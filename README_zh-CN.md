@@ -1,10 +1,11 @@
 # 🔍 DeepSeek-OCR-WebUI
+[访问应用 →](https://deepseek-ocr.aws.xin/)
 
 <div align="center">
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/version-v3.2-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v3.3-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-supported-brightgreen.svg)](./docker-compose.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Language](https://img.shields.io/badge/languages-4-orange.svg)](#多语言支持)
@@ -14,6 +15,20 @@
 [功能特性](#功能特性) • [快速开始](#快速开始) • [版本历史](#版本历史) • [文档](#文档) • [贡献](#贡献)
 
 </div>
+
+---
+
+## 🎉 重大更新：支持 Apple Silicon！
+
+**🍎 现已完全支持 Mac M1/M2/M3/M4，原生 MPS 加速！**
+
+DeepSeek-OCR-WebUI v3.3 带来原生 Apple Silicon 支持，让 Mac 用户可以在本地运行高性能 OCR：
+- ✅ **原生 MPS 后端** - Metal Performance Shaders 加速
+- ✅ **简单安装** - 一键 conda 环境配置
+- ✅ **私有部署** - 完全离线运行
+- ✅ **快速推理** - M3 Pro 上约 3 秒/张
+
+👉 [跳转到 Mac 部署指南](#-方式二mac-原生部署apple-silicon)
 
 ---
 
@@ -43,15 +58,16 @@ DeepSeek-OCR-WebUI 是一个基于 DeepSeek-OCR 模型的智能图像识别 Web 
 
 ### ✨ 核心亮点
 
-- 🎯 **7 种识别模式** - 文档、OCR、图表、Find、Freeform 等
+- 🎯 **7 种识别模式** - 文档、OCR、图表、查找、自定义等
 - 🖼️ **边界框可视化** - Find 模式自动标注位置
 - 📦 **批量处理** - 支持多张图片逐一识别
 - 📄 **PDF 支持** - 上传 PDF 文件，自动转换为图片
 - 🎨 **现代化 UI** - 炫酷的渐变背景和动画效果
-- 🌐 **多语言支持** - 简中、繁中、英语、日语
+- 🌐 **多语言支持** - 简体中文、繁体中文、英语、日语
+- 🍎 **Apple Silicon 支持** - Mac M1/M2/M3/M4 原生 MPS 加速
 - 🐳 **Docker 部署** - 一键启动，开箱即用
 - ⚡ **GPU 加速** - 基于 NVIDIA GPU 的高性能推理
-- 🌏 **ModelScope 自动切换** - HuggingFace 不可用时自动切换到 ModelScope
+- 🌏 **ModelScope 自动切换** - HuggingFace 不可用时自动切换
 
 ---
 
@@ -132,23 +148,17 @@ DeepSeek-OCR-WebUI 现已支持 PDF 文件上传！上传 PDF 文件后，系统
 
 ### 支持的语言
 
-- 🇨🇳 **简体中文** (zh-CN) - 默认
+- 🇨🇳 **简体中文** (zh-CN)
 - 🇹🇼 **繁體中文** (zh-TW)
-- 🇺🇸 **English** (en-US)
+- 🇺🇸 **English** (en-US) - 默认
 - 🇯🇵 **日本語** (ja-JP)
 
 ### 如何切换语言
 
 **Web UI**：
-1. 打开应用右上角的语言选择器
+1. 点击右上角的语言选择器
 2. 选择你需要的语言
 3. 界面立即切换，设置自动保存
-
-**文档**：
-- 简体中文：[README.md](./README.md)
-- 繁體中文：[README_zh-TW.md](./README_zh-TW.md)
-- English: [README_en.md](./README_en.md)
-- 日本語：[README_ja.md](./README_ja.md)
 
 ---
 
@@ -156,12 +166,29 @@ DeepSeek-OCR-WebUI 现已支持 PDF 文件上传！上传 PDF 文件后，系统
 
 ### 前置要求
 
+**Docker 部署（推荐）**：
 - Docker & Docker Compose
-- NVIDIA GPU + 驱动 (推荐)
+- NVIDIA GPU + 驱动（用于 GPU 加速）
 - 8GB+ RAM
 - 20GB+ 磁盘空间
 
-### 一键启动
+**Mac（Apple Silicon）**：
+- macOS 系统，Apple Silicon 芯片（M1/M2/M3/M4）
+- Python 3.11+
+- 16GB+ RAM（推荐）
+- 20GB+ 磁盘空间
+
+**Linux（原生部署）**：
+- Python 3.11+
+- NVIDIA GPU + CUDA（可选，用于加速）
+- 8GB+ RAM
+- 20GB+ 磁盘空间
+
+---
+
+### 🐳 方式一：Docker 部署（Linux/Windows）
+
+**适用于**：Linux 服务器（带 NVIDIA GPU）、生产环境
 
 ```bash
 # 1. 克隆仓库
@@ -178,22 +205,165 @@ docker logs -f deepseek-ocr-webui
 # http://localhost:8001
 ```
 
-### 验证安装
+---
+
+### 🍎 方式二：Mac 原生部署（Apple Silicon）
+
+**适用于**：Mac M1/M2/M3/M4 用户、本地开发
+
+**⚠️ 重要**：必须使用 conda 虚拟环境，避免依赖冲突。
+
+#### 步骤 1：安装依赖
 
 ```bash
-# 检查容器状态
+# 克隆仓库
+git clone https://github.com/neosun100/DeepSeek-OCR-WebUI.git
+cd DeepSeek-OCR-WebUI
+
+# 创建并激活 conda 环境（必需）
+conda create -n deepseek-ocr-mlx python=3.11
+conda activate deepseek-ocr-mlx
+
+# 安装 PyTorch（支持 MPS）
+pip install torch torchvision
+
+# 安装必需的包
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# 或一次性安装所有依赖
+pip install -r requirements-mac.txt
+
+# 验证安装（可选）
+./verify_mac_env.sh
+```
+
+#### 步骤 2：启动服务
+
+```bash
+# 重要：每次启动前必须先激活 conda 环境
+conda activate deepseek-ocr-mlx
+
+# 启动服务（自动检测 MPS 后端）
+./start.sh
+
+# 或手动启动
+python web_service_unified.py
+```
+
+#### 步骤 3：访问 Web UI
+
+在浏览器中打开：`http://localhost:8001`
+
+**注意**：首次运行会下载约 7GB 的模型，请耐心等待。
+
+---
+
+### 🐧 方式三：Linux 原生部署
+
+**适用于**：Linux 服务器、自定义配置
+
+#### 有 NVIDIA GPU：
+
+```bash
+# 安装 PyTorch（CUDA 版本）
+pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
+
+# 安装依赖
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# 启动服务（自动检测 CUDA 后端）
+./start.sh
+```
+
+#### 无 GPU（仅 CPU）：
+
+```bash
+# 安装 PyTorch（CPU 版本）
+pip install torch torchvision
+
+# 安装依赖
+pip install transformers==4.46.3 tokenizers==0.20.3
+pip install fastapi uvicorn PyMuPDF Pillow
+pip install einops addict easydict matplotlib
+
+# 启动服务（自动检测 CPU 后端）
+./start.sh
+```
+
+---
+
+### ✅ 验证安装
+
+```bash
+# 检查容器状态（Docker）
 docker compose ps
 
 # 检查健康状态
 curl http://localhost:8001/health
 
-# 查看日志
-docker logs deepseek-ocr-webui
+# 预期响应：
+# {
+#   "status": "healthy",
+#   "backend": "mps",  # 或 "cuda" 或 "cpu"
+#   "platform": "Darwin",  # 或 "Linux"
+#   "model_loaded": true
+# }
+```
+
+---
+
+### 🔧 平台检测
+
+服务会自动检测您的平台并使用最优后端：
+
+| 平台 | 后端 | 加速 | 自动检测 |
+|----------|---------|--------------|---------------|
+| Mac M1/M2/M3/M4 | MPS | Metal GPU | ✅ 是 |
+| Linux + NVIDIA GPU | CUDA | CUDA GPU | ✅ 是 |
+| Linux（仅 CPU） | CPU | 无 | ✅ 是 |
+| Docker | CUDA | CUDA GPU | ✅ 是 |
+
+**强制指定后端**（可选）：
+```bash
+FORCE_BACKEND=mps ./start.sh   # 强制 MPS（仅 Mac）
+FORCE_BACKEND=cuda ./start.sh  # 强制 CUDA（Linux+GPU）
+FORCE_BACKEND=cpu ./start.sh   # 强制 CPU（任何平台）
 ```
 
 ---
 
 ## 📊 版本历史
+
+### v3.3 (2025-11-05) - Apple Silicon 支持与多平台架构
+
+**🍎 Apple Silicon 支持**：
+- ✅ Mac M1/M2/M3/M4 原生 MPS（Metal Performance Shaders）后端
+- ✅ 自动平台检测和后端选择
+- ✅ 针对 MPS 兼容性优化的 float32 精度
+- ✅ 约 7GB 模型，支持自动下载和缓存
+
+**🌍 多平台架构**：
+- ✅ 统一的后端接口（MPS/CUDA/CPU）
+- ✅ 智能平台检测（Mac/Linux/Docker）
+- ✅ 独立的后端实现（互不冲突）
+- ✅ 通用启动脚本（`./start.sh`）
+
+**🔧 技术改进**：
+- ✅ 模型版本：`1e3401a3d4603e9e71ea0ec850bfead602191ec4`（MPS 支持）
+- ✅ Transformers 4.46.3 兼容性
+- ✅ 修复 LlamaFlashAttention2 导入问题
+- ✅ 跨平台统一的模型推理接口
+
+**📚 文档**：
+- ✅ 多平台部署指南
+- ✅ 平台兼容性文档
+- ✅ 验证工具（`verify_platform.sh`）
+
+---
 
 ### v3.2 (2025-11-04) - PDF 支持与 ModelScope 自动切换
 
@@ -205,29 +375,29 @@ docker logs deepseek-ocr-webui
 - ✅ 智能网络错误检测和重试
 
 **🐛 Bug 修复**：
-- ✅ 修复 PDF 转换进度日志实时显示问题
-- ✅ 修复按钮重复显示文字的国际化问题
+- ✅ 修复 PDF 转换进度日志
+- ✅ 修复按钮文本重复的国际化问题
 - ✅ 修复系统初始化日志信息
 
 **🔧 技术改进**：
-- ✅ 集成 PyMuPDF 进行高质量 PDF 转图片（144 DPI）
-- ✅ 异步 PDF 处理，确保实时进度显示
+- ✅ 集成 PyMuPDF 进行高质量 PDF 转换（144 DPI）
+- ✅ 异步 PDF 处理，实时进度显示
 - ✅ 增强错误处理和日志记录
 
 ---
 
-### v3.1 (2025-10-22) - 多语言与Bug修复
+### v3.1 (2025-10-22) - 多语言与 Bug 修复
 
 **🌐 新功能**：
-- ✅ 添加多语言支持（简中、繁中、英语、日语）
-- ✅ 语言选择器UI组件
+- ✅ 添加多语言支持（简体中文、繁体中文、英语、日语）
+- ✅ 语言选择器 UI 组件
 - ✅ 本地化持久化存储
 - ✅ 多语言文档（README）
 
 **🐛 Bug 修复**：
-- ✅ 修复模式切换问题（模式选择器现在始终可见）
-- ✅ 修复边界框超出图片边界（Canvas 精确对齐）
-- ✅ 优化图片容器布局（紧贴图片尺寸）
+- ✅ 修复模式切换问题
+- ✅ 修复边界框超出图片边界
+- ✅ 优化图片容器布局
 - ✅ 添加渲染延迟确保对齐
 
 **🎨 UI 优化**：
@@ -247,41 +417,8 @@ docker logs deepseek-ocr-webui
 
 **🔧 技术改进**：
 - ✅ transformers 引擎（替代 vLLM）
-- ✅ 坐标精确转换算法
+- ✅ 精确的坐标转换算法
 - ✅ 响应式设计优化
-- ✅ 防抖性能优化
-
-**📚 文档完善**：
-- ✅ FIND_MODE_V2_GUIDE.md
-- ✅ BUGFIX_SUMMARY.md
-- ✅ 详细的使用说明
-
----
-
-### v2.0 (2025-10-21) - 增强版发布
-
-**🎯 核心功能**：
-- ✅ 批量处理支持
-- ✅ 7 种识别模式
-- ✅ 拖拽排序
-- ✅ 实时进度跟踪
-- ✅ 详细日志记录
-
-**🐳 部署优化**：
-- ✅ Docker 容器化
-- ✅ GPU 加速配置
-- ✅ 健康检查
-- ✅ 自动重启
-
----
-
-### v1.0 (2025-10-20) - 初始版本
-
-**🎉 首次发布**：
-- ✅ 基础 OCR 功能
-- ✅ Web UI 界面
-- ✅ 模型集成
-- ✅ 文档支持
 
 ---
 
@@ -289,22 +426,16 @@ docker logs deepseek-ocr-webui
 
 ### 用户文档
 
-- 📘 [快速开始指南](./QUICK_START.md) - 新手入门
-- 📗 [Find 模式使用指南](./FIND_MODE_V2_GUIDE.md) - Find 功能详解
-- 📙 [增强功能说明](./ENHANCED_FEATURES.md) - 全部功能列表
-- 📕 [Bug 修复总结](./BUGFIX_SUMMARY.md) - 已知问题与修复
+- 📘 [快速开始指南](./QUICK_START.md)
+- 📗 [Find 模式指南](./FIND_MODE_V2_GUIDE.md)
+- 📙 [增强功能](./ENHANCED_FEATURES.md)
+- 📕 [Bug 修复总结](./BUGFIX_SUMMARY.md)
 
 ### 技术文档
 
-- 🔧 [部署总结](./DEPLOYMENT_SUMMARY.md) - 部署细节
-- 🐛 [故障排查](./TROUBLESHOOTING.md) - 常见问题
-- 📝 [更新日志](./CHANGELOG.md) - 完整版本历史
-- 🌐 [国际化指南](./I18N_GUIDE.md) - 多语言开发
-
-### API 文档
-
-- 🔌 [API 参考](./API.md) - 接口文档
-- 📡 [集成示例](./INTEGRATION.md) - 集成指南
+- 🔧 [部署总结](./DEPLOYMENT_SUMMARY.md)
+- 📝 [更新日志](./CHANGELOG.md)
+- 🌐 [国际化实现](./I18N_IMPLEMENTATION.md)
 
 ---
 
@@ -347,7 +478,7 @@ docker logs deepseek-ocr-webui
 
 ---
 
-## 🔧 配置说明
+## 🔧 配置
 
 ### 环境变量
 
@@ -388,10 +519,6 @@ deploy:
 4. 推送到分支 (`git push origin feature/AmazingFeature`)
 5. 开启 Pull Request
 
-### 贡献者
-
-感谢所有贡献者！
-
 ---
 
 ## 📞 支持
@@ -415,7 +542,7 @@ deploy:
 
 ![扫码关注](./assets/qrcode_promo.png)
 
-**扫码关注获取更多信息**
+**扫码获取更多信息**
 
 </div>
 
@@ -450,6 +577,6 @@ deploy:
 
 Made with ❤️ by [neosun100](https://github.com/neosun100)
 
-DeepSeek-OCR-WebUI v3.1 | © 2025
+DeepSeek-OCR-WebUI v3.3 | © 2025
 
 </div>

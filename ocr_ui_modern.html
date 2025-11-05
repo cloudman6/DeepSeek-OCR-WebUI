@@ -1228,7 +1228,7 @@
                     </select>
                 </div>
             </div>
-            <p id="headerSubtitle">智能图像识别 · 批量处理 · 多模式支持</p>
+            <p id="headerSubtitle" data-i18n="headerSubtitle">智能图像识别 · 批量处理 · 多模式支持 · 支持 Apple Silicon</p>
         </div>
 
         <!-- Mode Selection (始终可见) -->
@@ -1385,8 +1385,8 @@
             <div class="upload-section">
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">☁️</div>
-                    <div class="upload-text">拖拽图片或 PDF 到这里或点击上传</div>
-                    <div class="upload-hint">支持多张图片批量上传，PDF 会自动转换为图片，可调整处理顺序</div>
+                    <div class="upload-text" data-i18n="batchMode.uploadText">拖拽图片或 PDF 到这里或点击上传</div>
+                    <div class="upload-hint" data-i18n="batchMode.uploadHint">支持多张图片批量上传，PDF 会自动转换为图片，可调整处理顺序</div>
                     <input type="file" id="fileInput" multiple accept="image/*,.pdf,application/pdf">
                 </div>
             </div>
@@ -1476,11 +1476,11 @@
             <!-- Log Section -->
             <div class="log-section" id="logSection">
                 <div class="log-header">
-                    <div class="log-title">📋 操作日志</div>
+                    <div class="log-title"><span data-i18n="batchMode.logTitle">📋 操作日志</span></div>
                     <div class="log-stats">
                         <div class="log-stat">
                             <span>📊</span>
-                            <span>共 <strong id="logCount">0</strong> 条记录</span>
+                            <span><span data-i18n="batchMode.logCount">共</span> <strong id="logCount">0</strong> <span data-i18n="batchMode.logRecords">条记录</span></span>
                         </div>
                     </div>
                 </div>
@@ -1535,7 +1535,7 @@
                         <span data-i18n="github.madeWith">Made with ❤️ by</span> <a href="https://github.com/neosun100" target="_blank" style="color: rgba(255,255,255,0.8); text-decoration: none;" onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.8)'">@neosun100</a>
                     </p>
                     <p style="margin: 5px 0;">
-                        DeepSeek-OCR-WebUI v3.1 | © 2025 | MIT License
+                        DeepSeek-OCR-WebUI v3.3.3 | © 2025 | MIT License
                     </p>
                     <p style="margin: 10px 0 0 0;">
                         <a href="https://github.com/deepseek-ai" target="_blank" style="color: rgba(255,255,255,0.6); text-decoration: none; font-size: 0.85em;" onmouseover="this.style.color='rgba(255,255,255,0.8)'" onmouseout="this.style.color='rgba(255,255,255,0.6)'" data-i18n="github.poweredBy">
@@ -1560,7 +1560,7 @@
         // ====================================
         const translations = {
             'zh-CN': {
-                headerSubtitle: '智能图像识别 · 批量处理 · 多模式支持',
+                headerSubtitle: '智能图像识别 · 批量处理 · 多模式支持 · 支持 Apple Silicon',
                 modeTitle: '选择识别模式（增强版：新增 Find 和 Freeform）',
                 modes: {
                     document: '文档转Markdown',
@@ -1587,6 +1587,8 @@
                     matchesTitle: '找到的匹配项'
                 },
                 batchMode: {
+                    uploadText: '拖拽图片或 PDF 到这里或点击上传',
+                    uploadHint: '支持多张图片批量上传，PDF 会自动转换为图片，可调整处理顺序',
                     freeformLabel: '自定义提示词',
                     freeformPlaceholder: '输入自定义提示词（如：提取所有日期和金额）',
                     freeformHint: '描述你想要的识别效果，AI 会按照你的要求处理每张图片',
@@ -1605,6 +1607,12 @@
                     logCount: '共',
                     logRecords: '条记录'
                 },
+                logTypes: {
+                    success: '成功',
+                    error: '错误',
+                    warning: '警告',
+                    info: '信息'
+                },
                 github: {
                     starButton: '⭐ Star on GitHub',
                     bannerTitle: '⭐ 喜欢这个项目？给我们一个 Star！⭐',
@@ -1619,7 +1627,7 @@
                 }
             },
             'zh-TW': {
-                headerSubtitle: '智能圖像識別 · 批量處理 · 多模式支援',
+                headerSubtitle: '智能圖像識別 · 批量處理 · 多模式支援 · 支援 Apple Silicon',
                 modeTitle: '選擇識別模式（增強版：新增 Find 和 Freeform）',
                 modes: {
                     document: '文檔轉Markdown',
@@ -1646,6 +1654,8 @@
                     matchesTitle: '找到的匹配項'
                 },
                 batchMode: {
+                    uploadText: '拖拽圖片或 PDF 到這裡或點擊上傳',
+                    uploadHint: '支援多張圖片批量上傳，PDF 會自動轉換為圖片，可調整處理順序',
                     freeformLabel: '自定義提示詞',
                     freeformPlaceholder: '輸入自定義提示詞（如：提取所有日期和金額）',
                     freeformHint: '描述你想要的識別效果，AI 會按照你的要求處理每張圖片',
@@ -1664,6 +1674,12 @@
                     logCount: '共',
                     logRecords: '條記錄'
                 },
+                logTypes: {
+                    success: '成功',
+                    error: '錯誤',
+                    warning: '警告',
+                    info: '資訊'
+                },
                 github: {
                     starButton: '⭐ Star on GitHub',
                     bannerTitle: '⭐ 喜歡這個項目？給我們一個 Star！⭐',
@@ -1678,7 +1694,7 @@
                 }
             },
             'en-US': {
-                headerSubtitle: 'Intelligent Image Recognition · Batch Processing · Multi-Mode Support',
+                headerSubtitle: 'Intelligent Image Recognition · Batch Processing · Multi-Mode Support · Apple Silicon Ready',
                 modeTitle: 'Select Recognition Mode (Enhanced: New Find & Freeform)',
                 modes: {
                     document: 'Doc to Markdown',
@@ -1705,6 +1721,8 @@
                     matchesTitle: 'Found Matches'
                 },
                 batchMode: {
+                    uploadText: 'Drag images or PDF here or click to upload',
+                    uploadHint: 'Support batch upload, PDF auto-converts to images, reorder as needed',
                     freeformLabel: 'Custom Prompt',
                     freeformPlaceholder: 'Enter custom prompt (e.g.: Extract all dates and amounts)',
                     freeformHint: 'Describe what you want, AI will process each image accordingly',
@@ -1723,6 +1741,12 @@
                     logCount: 'Total',
                     logRecords: 'records'
                 },
+                logTypes: {
+                    success: 'Success',
+                    error: 'Error',
+                    warning: 'Warning',
+                    info: 'Info'
+                },
                 github: {
                     starButton: '⭐ Star on GitHub',
                     bannerTitle: '⭐ Like this project? Give us a Star! ⭐',
@@ -1737,7 +1761,7 @@
                 }
             },
             'ja-JP': {
-                headerSubtitle: 'インテリジェント画像認識 · バッチ処理 · マルチモードサポート',
+                headerSubtitle: 'インテリジェント画像認識 · バッチ処理 · マルチモードサポート · Apple Silicon対応',
                 modeTitle: '認識モードを選択（拡張版：Find と Freeform を追加）',
                 modes: {
                     document: 'ドキュメントをMarkdownへ',
@@ -1764,6 +1788,8 @@
                     matchesTitle: '見つかった一致項目'
                 },
                 batchMode: {
+                    uploadText: '画像またはPDFをここにドラッグまたはクリックしてアップロード',
+                    uploadHint: 'バッチアップロード対応、PDFは自動的に画像に変換、順序調整可能',
                     freeformLabel: 'カスタムプロンプト',
                     freeformPlaceholder: 'カスタムプロンプトを入力（例：すべての日付と金額を抽出）',
                     freeformHint: '希望する認識効果を説明すると、AIが要求に応じて各画像を処理します',
@@ -1781,6 +1807,12 @@
                     logTitle: '操作ログ',
                     logCount: '合計',
                     logRecords: '件の記録'
+                },
+                logTypes: {
+                    success: '成功',
+                    error: 'エラー',
+                    warning: '警告',
+                    info: '情報'
                 },
                 github: {
                     starButton: '⭐ Star on GitHub',
@@ -1945,7 +1977,7 @@
 
         // Configuration
         const CONFIG = {
-            apiUrl: 'https://deepseek-ocr.aws.xin',
+            apiUrl: window.location.origin || 'http://localhost:8001',
             maxConcurrent: 1 // 逐一处理
         };
 
@@ -2006,11 +2038,11 @@
                 return CONFIG.apiUrl || 'http://localhost:8001';
             };
             
-            addLog('系统初始化', 'info', '🚀 DeepSeek OCR 智能识别系统已就绪，欢迎使用！', {
-                '系统版本': 'v3.1',
-                '服务地址': getServiceAddress(),
-                '支持格式': '图片: JPG, PNG, JPEG, BMP, GIF, WEBP | PDF: PDF',
-                '识别模式': '7种模式可选'
+            addLog('System Init', 'info', '🚀 DeepSeek OCR system ready!', {
+                'Version': 'v3.3.3',
+                'Service': getServiceAddress(),
+                'Formats': 'Images: JPG, PNG, JPEG, BMP, GIF, WEBP | PDF',
+                'Modes': '7 recognition modes available'
             });
         }
 
@@ -2024,6 +2056,52 @@
                 second: '2-digit',
                 fractionalSecondDigits: 3
             });
+
+            // 日志消息映射表（中文 → 英文）
+            const logMessages = {
+                '系统初始化': 'System Init',
+                '切换模式': 'Mode Switch',
+                '切换识别模式': 'Mode Changed',
+                '文件上传失败': 'Upload Failed',
+                '部分文件已忽略': 'Files Ignored',
+                '开始上传图片': 'Upload Started',
+                '图片上传完成': 'Upload Complete',
+                '图片加载失败': 'Image Load Failed',
+                'PDF 转换开始': 'PDF Conversion Started',
+                'PDF 转换进度': 'PDF Converting',
+                'PDF 转换完成': 'PDF Conversion Complete',
+                'PDF 转换失败': 'PDF Conversion Failed',
+                '开始拖动图片': 'Drag Started',
+                '图片顺序已调整': 'Order Changed',
+                '图片上传成功': 'Image Uploaded',
+                '清空图片': 'Images Cleared',
+                '无法开始识别': 'Cannot Start',
+                '开始批量识别': 'Batch Recognition Started',
+                '识别图片': 'Processing Image',
+                '✓ 识别成功': '✓ Success',
+                '✗ 识别失败': '✗ Failed',
+                '批量识别完成': 'Batch Complete',
+                '开始查找定位': 'Find Started',
+                '✓ 查找定位成功': '✓ Find Success',
+                '查找完成': 'Find Complete',
+                '✗ 查找失败': '✗ Find Failed',
+                '复制操作失败': 'Copy Failed',
+                '复制到剪贴板': 'Copied to Clipboard',
+                '下载操作失败': 'Download Failed',
+                '下载识别结果': 'Downloaded',
+                '清空队列': 'Queue Cleared',
+                '文件格式不支持': 'Format Not Supported',
+                'PDF 转换成功': 'PDF Converted',
+                '重置 Find 模式': 'Find Mode Reset',
+                '开始查找': 'Find Started',
+                '✓ 查找成功': '✓ Find Success'
+            };
+
+            // 转换消息为英文
+            const englishMessage = logMessages[message] || message;
+
+            // 获取国际化的类型标签
+            const typeLabel = t(`logTypes.${type}`) || type;
 
             let extraHtml = '';
             if (extraData) {
@@ -2040,9 +2118,9 @@
             logItem.innerHTML = `
                 <div class="log-item-header">
                     <span class="log-time">${timeStr}</span>
-                    <span class="log-type ${type}">${type}</span>
+                    <span class="log-type ${type}">${typeLabel}</span>
                 </div>
-                <div class="log-message">${message}</div>
+                <div class="log-message">${englishMessage}</div>
                 ${extraHtml}
             `;
 
@@ -2086,9 +2164,9 @@
                         // 切换到 Find 专用界面
                         findContainer.classList.add('active');
                         batchContainer.classList.add('hidden');
-                        addLog('切换模式', 'info', '已切换到查找定位模式（单图处理）', {
-                            '模式': '🔍 Find Mode',
-                            '布局': '左右分栏',
+                        addLog('Mode Switch', 'info', 'Switched to Find & Locate mode (single image)', {
+                            'Mode': '🔍 Find Mode',
+                            'Layout': 'Split view',
                             '特性': '边界框可视化'
                         });
                     } else {
@@ -2102,9 +2180,9 @@
                             freeformInputBatch.style.display = (newMode === 'freeform') ? 'block' : 'none';
                         }
                         
-                        addLog('切换模式', 'info', `已切换到${modeName}模式（批量处理）`, {
-                            '模式': modeName,
-                            '类型': '批量处理'
+                        addLog('Mode Switch', 'info', `Switched to ${modeName} mode (batch processing)`, {
+                            'Mode': modeName,
+                            'Type': 'Batch processing'
                         });
                     }
                     
@@ -2135,18 +2213,18 @@
                         updateUI();
                         
                         showToast(`已切换到: ${modeName}，可以重新识别`, 'info');
-                        addLog('切换识别模式', 'success', `从 [${getModeDisplayName(oldMode)}] 切换到 [${modeName}]，已重置识别状态`, {
-                            '新模式': modeName,
-                            '适用场景': getModeDescription(state.mode),
+                        addLog('Mode Changed', 'success', `Switched from [${getModeDisplayName(oldMode)}] to [${modeName}], state reset`, {
+                            'New Mode': modeName,
+                            'Use Case': getModeDescription(state.mode),
                             '图片数量': `${state.images.length} 张`,
                             '已重置': `${completedCount} 张已完成，${errorCount} 张失败`,
                             '当前状态': '准备重新识别'
                         });
                     } else {
                         showToast(`已切换到: ${modeName}`, 'info');
-                        addLog('切换识别模式', 'info', `从 [${getModeDisplayName(oldMode)}] 切换到 [${modeName}]`, {
-                            '当前模式': modeName,
-                            '适用场景': getModeDescription(state.mode)
+                        addLog('Mode Changed', 'info', `从 [${getModeDisplayName(oldMode)}] 切换到 [${modeName}]`, {
+                            'Current Mode': modeName,
+                            'Use Case': getModeDescription(state.mode)
                         });
                     }
                 });
@@ -2233,10 +2311,10 @@
             if (imageFiles.length === 0 && pdfFiles.length === 0) {
                 const formats = invalidFiles.map(f => f.name.split('.').pop() || '未知').join(', ');
                 showToast('请选择有效的图片或 PDF 文件', 'error');
-                addLog('文件上传失败', 'error', '所有文件格式都不支持', {
-                    '尝试上传': `${totalFiles} 个文件`,
-                    '无效格式': formats,
-                    '支持格式': '图片: JPG, PNG, JPEG, BMP, GIF, WEBP\nPDF: PDF'
+                addLog('Upload Failed', 'error', 'All file formats not supported', {
+                    'Attempted': `${totalFiles} 个文件`,
+                    'Invalid Formats': formats,
+                    'Supported': '图片: JPG, PNG, JPEG, BMP, GIF, WEBP\nPDF: PDF'
                 });
                 return;
             }
@@ -2245,9 +2323,9 @@
             if (invalidFiles.length > 0) {
                 const invalidNames = invalidFiles.map(f => f.name).join(', ');
                 showToast(`已忽略 ${invalidFiles.length} 个不支持的文件`, 'warning');
-                addLog('部分文件已忽略', 'warning', `不支持的文件: ${invalidNames}`, {
-                    '已忽略': `${invalidFiles.length} 个`,
-                    '支持格式': '图片或 PDF'
+                addLog('Files Ignored', 'warning', `不支持的文件: ${invalidNames}`, {
+                    'Ignored': `${invalidFiles.length} 个`,
+                    'Supported': '图片或 PDF'
                 });
             }
             
@@ -3209,7 +3287,7 @@
                 showToast('请选择图片或 PDF 文件', 'error');
                 addLog('文件格式不支持', 'error', `不支持的文件格式: ${file.name}`, {
                     '文件类型': fileType || '未知',
-                    '支持格式': '图片或 PDF'
+                    'Supported': '图片或 PDF'
                 });
                 return;
             }
