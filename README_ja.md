@@ -433,6 +433,7 @@ FORCE_BACKEND=cpu ./start.sh   # CPUを強制（任意のプラットフォー�
 
 ### 技術ドキュメント
 
+- 🔌 [完全な API ドキュメント](./API.md) - **REST API 使用ガイド、多言語クライアント例、ベストプラクティス**
 - 🔧 [デプロイメントまとめ](./DEPLOYMENT_SUMMARY.md)
 - 📝 [変更ログ](./CHANGELOG.md)
 - 🌐 [国際化実装](./I18N_IMPLEMENTATION.md)

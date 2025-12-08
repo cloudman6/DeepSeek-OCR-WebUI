@@ -433,6 +433,7 @@ FORCE_BACKEND=cpu ./start.sh   # 強制 CPU（任何平台）
 
 ### 技術文件
 
+- 🔌 [完整 API 文件](./API.md) - **REST API 使用指南、多語言客戶端範例、最佳實踐**
 - 🔧 [部署總結](./DEPLOYMENT_SUMMARY.md)
 - 📝 [更新日誌](./CHANGELOG.md)
 - 🌐 [國際化實作](./I18N_IMPLEMENTATION.md)

@@ -468,6 +468,7 @@ FORCE_BACKEND=cpu ./start.sh   # 强制 CPU（任何平台）
 
 ### 技术文档
 
+- 🔌 [完整 API 文档](./API.md) - **REST API 使用指南、多语言客户端示例、最佳实践**
 - 🔧 [部署总结](./DEPLOYMENT_SUMMARY.md)
 - 📝 [更新日志](./CHANGELOG.md)
 - 🌐 [国际化实现](./I18N_IMPLEMENTATION.md)
