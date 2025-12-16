@@ -10,6 +10,22 @@ class CUDABackend:
         self.model = None
         self.processor = None
         
+    @staticmethod
+    def get_optimal_dtype():
+        """Get optimal dtype based on GPU capability"""
+        if not torch.cuda.is_available():
+            return torch.float32
+        
+        # Check if GPU supports bfloat16 (compute capability >= 8.0)
+        capability = torch.cuda.get_device_capability()
+        if capability[0] >= 8:
+            # Ampere and newer (RTX 30xx, A100, etc.)
+            return torch.bfloat16
+        else:
+            # Older GPUs (RTX 20xx, GTX 10xx, etc.) - use float16
+            print(f"⚠️ GPU compute capability {capability[0]}.{capability[1]} < 8.0, using float16 instead of bfloat16")
+            return torch.float16
+        
     def load_model(self, source: str = "huggingface", timeout: int = 300):
         """Load CUDA model"""
         try:
@@ -36,11 +52,15 @@ class CUDABackend:
                 trust_remote_code=True
             )
             
+            # Use optimal dtype based on GPU capability
+            optimal_dtype = self.get_optimal_dtype()
+            print(f"📊 Using dtype: {optimal_dtype}")
+            
             self.model = AutoModel.from_pretrained(
                 model_path,
                 revision=revision,
                 trust_remote_code=True,
-                torch_dtype=torch.bfloat16,
+                torch_dtype=optimal_dtype,
                 low_cpu_mem_usage=True
             ).to("cuda")
             

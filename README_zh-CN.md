@@ -32,6 +32,20 @@ DeepSeek-OCR-WebUI v3.3 带来原生 Apple Silicon 支持，让 Mac 用户可以
 
 ---
 
+## 📚 完整的 API 文档已上线！
+
+**新增：包含生产级示例的完整 API 使用指南**
+
+- 🔌 **[查看完整 API 文档 →](./API.md)**
+- 4 个实战场景（发票提取、批量处理、PDF 处理、表格识别）
+- 多语言客户端示例（Python、JavaScript、Go、TypeScript）
+- 最佳实践与性能优化建议
+- 8+ 个常见问题解决方案
+
+完美集成 OCR 到您的应用！
+
+---
+
 ## 📖 简介
 
 DeepSeek-OCR-WebUI 是一个基于 DeepSeek-OCR 模型的智能图像识别 Web 应用，提供直观的用户界面和强大的识别功能。
@@ -372,6 +386,20 @@ FORCE_BACKEND=cpu ./start.sh   # 强制 CPU（任何平台）
 ---
 
 ## 📊 版本历史
+
+### v3.3.1 (2025-12-16) - BFloat16 兼容性修复
+
+**🐛 Bug 修复**：
+- ✅ 修复 "Input type (c10::BFloat16) and bias type (float) should be the same" 错误 ([#30](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues/30))
+- ✅ 自动检测 GPU 计算能力并选择最佳数据类型
+- ✅ 为旧版 GPU（RTX 20xx、GTX 10xx 等）自动回退到 float16
+
+**🔧 技术细节**：
+- 计算能力 >= 8.0 的 GPU（RTX 30xx、A100 等）使用 bfloat16
+- 旧版 GPU 自动使用 float16 以确保兼容性
+- 无需手动配置 - 完全自动
+
+---
 
 ### v3.3 (2025-11-05) - Apple Silicon 支持与多平台架构
 

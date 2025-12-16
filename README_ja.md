@@ -32,6 +32,20 @@ DeepSeek-OCR-WebUI v3.3はネイティブApple Siliconサポートを提供し�
 
 ---
 
+## 📚 完全な API ドキュメントが利用可能！
+
+**新機能：本番環境対応の例を含む包括的な API ガイド**
+
+- 🔌 **[完全な API ドキュメントを見る →](./API.md)**
+- 4つの実践的なシナリオ（請求書抽出、バッチ処理、PDF処理、表認識）
+- 多言語クライアント例（Python、JavaScript、Go、TypeScript）
+- ベストプラクティスとパフォーマンス最適化
+- 8つ以上の一般的なトラブルシューティング解決策
+
+アプリケーションに OCR を統合するのに最適！
+
+---
+
 ## 📖 はじめに
 
 DeepSeek-OCR-WebUIは、DeepSeek-OCRモデルに基づくインテリジェントな画像認識Webアプリケーションで、直感的なユーザーインターフェースと強力な認識機能を提供します。
@@ -337,6 +351,20 @@ FORCE_BACKEND=cpu ./start.sh   # CPUを強制（任意のプラットフォー�
 ---
 
 ## 📊 バージョン履歴
+
+### v3.3.1 (2025-12-16) - BFloat16互換性修正
+
+**🐛 バグ修正**：
+- ✅ "Input type (c10::BFloat16) and bias type (float) should be the same" エラーを修正 ([#30](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues/30))
+- ✅ GPU計算能力を自動検出し、最適なデータ型を選択
+- ✅ 古いGPU（RTX 20xx、GTX 10xxなど）は自動的にfloat16にフォールバック
+
+**🔧 技術的詳細**：
+- 計算能力 >= 8.0のGPU（RTX 30xx、A100など）はbfloat16を使用
+- 古いGPUは互換性のために自動的にfloat16を使用
+- 手動設定不要 - 完全自動
+
+---
 
 ### v3.3 (2025-11-05) - Apple Siliconサポートとマルチプラットフォーム
 

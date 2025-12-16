@@ -5,7 +5,7 @@
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/version-v3.3-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v3.3.1-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-supported-brightgreen.svg)](./docker-compose.yml)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Language](https://img.shields.io/badge/languages-4-orange.svg)](#multilingual-support)
@@ -29,6 +29,20 @@ DeepSeek-OCR-WebUI v3.3 brings native Apple Silicon support, enabling Mac users 
 - ✅ **Fast Inference** - ~3s per image on M3 Pro
 
 👉 [Jump to Mac Deployment Guide](#-option-2-mac-native-deployment-apple-silicon)
+
+---
+
+## 📚 Complete API Documentation Available!
+
+**NEW: Comprehensive API guide with production-ready examples**
+
+- 🔌 **[View Full API Documentation →](./API.md)**
+- 4 real-world scenarios (invoice extraction, batch processing, PDF handling)
+- Multi-language clients (Python, JavaScript, Go, TypeScript)
+- Best practices & performance optimization
+- 8+ common troubleshooting solutions
+
+Perfect for integrating OCR into your applications!
 
 ---
 
@@ -460,6 +474,20 @@ docker logs deepseek-ocr-webui
 ---
 
 ## 📊 Version History
+
+### v3.3.1 (2025-12-16) - BFloat16 Compatibility Fix
+
+**🐛 Bug Fixes**:
+- ✅ Fixed "Input type (c10::BFloat16) and bias type (float) should be the same" error ([#30](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues/30))
+- ✅ Auto-detect GPU compute capability and select optimal dtype
+- ✅ Fallback to float16 for older GPUs (RTX 20xx, GTX 10xx, etc.)
+
+**🔧 Technical Details**:
+- GPUs with compute capability >= 8.0 (RTX 30xx, A100, etc.) use bfloat16
+- Older GPUs automatically use float16 for compatibility
+- No manual configuration required - fully automatic
+
+---
 
 ### v3.3 (2025-11-05) - Apple Silicon Support & Multi-Platform
 
