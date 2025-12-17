@@ -132,6 +132,7 @@ src/
 - If a service is already running on http://localhost:5173/, use it directly instead of starting a new one
 - Use Playwright MCP server for debugging and testing new features
 - Test thoroughly to ensure all functionality works as expected
+- **If Claude starts a development server during debugging, remember to shut it down after testing is complete**
 
 ---
 
