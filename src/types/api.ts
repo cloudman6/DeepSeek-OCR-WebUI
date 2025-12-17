@@ -53,7 +53,7 @@ export interface ExportPageData {
   id: string
   pageNumber: number
   text?: string
-  imageUrl?: string
+  imageData?: string  // base64 image data
   metadata?: Record<string, any>
 }
 

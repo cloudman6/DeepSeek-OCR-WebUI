@@ -4,8 +4,17 @@
     @click="handleClick"
   >
     <div class="drag-handle">⋮⋮</div>
+    <button
+      class="delete-btn"
+      @click.stop="handleDelete"
+      @mouseenter="isDeleteHovered = true"
+      @mouseleave="isDeleteHovered = false"
+      title="Delete page"
+    >
+      <img :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'" alt="Delete" class="delete-icon" />
+    </button>
     <div class="page-thumbnail">
-      <img v-if="page.thumbnailUrl" :src="page.thumbnailUrl" alt="" />
+      <img v-if="page.thumbnailData" :src="page.thumbnailData" alt="" />
       <div v-else class="placeholder-image"></div>
     </div>
     <div class="page-meta">
@@ -23,7 +32,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import type { Page } from '@/stores/pages'
 
 interface Props {
@@ -34,6 +43,7 @@ interface Props {
 
 interface Emits {
   (e: 'click', page: Page): void
+  (e: 'delete', page: Page): void
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -43,8 +53,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
+// Reactive state for delete icon
+const isDeleteHovered = ref(false)
+
 function handleClick() {
   emit('click', props.page)
+}
+
+function handleDelete() {
+  emit('delete', props.page)
 }
 
 function formatFileSize(bytes: number): string {
@@ -80,6 +97,7 @@ function getStatusClass(status: Page['status']): string {
   border: 2px solid transparent;
   transition: all 0.2s ease;
   user-select: none; /* Prevent text selection during drag */
+  position: relative;
 }
 
 .page-item:hover {
@@ -189,5 +207,39 @@ function getStatusClass(status: Page['status']): string {
 .error {
   background: #fee2e2;
   color: #b91c1c;
+}
+
+/* Delete button styling */
+.delete-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.delete-btn .delete-icon {
+  width: 16px;
+  height: 16px;
+  transition: all 0.2s ease;
+}
+
+.delete-btn:hover {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(1.1);
+}
+
+.page-item:hover .delete-btn {
+  opacity: 1;
 }
 </style>

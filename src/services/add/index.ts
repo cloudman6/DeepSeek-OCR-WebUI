@@ -167,24 +167,19 @@ class FileAddService {
 
     // Convert image to base64 for persistent storage
     const imageData = await this.fileToBase64(file)
-    const imageUrl = this.base64ToBlobUrl(imageData, file.type)
 
     let thumbnailData: string | undefined
-    let thumbnailUrl: string | undefined
 
     if (options.generateThumbnails) {
       try {
         thumbnailData = await this.generateThumbnail(file, options.thumbnailSize!)
-        thumbnailUrl = this.base64ToBlobUrl(thumbnailData, 'image/jpeg')
       } catch (error) {
         console.warn('Failed to generate thumbnail for', file.name, error)
         // Fall back to using the original image as thumbnail
         thumbnailData = imageData
-        thumbnailUrl = imageUrl
       }
     } else {
       thumbnailData = imageData
-      thumbnailUrl = imageUrl
     }
 
     return {
@@ -195,8 +190,6 @@ class FileAddService {
       status: 'idle',
       progress: 0,
       order: -1, // Will be set by store
-      imageUrl,
-      thumbnailUrl,
       imageData,
       thumbnailData,
       width: imageDimensions.width,
@@ -244,46 +237,12 @@ class FileAddService {
     }
   }
 
-  /**
-   * Convert base64 to blob URL for display
-   */
-  private base64ToBlobUrl(base64: string, mimeType: string): string {
-    // Remove data URL prefix if present
-    const base64Data = base64.includes(',') ? (base64.split(',')[1] || '') : base64
-    const byteCharacters = atob(base64Data)
-    const byteNumbers = new Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i)
-    }
-    const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], { type: mimeType })
-    return URL.createObjectURL(blob)
-  }
-
+  
   /**
    * Generate unique page ID
    */
   private generatePageId(): string {
     return `page_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
-  }
-
-  /**
-   * Revoke object URLs to free memory
-   */
-  revokePageUrls(page: Page): void {
-    if (page.imageUrl) {
-      URL.revokeObjectURL(page.imageUrl)
-    }
-    if (page.thumbnailUrl && page.thumbnailUrl !== page.imageUrl) {
-      URL.revokeObjectURL(page.thumbnailUrl)
-    }
-  }
-
-  /**
-   * Revoke URLs for multiple pages
-   */
-  revokePagesUrls(pages: Page[]): void {
-    pages.forEach(page => this.revokePageUrls(page))
   }
 }
 

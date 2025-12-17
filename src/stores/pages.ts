@@ -30,10 +30,8 @@ export interface Page {
   order: number  // Sort order for drag and drop
 
   // Image data
-  imageUrl?: string  // Generated from imageData when needed
-  thumbnailUrl?: string  // Generated from thumbnailData when needed
-  imageData?: string  // base64 image data for persistence
-  thumbnailData?: string  // base64 thumbnail data for persistence
+  imageData?: string  // base64 image data for persistence (can be used directly as img src)
+  thumbnailData?: string  // base64 thumbnail data for persistence (can be used directly as img src)
   width?: number
   height?: number
 
@@ -58,6 +56,13 @@ export const usePagesStore = defineStore('pages', () => {
   const pages = ref<Page[]>([])
   const selectedPageIds = ref<string[]>([])
   const processingQueue = ref<string[]>([])
+
+  // Undo support state
+  const recentlyDeleted = ref<{
+    page: Page
+    timestamp: number
+    timeoutId?: number
+  } | null>(null)
 
   // Getters
   const pagesByStatus = computed(() => {
@@ -114,6 +119,16 @@ export const usePagesStore = defineStore('pages', () => {
       await db.savePage(dbPage)
     } catch (error) {
       console.error('Failed to save page to database:', error)
+      // Provide more detailed error information
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          pageId: page.id,
+          fileName: page.fileName
+        })
+      }
+      throw error // Re-throw to allow caller to handle
     }
   }
 
@@ -178,18 +193,18 @@ export const usePagesStore = defineStore('pages', () => {
     }
   }
 
-  // Helper function to convert base64 to blob URL
-  function base64ToBlobUrl(base64: string, mimeType: string): string {
-    // Remove data URL prefix if present
-    const base64Data = base64.includes(',') ? (base64.split(',')[1] || '') : base64
-    const byteCharacters = atob(base64Data)
-    const byteNumbers = new Array(byteCharacters.length)
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i)
-    }
-    const byteArray = new Uint8Array(byteNumbers)
-    const blob = new Blob([byteArray], { type: mimeType })
-    return URL.createObjectURL(blob)
+  
+  // Helper function to clean logs for serialization
+  function cleanLogsForSerialization(logs: PageProcessingLog[]): PageProcessingLog[] {
+    return logs.map(log => ({
+      id: log.id,
+      timestamp: new Date(log.timestamp), // Ensure Date objects are serializable
+      level: log.level,
+      message: log.message,
+      details: typeof log.details === 'object' && log.details !== null
+        ? JSON.parse(JSON.stringify(log.details)) // Deep clone to remove circular refs
+        : log.details
+    }))
   }
 
   // Helper functions to convert between DBPage and Page
@@ -207,19 +222,15 @@ export const usePagesStore = defineStore('pages', () => {
       height: page.height,
       ocrText: page.ocrText,
       ocrConfidence: page.ocrConfidence,
-      outputs: page.outputs,
-      logs: page.logs,
-      createdAt: page.createdAt,
-      updatedAt: page.updatedAt,
-      processedAt: page.processedAt
+      outputs: [...page.outputs], // Create a copy of outputs array
+      logs: cleanLogsForSerialization(page.logs), // Clean logs for serialization
+      createdAt: new Date(page.createdAt), // Ensure Date objects are serializable
+      updatedAt: new Date(page.updatedAt), // Ensure Date objects are serializable
+      processedAt: page.processedAt ? new Date(page.processedAt) : undefined
     }
   }
 
   function dbPageToPage(dbPage: DBPage): Page {
-    // Generate blob URLs from base64 data for display
-    const imageUrl = dbPage.imageData ? base64ToBlobUrl(dbPage.imageData, dbPage.fileType) : undefined
-    const thumbnailUrl = dbPage.thumbnailData ? base64ToBlobUrl(dbPage.thumbnailData, 'image/jpeg') : undefined
-
     return {
       id: dbPage.id!,
       fileName: dbPage.fileName,
@@ -228,8 +239,6 @@ export const usePagesStore = defineStore('pages', () => {
       status: dbPage.status,
       progress: dbPage.progress,
       order: dbPage.order,
-      imageUrl,
-      thumbnailUrl,
       imageData: dbPage.imageData,
       thumbnailData: dbPage.thumbnailData,
       width: dbPage.width,
@@ -337,9 +346,72 @@ export const usePagesStore = defineStore('pages', () => {
   function deletePage(pageId: string) {
     const index = pages.value.findIndex(page => page.id === pageId)
     if (index !== -1) {
+      const deletedPage = pages.value[index]
+
+      // Store deleted page for undo (with 10-second timeout)
+      if (recentlyDeleted.value?.timeoutId) {
+        clearTimeout(recentlyDeleted.value.timeoutId)
+      }
+
+      if (deletedPage) {
+        recentlyDeleted.value = {
+          page: deletedPage,
+          timestamp: Date.now(),
+          timeoutId: setTimeout(() => {
+            clearUndoCache()
+          }, 10000) as unknown as number // 10 seconds
+        }
+      }
+
+      // Remove page from store
       pages.value.splice(index, 1)
       deselectPage(pageId)
+
+      return deletedPage
     }
+    return null
+  }
+
+  function undoDelete() {
+    if (recentlyDeleted.value) {
+      const { page } = recentlyDeleted.value
+
+      // Clear the timeout since we're undoing
+      if (recentlyDeleted.value.timeoutId) {
+        clearTimeout(recentlyDeleted.value.timeoutId)
+      }
+
+      // Find the correct position based on order
+      let insertIndex = pages.value.length
+      for (let i = 0; i < pages.value.length; i++) {
+        const currentPage = pages.value[i]
+        if (currentPage && currentPage.order > page.order) {
+          insertIndex = i
+          break
+        }
+      }
+
+      // Insert the page back into store (with blob URLs for display)
+      pages.value.splice(insertIndex, 0, page)
+
+      // Save to database (savePageToDB will automatically clean blob URLs)
+      savePageToDB(page).catch(error => {
+        console.error('Failed to save restored page to database:', error)
+      })
+
+      // Clear undo cache
+      clearUndoCache()
+
+      return page
+    }
+    return null
+  }
+
+  function clearUndoCache() {
+    if (recentlyDeleted.value?.timeoutId) {
+      clearTimeout(recentlyDeleted.value.timeoutId)
+    }
+    recentlyDeleted.value = null
   }
 
   function deleteAllPages() {
@@ -401,6 +473,8 @@ export const usePagesStore = defineStore('pages', () => {
     clearSelection,
     deletePage,
     deleteAllPages,
+    undoDelete,
+    clearUndoCache,
     addToProcessingQueue,
     removeFromProcessingQueue,
     reset,

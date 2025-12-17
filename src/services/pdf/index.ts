@@ -5,8 +5,8 @@ export interface PDFPageInfo {
   pageNumber: number
   width: number
   height: number
-  imageUrl?: string
-  thumbnailUrl?: string
+  imageData?: string  // base64 image data
+  thumbnailData?: string  // base64 thumbnail data
 }
 
 export interface PDFProcessingOptions {

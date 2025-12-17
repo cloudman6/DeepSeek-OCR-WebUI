@@ -28,8 +28,8 @@ self.onmessage = async (event: MessageEvent) => {
           type: 'PAGE_RENDERED',
           data: {
             pageNumber: data.pageNumber,
-            imageUrl: '',
-            thumbnailUrl: ''
+            imageData: '',
+            thumbnailData: ''
           }
         })
         break

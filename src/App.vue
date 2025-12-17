@@ -17,7 +17,7 @@
     <main class="app-main">
       <!-- Page List -->
       <aside class="page-list-container">
-        <PageList ref="pageListRef" :pages="pagesStore.pages" @page-selected="handlePageSelected" />
+        <PageList ref="pageListRef" :pages="pagesStore.pages" @page-selected="handlePageSelected" @page-deleted="handlePageDeleted" />
       </aside>
 
       <!-- Page Viewer (formerly Inspector) -->
@@ -44,11 +44,143 @@ import PageViewer from './components/page-viewer/PageViewer.vue'
 const pagesStore = usePagesStore()
 
 const currentFileName = ref('No file added')
-const currentPage = ref(pagesStore.pages[0] || null)
+const currentPage = ref<Page | null>(null)
 const pageListRef = ref()
+
+// Simple toast notification replacement
+let undoTimeoutId: number | null = null
+let currentUndoCallback: (() => void) | null = null
 
 function handlePageSelected(page: Page) {
   currentPage.value = page
+}
+
+// Simple toast notification function
+function showToast(message: string, type: 'info' | 'success' | 'error' = 'info', undoCallback?: () => void) {
+  // Clear any existing toast and timeout first
+  const existingToast = document.getElementById('toast-notification')
+  if (existingToast) {
+    existingToast.remove()
+  }
+
+  if (undoTimeoutId) {
+    clearTimeout(undoTimeoutId)
+    undoTimeoutId = null
+  }
+
+  // Clear any existing undo callback
+  currentUndoCallback = null
+
+  // Create toast element - position below page list on left side
+  const toast = document.createElement('div')
+  toast.id = 'toast-notification'
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 20px;
+    left: 10px; /* Position below page list (260px width + margin) */
+    background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
+    color: white;
+    padding: 12px 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    max-width: 400px;
+  `
+
+  // Set duration based on type - success messages show for 2 seconds, others for 10 seconds
+  const duration = type === 'success' ? 2000 : 10000
+
+  const messageText = document.createElement('span')
+  messageText.textContent = message
+  toast.appendChild(messageText)
+
+  // Add undo button if callback provided
+  if (undoCallback) {
+    currentUndoCallback = undoCallback
+    const undoBtn = document.createElement('button')
+    undoBtn.textContent = 'Undo'
+    undoBtn.style.cssText = `
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    `
+    undoBtn.onclick = () => {
+      if (currentUndoCallback) {
+        currentUndoCallback()
+        toast.remove()
+        currentUndoCallback = null
+        if (undoTimeoutId) {
+          clearTimeout(undoTimeoutId)
+          undoTimeoutId = null
+        }
+      }
+    }
+    toast.appendChild(undoBtn)
+  }
+
+  document.body.appendChild(toast)
+
+  // Auto dismiss after calculated duration
+  undoTimeoutId = setTimeout(() => {
+    toast.remove()
+    currentUndoCallback = null
+    undoTimeoutId = null
+  }, duration) as unknown as number
+}
+
+// Handle page deletion
+async function handlePageDeleted(page: Page) {
+  try {
+    // Delete page from store (this also stores it for undo)
+    const deletedPage = pagesStore.deletePage(page.id)
+
+    if (deletedPage) {
+      // Delete from database
+      await pagesStore.deletePageFromDB(page.id)
+
+      // Show undo message using simple toast
+      showToast(
+        `Page "${page.fileName}" deleted`,
+        'info',
+        handleUndoDelete
+      )
+
+      // Update current page if the deleted page was selected
+      if (currentPage.value?.id === page.id) {
+        currentPage.value = pagesStore.pages[0] || null
+      }
+    }
+  } catch (error) {
+    console.error('Delete failed:', error)
+    showToast('Failed to delete page', 'error')
+  }
+}
+
+// Handle undo delete
+async function handleUndoDelete() {
+  try {
+    const restoredPage = pagesStore.undoDelete()
+
+    if (restoredPage) {
+      showToast(`Page "${restoredPage.fileName}" restored`, 'success')
+
+      // Update current page to the restored page if no page is selected
+      if (!currentPage.value) {
+        currentPage.value = restoredPage
+      }
+    }
+  } catch (error) {
+    console.error('Undo failed:', error)
+    showToast('Failed to restore page', 'error')
+  }
 }
 
 // Handle file add
@@ -58,13 +190,14 @@ async function handleFileAdd() {
 
     if (result.success && result.pages.length > 0) {
       // Update current file name to show the first added file
-      currentFileName.value = result.pages.length === 1
-        ? result.pages[0].fileName
-        : `${result.pages.length} files added`
+      const firstPage = result.pages[0]
+      if (firstPage) {
+        currentFileName.value = result.pages.length === 1
+          ? firstPage.fileName
+          : `${result.pages.length} files added`
 
-      // Select the first added page
-      if (result.pages.length > 0) {
-        handlePageSelected(result.pages[0])
+        // Select the first added page
+        handlePageSelected(firstPage)
       }
     } else if (result.error) {
       console.error('Add error:', result.error)
@@ -84,11 +217,12 @@ async function handleDrop(event: DragEvent) {
   if (files.length > 0) {
     const result = await pagesStore.addFiles(files)
     if (result.success && result.pages.length > 0) {
-      currentFileName.value = result.pages.length === 1
-        ? result.pages[0].fileName
-        : `${result.pages.length} files added`
-      if (result.pages.length > 0) {
-        handlePageSelected(result.pages[0])
+      const firstPage = result.pages[0]
+      if (firstPage) {
+        currentFileName.value = result.pages.length === 1
+          ? firstPage.fileName
+          : `${result.pages.length} files added`
+        handlePageSelected(firstPage)
       }
     }
   }
@@ -110,10 +244,13 @@ watchEffect(() => {
 onMounted(async () => {
   await pagesStore.loadPagesFromDB()
   if (pagesStore.pages.length > 0 && !currentPage.value) {
-    currentPage.value = pagesStore.pages[0]
-    currentFileName.value = pagesStore.pages.length === 1
-      ? pagesStore.pages[0].fileName
-      : `${pagesStore.pages.length} files`
+    const firstPage = pagesStore.pages[0]
+    if (firstPage) {
+      currentPage.value = firstPage
+      currentFileName.value = pagesStore.pages.length === 1
+        ? firstPage.fileName
+        : `${pagesStore.pages.length} files`
+    }
   }
 })
 </script>

@@ -29,8 +29,8 @@
     <div class="image-container" ref="imageContainer">
       <div v-if="currentPage" class="image-wrapper">
         <img
-          v-if="currentPage.imageUrl"
-          :src="currentPage.imageUrl"
+          v-if="currentPage.imageData"
+          :src="currentPage.imageData"
           :style="{ transform: `scale(${zoomLevel})` }"
           class="page-image"
           alt=""
@@ -108,8 +108,8 @@ interface Page {
   fileType: string
   status: 'idle' | 'processing' | 'completed' | 'error'
   progress: number
-  imageUrl?: string
-  thumbnailUrl?: string
+  imageData?: string  // base64 image data that can be used directly as img src
+  thumbnailData?: string  // base64 thumbnail data that can be used directly as img src
   width?: number
   height?: number
   ocrText?: string

@@ -32,7 +32,7 @@ export interface FileInfo {
 export interface ProcessedFile extends FileInfo {
   id: string
   url: string
-  thumbnailUrl?: string
+  thumbnailData?: string  // base64 thumbnail data
 }
 
 // UI State
