@@ -7,7 +7,7 @@ Here is exactly what I need implemented:
 ```
 目前已经实现单个 page 删除功能，现在需要实现批量删除功能。
 1. page list中每个page前面加一个checkbox，用户可以选中多个page，用 Native UI的checkbox 实现
-2. page list 的顶端加一个tool bar，有一个checkbox 用来选中/取消选中所有page，用 Native UI的checkbox 实现
+2. page list 的顶端加一个tool bar，tool bar 中不需要任何文字信息。有一个checkbox 用来选中/取消选中所有page，用 Native UI的checkbox 实现，位置与page-item中的checkbox对齐
 3. tool bar 中的checkbox要能够区分部分选中和全选中
 4. tool bar 中加一个删除按钮，只有当有page的checkbox 选中时才会显示
 5. 该删除按钮与当前page-item中的删除按钮在外观和style上保持一致。鼠标放到删除按钮上，删除按钮变成红色

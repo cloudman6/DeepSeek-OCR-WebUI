@@ -23,7 +23,13 @@
         bordered
       >
         <div class="page-list-container">
-          <PageList ref="pageListRef" :pages="pagesStore.pages" @page-selected="handlePageSelected" @page-deleted="handlePageDeleted" />
+          <PageList
+            ref="pageListRef"
+            :pages="pagesStore.pages"
+            @page-selected="handlePageSelected"
+            @page-deleted="handlePageDeleted"
+            @batch-deleted="handleBatchDeleted"
+          />
         </div>
       </n-layout-sider>
 
@@ -180,50 +186,75 @@ function showToast(message: string, type: 'info' | 'success' | 'error' = 'info',
   console.log('Timeout set with ID:', timeoutId)
 }
 
-// Handle page deletion
+// Handle page deletion (unified with batch deletion)
 async function handlePageDeleted(page: Page) {
-  try {
-    // Delete page from store (this also stores it for undo)
-    const deletedPage = pagesStore.deletePage(page.id)
+  await handleDeletion([page])
+}
 
-    if (deletedPage) {
-      // Delete from database
-      await pagesStore.deletePageFromDB(page.id)
+// Handle batch deletion
+async function handleBatchDeleted(pages: Page[]) {
+  await handleDeletion(pages)
+}
+
+// Unified deletion handler for both single and batch operations
+async function handleDeletion(pagesToDelete: Page[]) {
+  try {
+    const pageIds = pagesToDelete.map(page => page.id)
+
+    // Delete pages from store (this also stores them for undo)
+    const deletedResult = pagesStore.deletePages(pageIds)
+
+    if (deletedResult) {
+      // Delete from database using batch operation
+      await pagesStore.deletePagesFromDB(pageIds)
+
+      // Create appropriate message
+      const isSingle = pagesToDelete.length === 1
+      const message = isSingle
+        ? `Page "${pagesToDelete[0].fileName}" deleted`
+        : `${pagesToDelete.length} pages deleted`
 
       // Show undo message using simple toast
-      showToast(
-        `Page "${page.fileName}" deleted`,
-        'info',
-        handleUndoDelete
-      )
+      showToast(message, 'info', handleUndoDelete)
 
-      // Update current page if the deleted page was selected
-      if (currentPage.value?.id === page.id) {
+      // Update current page if it was deleted
+      if (currentPage.value && pageIds.includes(currentPage.value.id)) {
         currentPage.value = pagesStore.pages[0] || null
       }
+
+      // Clear selection after deletion
+      pagesStore.clearSelection()
     }
   } catch (error) {
     console.error('Delete failed:', error)
-    showToast('Failed to delete page', 'error')
+    const isSingle = pagesToDelete.length === 1
+    showToast(`Failed to delete ${isSingle ? 'page' : 'pages'}`, 'error')
   }
 }
 
-// Handle undo delete
+// Handle undo delete (unified for both single and batch operations)
 async function handleUndoDelete() {
   try {
-    const restoredPage = pagesStore.undoDelete()
+    const restoredResult = pagesStore.undoDelete()
 
-    if (restoredPage) {
-      showToast(`Page "${restoredPage.fileName}" restored`, 'success')
+    if (restoredResult) {
+      const isSingle = !Array.isArray(restoredResult)
+      const restoredPages = isSingle ? [restoredResult] : restoredResult
 
-      // Update current page to the restored page if no page is selected
-      if (!currentPage.value) {
-        currentPage.value = restoredPage
+      const message = isSingle
+        ? `Page "${restoredResult.fileName}" restored`
+        : `${restoredPages.length} pages restored`
+
+      showToast(message, 'success')
+
+      // Update current page to the first restored page if no page is selected
+      if (!currentPage.value && restoredPages.length > 0) {
+        currentPage.value = restoredPages[0]
       }
     }
   } catch (error) {
     console.error('Undo failed:', error)
-    showToast('Failed to restore page', 'error')
+    showToast('Failed to restore pages', 'error')
   }
 }
 

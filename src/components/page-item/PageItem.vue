@@ -1,11 +1,18 @@
 <template>
   <div
-    :class="['page-item', { active: isActive, dragging: isDragging }]"
+    :class="['page-item', { active: isActive, dragging: isDragging, selected: isSelected }]"
     @click="handleClick"
     @mouseenter="isPageHovered = true"
     @mouseleave="isPageHovered = false"
   >
     <div class="drag-handle">⋮⋮</div>
+    <NCheckbox
+      :checked="isSelected"
+      @update:checked="handleCheckboxChange"
+      @click.stop
+      size="small"
+      class="page-checkbox"
+    />
     <NButton
       text
       size="tiny"
@@ -51,7 +58,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NButton, NTag } from 'naive-ui'
+import { NButton, NTag, NCheckbox } from 'naive-ui'
+import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
 
 interface Props {
@@ -72,9 +80,15 @@ const props = withDefaults(defineProps<Props>(), {
 
 const emit = defineEmits<Emits>()
 
-// Reactive state for delete icon and page hover
+// Store and reactive state
+const pagesStore = usePagesStore()
 const isDeleteHovered = ref(false)
 const isPageHovered = ref(false)
+
+// Computed property for selection state
+const isSelected = computed(() =>
+  pagesStore.selectedPageIds.includes(props.page.id)
+)
 
 function handleClick() {
   emit('click', props.page)
@@ -82,6 +96,10 @@ function handleClick() {
 
 function handleDelete() {
   emit('delete', props.page)
+}
+
+function handleCheckboxChange(checked: boolean) {
+  pagesStore.togglePageSelection(props.page.id)
 }
 
 function formatFileSize(bytes: number): string {
@@ -212,6 +230,16 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
   display: flex;
   gap: 4px;
   margin-top: 2px;
+}
+
+.page-checkbox {
+  flex-shrink: 0;
+  margin: 0 4px 0 8px;
+}
+
+.page-item.selected {
+  border-color: #6366f1;
+  background: #f0f1ff;
 }
 
 </style>

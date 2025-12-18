@@ -57,9 +57,9 @@ export const usePagesStore = defineStore('pages', () => {
   const selectedPageIds = ref<string[]>([])
   const processingQueue = ref<string[]>([])
 
-  // Undo support state
+  // Undo support state - unified for single and batch deletions
   const recentlyDeleted = ref<{
-    page: Page
+    pages: Page[]
     timestamp: number
     timeoutId?: number
   } | null>(null)
@@ -137,6 +137,16 @@ export const usePagesStore = defineStore('pages', () => {
       await db.deletePage(pageId)
     } catch (error) {
       console.error('Failed to delete page from database:', error)
+    }
+  }
+
+  // Batch database deletion for performance
+  async function deletePagesFromDB(pageIds: string[]) {
+    try {
+      const deletePromises = pageIds.map(pageId => db.deletePage(pageId))
+      await Promise.all(deletePromises)
+    } catch (error) {
+      console.error('Failed to delete pages from database:', error)
     }
   }
 
@@ -345,69 +355,104 @@ export const usePagesStore = defineStore('pages', () => {
     selectedPageIds.value = []
   }
 
-  function deletePage(pageId: string) {
-    const index = pages.value.findIndex(page => page.id === pageId)
-    if (index !== -1) {
-      const deletedPage = pages.value[index]
+  // Unified deletion function for both single and batch deletions
+  function deletePages(pageIds: string[]) {
+    const deletedPages: Page[] = []
 
-      // Store deleted page for undo (with 10-second timeout)
-      if (recentlyDeleted.value?.timeoutId) {
-        clearTimeout(recentlyDeleted.value.timeoutId)
-      }
-
-      if (deletedPage) {
-        recentlyDeleted.value = {
-          page: deletedPage,
-          timestamp: Date.now(),
-          timeoutId: setTimeout(() => {
-            clearUndoCache()
-          }, 7000) as unknown as number // 7 seconds
+    // Find and collect all pages to be deleted
+    for (const pageId of pageIds) {
+      const index = pages.value.findIndex(page => page.id === pageId)
+      if (index !== -1) {
+        const deletedPage = pages.value[index]
+        if (deletedPage) {
+          deletedPages.push(deletedPage)
         }
       }
-
-      // Remove page from store
-      pages.value.splice(index, 1)
-      deselectPage(pageId)
-
-      return deletedPage
     }
-    return null
+
+    if (deletedPages.length === 0) {
+      return null
+    }
+
+    // Store deleted pages for undo (with 7-second timeout)
+    if (recentlyDeleted.value?.timeoutId) {
+      clearTimeout(recentlyDeleted.value.timeoutId)
+    }
+
+    recentlyDeleted.value = {
+      pages: deletedPages,
+      timestamp: Date.now(),
+      timeoutId: setTimeout(() => {
+        clearUndoCache()
+      }, 7000) as unknown as number // 7 seconds
+    }
+
+    // Remove pages from store (in reverse order to maintain correct indices)
+    const sortedIndices = pageIds
+      .map(pageId => pages.value.findIndex(page => page.id === pageId))
+      .filter(index => index !== -1)
+      .sort((a, b) => b - a) // Sort in descending order
+
+    for (const index of sortedIndices) {
+      const deletedPage = pages.value[index]
+      if (deletedPage) {
+        pages.value.splice(index, 1)
+        deselectPage(deletedPage.id)
+      }
+    }
+
+    return deletedPages.length === 1 ? deletedPages[0] : deletedPages
+  }
+
+  // Legacy function for backward compatibility - now uses unified deletion logic
+  function deletePage(pageId: string) {
+    const result = deletePages([pageId])
+    return Array.isArray(result) ? result[0] || null : result
   }
 
   function undoDelete() {
     if (recentlyDeleted.value) {
-      const { page } = recentlyDeleted.value
+      const { pages: deletedPages } = recentlyDeleted.value
 
       // Clear the timeout since we're undoing
       if (recentlyDeleted.value.timeoutId) {
         clearTimeout(recentlyDeleted.value.timeoutId)
       }
 
-      // Find the correct position based on order
-      let insertIndex = pages.value.length
-      for (let i = 0; i < pages.value.length; i++) {
-        const currentPage = pages.value[i]
-        if (currentPage && currentPage.order > page.order) {
-          insertIndex = i
-          break
+      // Restore all pages in correct order
+      for (const deletedPage of deletedPages) {
+        // Find the correct position based on order
+        let insertIndex = pages.value.length
+        for (let i = 0; i < pages.value.length; i++) {
+          const currentPage = pages.value[i]
+          if (currentPage && currentPage.order > deletedPage.order) {
+            insertIndex = i
+            break
+          }
         }
-      }
 
-      // Insert the page back into store (with blob URLs for display)
-      pages.value.splice(insertIndex, 0, page)
+        // Insert the page back into store
+        pages.value.splice(insertIndex, 0, deletedPage)
+      }
 
       // Ensure pages are sorted by order to maintain consistency
       pages.value.sort((a, b) => a.order - b.order)
 
-      // Save to database (savePageToDB will automatically clean blob URLs)
-      savePageToDB(page).catch(error => {
-        console.error('Failed to save restored page to database:', error)
+      // Save all restored pages to database
+      const savePromises = deletedPages.map(page =>
+        savePageToDB(page).catch(error => {
+          console.error('Failed to save restored page to database:', error)
+        })
+      )
+
+      Promise.all(savePromises).catch(error => {
+        console.error('Failed to save some restored pages to database:', error)
       })
 
       // Clear undo cache
       clearUndoCache()
 
-      return page
+      return deletedPages.length === 1 ? deletedPages[0] : deletedPages
     }
     return null
   }
@@ -477,6 +522,7 @@ export const usePagesStore = defineStore('pages', () => {
     selectAllPages,
     clearSelection,
     deletePage,
+    deletePages,
     deleteAllPages,
     undoDelete,
     clearUndoCache,
@@ -488,6 +534,7 @@ export const usePagesStore = defineStore('pages', () => {
     loadPagesFromDB,
     savePageToDB,
     deletePageFromDB,
+    deletePagesFromDB,
 
     // Reordering actions
     reorderPages,

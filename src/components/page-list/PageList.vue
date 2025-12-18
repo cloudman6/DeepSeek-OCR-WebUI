@@ -1,6 +1,36 @@
 <template>
-  <n-scrollbar class="page-list">
-    <draggable
+  <div class="page-list-container">
+    <!-- Selection Toolbar -->
+    <div v-if="pages.length > 0" class="selection-toolbar">
+      <NCheckbox
+        :checked="isAllSelected"
+        :indeterminate="isPartiallySelected"
+        @update:checked="handleSelectAll"
+        size="small"
+      />
+      <NButton
+        v-if="hasSelection"
+        text
+        size="tiny"
+        circle
+        @click="handleBatchDelete"
+        @mouseenter="isDeleteHovered = true"
+        @mouseleave="isDeleteHovered = false"
+        title="Delete selected pages"
+        class="delete-selected-btn"
+      >
+        <template #icon>
+          <img
+            :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'"
+            alt="Delete selected"
+            style="width: 16px; height: 16px; transition: all 0.2s ease;"
+          />
+        </template>
+      </NButton>
+    </div>
+
+    <n-scrollbar class="page-list">
+      <draggable
       v-model="localPages"
       item-key="id"
       ghost-class="ghost"
@@ -30,6 +60,7 @@
       </template>
     </n-empty>
   </n-scrollbar>
+</div>
 </template>
 
 <script setup lang="ts">
@@ -38,7 +69,7 @@ import draggable from 'vuedraggable'
 import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
 import type { Page } from '@/stores/pages'
-import { NScrollbar, NEmpty } from 'naive-ui'
+import { NScrollbar, NEmpty, NCheckbox, NButton } from 'naive-ui'
 
 const props = defineProps<{
   pages: Page[]
@@ -47,10 +78,12 @@ const props = defineProps<{
 const emit = defineEmits<{
   pageSelected: [page: Page]
   pageDeleted: [page: Page]
+  batchDeleted: [pages: Page[]]
 }>()
 
 const pagesStore = usePagesStore()
 const currentPage = ref<Page | null>(props.pages[0] || null)
+const isDeleteHovered = ref(false)
 
 // Local copy of pages for drag and drop
 const localPages = ref<Page[]>([...props.pages])
@@ -67,6 +100,15 @@ watch(() => props.pages, (newPages) => {
   }
 }, { deep: true, immediate: true })
 
+// Computed properties for selection state
+const hasSelection = computed(() => pagesStore.selectedPageIds.length > 0)
+const isAllSelected = computed(() =>
+  props.pages.length > 0 && pagesStore.selectedPageIds.length === props.pages.length
+)
+const isPartiallySelected = computed(() =>
+  pagesStore.selectedPageIds.length > 0 && pagesStore.selectedPageIds.length < props.pages.length
+)
+
 function selectPage(page: Page) {
   currentPage.value = page
   emit('pageSelected', page)
@@ -74,6 +116,22 @@ function selectPage(page: Page) {
 
 function handlePageDeleted(page: Page) {
   emit('pageDeleted', page)
+}
+
+function handleSelectAll(checked: boolean) {
+  if (checked) {
+    pagesStore.selectAllPages()
+  } else {
+    pagesStore.clearSelection()
+  }
+}
+
+function handleBatchDelete() {
+  const selectedPages = pagesStore.selectedPages
+  if (selectedPages.length > 0) {
+    // Emit batch delete event
+    emit('batchDeleted', selectedPages)
+  }
 }
 
 async function handleDragEnd(event: any) {
@@ -98,10 +156,30 @@ defineExpose({
 </script>
 
 <style scoped>
-.page-list {
+.page-list-container {
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+.selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 8px 8px 24px; /* Align with page checkboxes */
+  border-bottom: 1px solid #f0f0f0;
+  min-height: 40px;
+}
+
+.delete-selected-btn {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.page-list {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   gap: 8px;
   padding: 8px 8px 8px 8px;
   padding-right: 12px; /* Extra space to prevent page item borders from overlapping scrollbar */
