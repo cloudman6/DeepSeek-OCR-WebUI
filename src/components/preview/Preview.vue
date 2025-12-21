@@ -29,12 +29,24 @@ import { ref, computed, watchEffect } from 'vue'
 import { NTabs, NTabPane, NEmpty } from 'naive-ui'
 
 interface Page {
-  id: number
-  md?: string
-  html?: string
-  thumbnail?: string
-  ocrStatus: 'pending' | 'processing' | 'done' | 'error'
-  mdStatus: 'pending' | 'processing' | 'done' | 'error'
+  id: string
+  fileName: string
+  fileSize: number
+  fileType: string
+  origin: 'upload' | 'pdf_generated'
+  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
+  progress: number
+  imageData?: string
+  thumbnailData?: string
+  width?: number
+  height?: number
+  ocrText?: string
+  ocrConfidence?: number
+  outputs: any[]
+  logs: any[]
+  createdAt: Date
+  updatedAt: Date
+  processedAt?: Date
 }
 
 const props = defineProps<{

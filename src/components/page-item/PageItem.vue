@@ -113,8 +113,10 @@ function formatFileSize(bytes: number): string {
 function getStatusClass(status: Page['status']): string {
   switch (status) {
     case 'completed':
+    case 'ready':
       return 'done'
-    case 'processing':
+    case 'rendering':
+    case 'recognizing':
       return 'processing'
     case 'error':
       return 'error'
@@ -126,8 +128,10 @@ function getStatusClass(status: Page['status']): string {
 function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' | 'error' | 'default' {
   switch (status) {
     case 'completed':
+    case 'ready':
       return 'success'
-    case 'processing':
+    case 'rendering':
+    case 'recognizing':
       return 'info'
     case 'error':
       return 'error'

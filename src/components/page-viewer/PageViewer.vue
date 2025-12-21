@@ -85,13 +85,13 @@
           </n-text>
         </n-space>
         <n-button
-          :type="status === 'processing' ? 'info' : 'primary'"
-          :loading="status === 'processing'"
-          :disabled="!currentPage || status === 'processing'"
+          :type="status === 'recognizing' ? 'info' : 'primary'"
+          :loading="status === 'recognizing'"
+          :disabled="!currentPage || status === 'recognizing' || status === 'pending_render' || status === 'rendering'"
           @click="runOCR"
           size="small"
         >
-          {{ status === 'processing' ? 'Processing OCR...' : 'Run OCR' }}
+          {{ status === 'recognizing' ? 'Processing OCR...' : 'Run OCR' }}
         </n-button>
       </n-space>
     </n-card>
@@ -107,7 +107,8 @@ interface Page {
   fileName: string
   fileSize: number
   fileType: string
-  status: 'idle' | 'processing' | 'completed' | 'error'
+  origin: 'upload' | 'pdf_generated'
+  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
   progress: number
   imageData?: string  // base64 image data that can be used directly as img src
   thumbnailData?: string  // base64 thumbnail data that can be used directly as img src
@@ -132,12 +133,14 @@ const imageSize = ref<string>('')
 const imageLoading = ref(false)
 const imageError = ref<string>('')
 
-const status = computed(() => props.currentPage?.status || 'idle')
+const status = computed(() => props.currentPage?.status || 'ready')
 
 const statusText = computed(() => {
   switch (status.value) {
-    case 'idle': return 'Idle'
-    case 'processing': return 'Processing'
+    case 'pending_render': return 'Pending Render'
+    case 'rendering': return 'Rendering'
+    case 'ready': return 'Ready'
+    case 'recognizing': return 'Recognizing'
     case 'completed': return 'Completed'
     case 'error': return 'Error'
     default: return 'Unknown'
@@ -147,7 +150,9 @@ const statusText = computed(() => {
 const statusClass = computed(() => {
   switch (status.value) {
     case 'completed': return 'status-done'
-    case 'processing': return 'status-processing'
+    case 'ready': return 'status-ready'
+    case 'rendering':
+    case 'recognizing': return 'status-processing'
     case 'error': return 'status-error'
     default: return 'status-idle'
   }
@@ -156,7 +161,9 @@ const statusClass = computed(() => {
 function getStatusType(): 'success' | 'info' | 'warning' | 'error' | 'default' {
   switch (status.value) {
     case 'completed': return 'success'
-    case 'processing': return 'info'
+    case 'ready': return 'success'
+    case 'rendering':
+    case 'recognizing': return 'info'
     case 'error': return 'error'
     default: return 'default'
   }

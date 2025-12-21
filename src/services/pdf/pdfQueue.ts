@@ -193,7 +193,7 @@ async function handleRenderSuccess(
       thumbnailData,
       width,
       height,
-      status: 'done',
+      status: 'ready',
       progress: 100,
       updatedAt: new Date(),
       processedAt: new Date()
@@ -296,7 +296,7 @@ async function updateOverallProgress(): Promise<void> {
     const pdfPages = allPages.filter(page => page.fileType === 'application/pdf')
 
     const totalPages = pdfPages.length
-    const completedPages = pdfPages.filter(page => page.status === 'done').length
+    const completedPages = pdfPages.filter(page => page.status === 'ready').length
     const errorPages = pdfPages.filter(page => page.status === 'error').length
 
     // Emit progress event
@@ -352,7 +352,7 @@ export async function queuePDFPageRender(task: PDFRenderTask): Promise<void> {
 
   // Check if already processed
   const page = await db.getPage(task.pageId)
-  if (page && (page.status === 'done' || page.status === 'rendering')) {
+  if (page && (page.status === 'ready' || page.status === 'rendering')) {
     console.log(`[PDF Queue] Skipping page ${task.pageId} - status: ${page.status}`)
     return // Skip if already processed or currently rendering
   }
@@ -528,7 +528,8 @@ export async function queuePDFPages(
         fileName: pageFileName,
         fileSize: 0, // Will be updated after rendering
         fileType: 'image/png', // Rendered as PNG
-        status: 'idle',
+        origin: 'pdf_generated',
+        status: 'pending_render',
         progress: 0,
         order: -1, // Will be set by store
         outputs: [],
@@ -591,9 +592,9 @@ export async function queuePDFPages(
  */
 export async function resumePDFProcessing(): Promise<void> {
   try {
-    // Find all PDF pages with idle status
-    const idlePages = await db.getPagesByStatus('idle')
-    const pdfPages = idlePages.filter(page => page.fileName && page.fileName.includes('.pdf_'))
+    // Find all PDF pages with pending_render status
+    const idlePages = await db.getPagesByStatus('pending_render')
+    const pdfPages = idlePages.filter(page => page.origin === 'pdf_generated')
 
     if (pdfPages.length === 0) {
       return

@@ -196,8 +196,9 @@ class FileAddService {
       fileName: file.name,
       fileSize: file.size,
       fileType: file.type,
-      status: 'idle',
-      progress: 0,
+      origin: 'upload',
+      status: 'ready',
+      progress: 100,
       order: -1, // Will be set by store
       imageData,
       thumbnailData,

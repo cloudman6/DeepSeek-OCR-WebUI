@@ -24,9 +24,10 @@ export interface Page {
   fileName: string
   fileSize: number
   fileType: string
+  origin: 'upload' | 'pdf_generated'
 
   // Processing status
-  status: 'idle' | 'processing' | 'completed' | 'error'
+  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
   progress: number
   order: number  // Sort order for drag and drop
 
@@ -238,6 +239,7 @@ export const usePagesStore = defineStore('pages', () => {
       fileName: page.fileName,
       fileSize: page.fileSize,
       fileType: page.fileType,
+      origin: page.origin,
       status: page.status,
       progress: page.progress,
       order: page.order,
@@ -261,6 +263,7 @@ export const usePagesStore = defineStore('pages', () => {
       fileName: dbPage.fileName,
       fileSize: dbPage.fileSize,
       fileType: dbPage.fileType,
+      origin: dbPage.origin,
       status: dbPage.status,
       progress: dbPage.progress,
       order: dbPage.order,
@@ -302,10 +305,10 @@ export const usePagesStore = defineStore('pages', () => {
 
   function updatePageStatus(pageId: string, status: Page['status']) {
     const updates: Partial<Page> = { status }
-    if (status === 'completed') {
+    if (status === 'ready' || status === 'completed') {
       updates.processedAt = new Date()
       updates.progress = 100
-    } else if (status === 'processing') {
+    } else if (status === 'rendering' || status === 'recognizing') {
       updates.progress = 0
     }
     updatePage(pageId, updates)
@@ -506,7 +509,7 @@ export const usePagesStore = defineStore('pages', () => {
   function setupPDFEventListeners() {
     // Handle page rendering started
     pdfEvents.on('pdf:page:rendering', ({ pageId }) => {
-      updatePageStatus(pageId, 'processing')
+      updatePageStatus(pageId, 'rendering')
       addPageLog(pageId, {
         level: 'info',
         message: 'Page rendering started'
@@ -535,7 +538,7 @@ export const usePagesStore = defineStore('pages', () => {
       if (page) {
         // Update page with image data and thumbnail
         updatePage(pageId, {
-          status: 'completed',
+          status: 'ready',
           progress: 100,
           imageData,
           thumbnailData,

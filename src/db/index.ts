@@ -6,7 +6,8 @@ export interface DBPage {
   fileName: string
   fileSize: number
   fileType: string
-  status: 'idle' | 'queued' | 'rendering' | 'done' | 'error'
+  origin: 'upload' | 'pdf_generated'
+  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
   progress: number
   order: number  // Sort order for drag and drop
   imageData?: string  // base64 image data
@@ -40,10 +41,23 @@ export class Scan2DocDB extends Dexie {
   constructor() {
     super('Scan2DocDatabase')
 
-    // Define schema with order field included from the start
-    this.version(1).stores({
-      pages: '++id, fileName, fileSize, fileType, status, progress, order, createdAt, updatedAt, processedAt',
+    // Define schema
+    this.version(2).stores({
+      pages: '++id, fileName, fileSize, fileType, origin, status, progress, order, createdAt, updatedAt, processedAt',
       processingQueue: '++id, pageId, priority, addedAt'
+    }).upgrade(tx => {
+      // Basic migration logic if needed
+      return tx.table('pages').toCollection().modify(page => {
+        if (!page.origin) {
+          page.origin = page.fileName.includes('.pdf_') ? 'pdf_generated' : 'upload';
+        }
+        if (page.status === 'idle') {
+          page.status = page.origin === 'pdf_generated' ? 'pending_render' : 'ready';
+        }
+        if (page.status === 'done') {
+          page.status = 'ready';
+        }
+      });
     })
   }
 
