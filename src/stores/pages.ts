@@ -517,7 +517,7 @@ export const usePagesStore = defineStore('pages', () => {
     })
 
     // Handle page rendering completed
-    pdfEvents.on('pdf:page:done', async ({ pageId, imageData, thumbnailData, width, height }) => {
+    pdfEvents.on('pdf:page:done', async ({ pageId, imageData, thumbnailData, width, height, fileSize }) => {
       // Check if page exists in store, if not, load it from database
       let page = pages.value.find(p => p.id === pageId)
 
@@ -536,14 +536,15 @@ export const usePagesStore = defineStore('pages', () => {
       }
 
       if (page) {
-        // Update page with image data and thumbnail
+        // Update page with image data, thumbnail and size
         updatePage(pageId, {
           status: 'ready',
           progress: 100,
           imageData,
           thumbnailData,
           width,
-          height
+          height,
+          fileSize
         })
 
         // Save to database

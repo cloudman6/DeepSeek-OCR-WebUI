@@ -63,7 +63,8 @@ function getWorker(): Worker {
           response.imageData,
           response.width,
           response.height,
-          response.pageNumber
+          response.pageNumber,
+          response.fileSize
         )
       }
     })
@@ -150,7 +151,8 @@ async function handleRenderSuccess(
   imageData: string,
   width: number,
   height: number,
-  pageNumber: number
+  pageNumber: number,
+  fileSize: number
 ): Promise<void> {
   console.log(`[PDF Success] Render success for pageId: ${pageId}`)
 
@@ -186,13 +188,14 @@ async function handleRenderSuccess(
       thumbnailData = imageData
     }
 
-    // Update page with rendered image data and thumbnail
+    // Update page with rendered image data, thumbnail and size
     const updatedPage: DBPage = {
       ...page,
       imageData,
       thumbnailData,
       width,
       height,
+      fileSize,
       status: 'ready',
       progress: 100,
       updatedAt: new Date(),
@@ -208,7 +211,8 @@ async function handleRenderSuccess(
       imageData,
       thumbnailData,
       width,
-      height
+      height,
+      fileSize
     })
 
     console.log(`[PDF Success] Successfully updated page ${pageId} with image data and thumbnail`)
@@ -469,7 +473,8 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
         result.imageData,
         result.width,
         result.height,
-        task.pageNumber
+        task.pageNumber,
+        result.fileSize
       )
 
       console.log(`[PDF Render] Enhanced rendering successful for pageId: ${task.pageId}`)

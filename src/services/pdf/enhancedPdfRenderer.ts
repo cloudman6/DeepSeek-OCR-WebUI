@@ -44,7 +44,7 @@ export class EnhancedPdfRenderer {
     pdfData: ArrayBuffer,
     pageNumber: number,
     options: EnhancedRenderOptions = {}
-  ): Promise<{ imageData: string; width: number; height: number }> {
+  ): Promise<{ imageData: string; width: number; height: number; fileSize: number }> {
     const {
       scale = 2.5,
       imageFormat = 'png',
@@ -118,7 +118,8 @@ export class EnhancedPdfRenderer {
       return {
         imageData,
         width: viewport.width,
-        height: viewport.height
+        height: viewport.height,
+        fileSize: blob.size
       }
 
     } catch (error) {

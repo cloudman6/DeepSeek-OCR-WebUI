@@ -23,6 +23,7 @@ interface PDFRenderResult {
   width: number
   height: number
   pageNumber: number
+  fileSize: number
 }
 
 interface PDFErrorMessage {
@@ -152,7 +153,8 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       imageData, // base64 string
       pageNumber: pageNumber!, // We validated this above
       width: viewport.width,
-      height: viewport.height
+      height: viewport.height,
+      fileSize: blob.size
     }
 
     self.postMessage(response)
