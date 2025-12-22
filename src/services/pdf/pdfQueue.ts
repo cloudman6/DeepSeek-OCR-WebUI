@@ -297,7 +297,7 @@ async function handleRenderError(pageId: string, errorMessage: string): Promise<
 async function updateOverallProgress(): Promise<void> {
   try {
     const allPages = await db.getAllPages()
-    const pdfPages = allPages.filter(page => page.fileType === 'application/pdf')
+    const pdfPages = allPages.filter(page => page.origin === 'pdf_generated')
 
     const totalPages = pdfPages.length
     const completedPages = pdfPages.filter(page => page.status === 'ready').length
