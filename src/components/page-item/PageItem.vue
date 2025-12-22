@@ -39,8 +39,21 @@
       </template>
     </NButton>
     <div class="page-thumbnail">
-      <img v-if="page.thumbnailData" :src="page.thumbnailData" alt="" />
-      <div v-else class="placeholder-image"></div>
+      <transition name="fade">
+        <img v-if="page.thumbnailData" :src="page.thumbnailData" alt="" class="thumbnail-img" />
+        <div v-else class="status-placeholder" :class="page.status">
+          <div class="shimmer" v-if="page.status === 'rendering' || page.status === 'pending_render'"></div>
+          <div class="placeholder-content">
+            <span class="page-hint">{{ page.order + 1 }}</span>
+            <div class="status-indicator">
+              <n-spin v-if="page.status === 'rendering'" size="small" />
+              <span v-else-if="page.status === 'pending_render'" class="pending-dot">...</span>
+              <span v-else-if="page.status === 'error'" class="error-sign">!</span>
+            </div>
+            <span class="status-label">{{ getShortStatusText(page.status) }}</span>
+          </div>
+        </div>
+      </transition>
     </div>
     <div class="page-meta">
       <div class="page-name">{{ page.fileName }}</div>
@@ -58,7 +71,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NButton, NTag, NCheckbox } from 'naive-ui'
+import { NButton, NTag, NCheckbox, NSpin } from 'naive-ui'
 import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
 
@@ -102,12 +115,17 @@ function handleCheckboxChange(checked: boolean) {
   pagesStore.togglePageSelection(props.page.id)
 }
 
+function getShortStatusText(status: Page['status']): string {
+  switch (status) {
+    case 'pending_render': return 'Queued'
+    case 'rendering': return 'Rendering'
+    case 'error': return 'Error'
+    default: return ''
+  }
+}
+
 function formatFileSize(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+// ... existing formatFileSize code ...
 }
 
 function getStatusClass(status: Page['status']): string {
@@ -189,21 +207,116 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
 
 .page-thumbnail {
   flex-shrink: 0;
-}
-
-.page-thumbnail img {
   width: 48px;
   height: 64px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: #f3f4f6;
+}
+
+.thumbnail-img {
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  background: #ddd;
-  border-radius: 4px;
+  display: block;
 }
 
-.placeholder-image {
-  width: 48px;
-  height: 64px;
-  background: #ddd;
-  border-radius: 4px;
+.status-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #f3f4f6;
+}
+
+.status-placeholder.pending_render {
+  background: #f3f4f6;
+}
+
+.status-placeholder.rendering {
+  background: #ebf5ff;
+}
+
+.status-placeholder.error {
+  background: #fef2f2;
+  color: #ef4444;
+}
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  z-index: 1;
+}
+
+.page-hint {
+  font-size: 14px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.2);
+  line-height: 1;
+}
+
+.status-indicator {
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.status-label {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.status-placeholder.rendering .status-label {
+  color: #3b82f6;
+}
+
+.pending-dot {
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #9ca3af;
+}
+
+/* Shimmer Animation */
+.shimmer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Transitions */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .page-meta {

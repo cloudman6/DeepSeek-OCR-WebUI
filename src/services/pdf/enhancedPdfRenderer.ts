@@ -13,10 +13,12 @@ export interface EnhancedRenderOptions {
   quality?: number
   useEnhancedFonts?: boolean
   fallbackFontFamily?: string
+  sourceId?: string // Optional ID for document caching
 }
 
 export class EnhancedPdfRenderer {
   private static instance: EnhancedPdfRenderer
+  private documentCache = new Map<string, pdfjsLib.PDFDocumentProxy>()
 
   static getInstance(): EnhancedPdfRenderer {
     if (!EnhancedPdfRenderer.instance) {
@@ -39,6 +41,51 @@ export class EnhancedPdfRenderer {
   }
 
   /**
+   * Get or load a PDF document
+   */
+  private async getDocument(pdfData: ArrayBuffer, sourceId?: string): Promise<pdfjsLib.PDFDocumentProxy> {
+    // If we have a sourceId and it's in cache, return it
+    if (sourceId && this.documentCache.has(sourceId)) {
+      return this.documentCache.get(sourceId)!
+    }
+
+    // Load PDF document with enhanced configuration
+    const uint8Array = new Uint8Array(pdfData)
+    const loadingTask = pdfjsLib.getDocument({
+      data: uint8Array,
+      useSystemFonts: true,
+      fontExtraProperties: true,
+      enhanceTextSelection: true,
+      verbosity: 0
+    })
+
+    const pdfDocument = await loadingTask.promise
+
+    // Cache if sourceId is provided
+    if (sourceId) {
+      this.documentCache.set(sourceId, pdfDocument)
+    }
+
+    return pdfDocument
+  }
+
+  /**
+   * Explicitly destroy a cached document
+   */
+  async destroyDocument(sourceId: string): Promise<void> {
+    const doc = this.documentCache.get(sourceId)
+    if (doc) {
+      try {
+        await doc.destroy()
+        this.documentCache.delete(sourceId)
+        pdfLogger.info(`[Enhanced PDF Renderer] Destroyed document handle for: ${sourceId}`)
+      } catch (error) {
+        pdfLogger.warn(`[Enhanced PDF Renderer] Error destroying document ${sourceId}:`, error)
+      }
+    }
+  }
+
+  /**
    * Render PDF page with enhanced font support
    */
   async renderPage(
@@ -51,26 +98,15 @@ export class EnhancedPdfRenderer {
       imageFormat = 'png',
       quality = 0.95,
       useEnhancedFonts = true,
-      fallbackFontFamily
+      fallbackFontFamily,
+      sourceId
     } = options
 
+    let pdfDocument: pdfjsLib.PDFDocumentProxy | null = null
+
     try {
-      // Create a safe copy of the ArrayBuffer to avoid detachment issues
-      const pdfDataCopy = pdfData.slice(0)
-      const uint8Array = new Uint8Array(pdfDataCopy)
-
-      // Load PDF document with enhanced configuration
-      const loadingTask = pdfjsLib.getDocument({
-        data: uint8Array,
-        // Enhanced font configuration
-        useSystemFonts: true,
-        fontExtraProperties: true,
-        enhanceTextSelection: true,
-        // Suppress warnings
-        verbosity: useEnhancedFonts ? 0 : 1
-      })
-
-      const pdfDocument = await loadingTask.promise
+      // Use cached document or load new one
+      pdfDocument = await this.getDocument(pdfData, sourceId)
 
       // Get page
       const page = await pdfDocument.getPage(pageNumber)
@@ -111,8 +147,13 @@ export class EnhancedPdfRenderer {
         quality: imageFormat === 'jpeg' ? quality : undefined
       })
 
-      // Clean up
+      // Clean up page resources
       page.cleanup()
+
+      // IMPORTANT: If we are NOT using cache (no sourceId), destroy document immediately
+      if (!sourceId && pdfDocument) {
+        await pdfDocument.destroy()
+      }
 
       return {
         imageBlob,
@@ -123,6 +164,10 @@ export class EnhancedPdfRenderer {
 
     } catch (error) {
       pdfLogger.error('[Enhanced PDF Renderer] Render failed:', error)
+      // Attempt cleanup on error if not using cache
+      if (!sourceId && pdfDocument) {
+        try { await pdfDocument.destroy() } catch(e) {}
+      }
       throw error
     }
   }

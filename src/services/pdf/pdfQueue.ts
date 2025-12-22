@@ -194,7 +194,9 @@ async function handleRenderSuccess(
         source.processedCount++
         if (source.processedCount >= source.totalPages) {
           pdfSourceCache.delete(task.sourceId)
-          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed. Cache cleared.`)
+          // Also destroy the cached PDF.js document handle to free memory
+          enhancedPdfRenderer.destroyDocument(task.sourceId)
+          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed. Cache and document cleared.`)
         }
       }
     }
@@ -265,7 +267,9 @@ async function handleRenderError(pageId: string, errorMessage: string): Promise<
         source.processedCount++
         if (source.processedCount >= source.totalPages) {
           pdfSourceCache.delete(task.sourceId)
-          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed (with errors). Cache cleared.`)
+          // Also destroy the cached PDF.js document handle to free memory
+          enhancedPdfRenderer.destroyDocument(task.sourceId)
+          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed (with errors). Cache and document cleared.`)
         }
       }
     }
@@ -423,7 +427,8 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
         imageFormat: 'png',
         quality: 0.95,
         useEnhancedFonts: true,
-        fallbackFontFamily: fallbackFont
+        fallbackFontFamily: fallbackFont,
+        sourceId: task.sourceId // Pass sourceId for document caching
       })
 
       // Handle successful enhanced rendering
@@ -630,8 +635,20 @@ export async function resumePDFProcessing(): Promise<void> {
 
         queueLogger.info(`[Resume] Loaded source file "${dbFile.name}" (${dbFile.size} bytes)`)
         
+        // Use fileId as sourceId
+        const sourceId = fileId
+        
         // Convert Blob to ArrayBuffer
         const pdfData = await dbFile.content.arrayBuffer()
+        
+        // Populate cache for the resumed file
+        // We need to know the total pages to properly clear the cache later
+        // For simplicity during resume, we count the pages we are about to re-queue
+        pdfSourceCache.set(sourceId, {
+          data: pdfData,
+          totalPages: pages.length,
+          processedCount: 0
+        })
         
         // Re-queue pages
         for (const page of pages) {
@@ -654,12 +671,12 @@ export async function resumePDFProcessing(): Promise<void> {
              await db.savePage({ ...page, status: 'pending_render', progress: 0 })
           }
 
-          // Queue render task
-          await queuePDFPageRender({
+          // Queue render task with correctly populated sourceId
+          queuePDFPageRender({
             pageId: page.id!,
-            pdfData, // Pass the ArrayBuffer (queuePDFPageRender handles copying)
             pageNumber,
-            fileName: dbFile.name
+            fileName: dbFile.name,
+            sourceId
           })
         }
         
