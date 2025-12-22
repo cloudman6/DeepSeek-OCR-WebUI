@@ -5,14 +5,15 @@ import type { DBPage } from '@/db/index'
 import { enhancedPdfRenderer } from './enhancedPdfRenderer'
 import { queueLogger } from '@/services/logger'
 
+// PDF source data cache to avoid memory overhead of per-page copies
+const pdfSourceCache = new Map<string, { data: ArrayBuffer; totalPages: number; processedCount: number }>()
+
 // PDF page render task interface
 interface PDFRenderTask {
   pageId: string
-  pdfData: ArrayBuffer
   pageNumber: number
   fileName: string
-  pdfBase64?: string  // Base64 backup for reconstruction
-  originalSize?: number  // Original size for validation
+  sourceId: string // ID to look up in pdfSourceCache
 }
 
 // Create singleton queue instance
@@ -186,6 +187,18 @@ async function handleRenderSuccess(
       fileSize
     })
 
+    // Update processed count and clean up cache if needed
+    if (task.sourceId) {
+      const source = pdfSourceCache.get(task.sourceId)
+      if (source) {
+        source.processedCount++
+        if (source.processedCount >= source.totalPages) {
+          pdfSourceCache.delete(task.sourceId)
+          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed. Cache cleared.`)
+        }
+      }
+    }
+
     renderingTasks.delete(pageId)
     await updateOverallProgress()
 
@@ -244,6 +257,18 @@ async function handleRenderError(pageId: string, errorMessage: string): Promise<
       pageId,
       error: errorMessage
     })
+
+    // Update processed count and clean up cache if needed
+    if (task.sourceId) {
+      const source = pdfSourceCache.get(task.sourceId)
+      if (source) {
+        source.processedCount++
+        if (source.processedCount >= source.totalPages) {
+          pdfSourceCache.delete(task.sourceId)
+          queueLogger.info(`[Cleanup] All pages for source ${task.sourceId} processed (with errors). Cache cleared.`)
+        }
+      }
+    }
 
     queueLogger.info(`[PDF Error] Updated page ${pageId} with error status`)
 
@@ -329,30 +354,6 @@ async function updateOverallProgress(): Promise<void> {
 }
 
 /**
- * Convert ArrayBuffer to base64 for safe storage
- */
-function arrayBufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer)
-  let binary = ''
-  for (let i = 0; i < bytes.byteLength; i++) {
-    binary += String.fromCharCode(bytes[i]!)
-  }
-  return btoa(binary)
-}
-
-/**
- * Convert base64 back to ArrayBuffer
- */
-function base64ToArrayBuffer(base64: string): ArrayBuffer {
-  const binary = atob(base64)
-  const bytes = new Uint8Array(binary.length)
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i)
-  }
-  return bytes.buffer
-}
-
-/**
  * Queue a PDF page for rendering
  */
 export async function queuePDFPageRender(task: PDFRenderTask): Promise<void> {
@@ -365,24 +366,13 @@ export async function queuePDFPageRender(task: PDFRenderTask): Promise<void> {
     return // Skip if already processed or currently rendering
   }
 
-  // Store PDF base64 data for reliable reconstruction
-  const pdfBase64 = arrayBufferToBase64(task.pdfData)
-
-  // Create enhanced task with base64 backup
-  const enhancedTask = {
-    ...task,
-    pdfBase64,
-    originalSize: task.pdfData.byteLength
-  }
-
   // Add task to tracking map BEFORE queuing
-  renderingTasks.set(task.pageId, enhancedTask)
-  queueLogger.info(`[PDF Queue] Added task to tracking map. Current tasks:`, Array.from(renderingTasks.keys()))
+  renderingTasks.set(task.pageId, task)
 
-  // Add to queue
-  await pdfRenderQueue.add(async () => {
+  // Add to queue without awaiting - allow multiple pages and files to queue quickly
+  pdfRenderQueue.add(async () => {
     queueLogger.info(`[PDF Queue] Starting render for pageId: ${task.pageId}`)
-    await renderPDFPage(enhancedTask)
+    await renderPDFPage(task)
   })
 }
 
@@ -392,6 +382,12 @@ export async function queuePDFPageRender(task: PDFRenderTask): Promise<void> {
 async function renderPDFPage(task: PDFRenderTask): Promise<void> {
   try {
     queueLogger.info(`[PDF Render] Starting render for pageId: ${task.pageId}, pageNumber: ${task.pageNumber}`)
+
+    // Get PDF data from cache
+    const source = pdfSourceCache.get(task.sourceId)
+    if (!source) {
+      throw new Error(`PDF source data not found in cache for sourceId: ${task.sourceId}`)
+    }
 
     // Update page status to rendering
     const page = await db.getPage(task.pageId)
@@ -403,13 +399,6 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
         updatedAt: new Date()
       }
       await db.savePage(updatedPage)
-      queueLogger.info(`[PDF Render] Updated page ${task.pageId} status to rendering`)
-    }
-
-    // Ensure task is in tracking map
-    if (!renderingTasks.has(task.pageId)) {
-      queueLogger.warn(`[PDF Render] Task not found in tracking map, adding now: pageId=${task.pageId}`)
-      renderingTasks.set(task.pageId, task)
     }
 
     // Emit rendering event
@@ -420,47 +409,13 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
       level: 'info'
     })
 
-    // Validate task data
-    if (!task.pdfData || task.pdfData.byteLength === 0) {
-      throw new Error('PDF data is empty or invalid')
-    }
-    if (!task.pageId) {
-      throw new Error('Page ID is required')
-    }
-    if (!task.pageNumber || task.pageNumber < 1) {
-      throw new Error(`Invalid page number: ${task.pageNumber}`)
-    }
-
-    // Create a fresh copy of PDF data for this rendering attempt
-    // This avoids ArrayBuffer detachment issues
-    let pdfDataCopy: ArrayBuffer
-
-    try {
-      pdfDataCopy = task.pdfData.slice(0)
-    } catch (sliceError) {
-      queueLogger.warn(`[PDF Render] Cannot copy PDF data, reconstructing from base64 backup:`, sliceError)
-
-      // Fallback: reconstruct from base64 backup
-      if (!task.pdfBase64) {
-        throw new Error('PDF data is detached and no base64 backup is available')
-      }
-
-      try {
-        pdfDataCopy = base64ToArrayBuffer(task.pdfBase64)
-        queueLogger.info(`[PDF Render] Successfully reconstructed PDF data from base64 (${pdfDataCopy.byteLength} bytes)`)
-      } catch (reconstructionError) {
-        queueLogger.error(`[PDF Render] Failed to reconstruct PDF data from base64:`, reconstructionError)
-        throw new Error('PDF data reconstruction failed')
-      }
-    }
+    // Create a fresh copy of PDF data for this rendering attempt to avoid detachment issues
+    const pdfDataCopy = source.data.slice(0)
 
     // Try enhanced rendering first, fallback to worker if needed
     try {
-      queueLogger.info(`[PDF Render] Attempting enhanced rendering for pageId: ${task.pageId}`)
-
       // Get optimal fallback font for this PDF
       const fallbackFont = await enhancedPdfRenderer.getOptimalFallbackFont(pdfDataCopy)
-      queueLogger.info(`[PDF Render] Using fallback font: ${fallbackFont} for pageId: ${task.pageId}`)
 
       // Use enhanced renderer
       const result = await enhancedPdfRenderer.renderPage(pdfDataCopy, task.pageNumber, {
@@ -481,26 +436,15 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
         result.fileSize
       )
 
-      queueLogger.info(`[PDF Render] Enhanced rendering successful for pageId: ${task.pageId}`)
-
     } catch (enhancedError) {
       queueLogger.warn(`[PDF Render] Enhanced rendering failed for ${task.pageId}, falling back to worker:`, enhancedError)
 
-      // Fallback to worker rendering - create another copy if needed
-      let workerPdfData: ArrayBuffer
-      try {
-        workerPdfData = pdfDataCopy.slice(0)
-      } catch (workerSliceError) {
-        queueLogger.warn(`[PDF Render] Cannot create worker copy, using original:`, workerSliceError)
-        workerPdfData = pdfDataCopy
-      }
-
+      // Fallback to worker rendering
       const worker = getWorker()
-
       worker.postMessage({
         type: 'render',
         payload: {
-          pdfData: workerPdfData,
+          pdfData: pdfDataCopy, // Worker will take ownership or clone it
           pageId: task.pageId,
           pageNumber: task.pageNumber,
           scale: 2.5,
@@ -511,7 +455,7 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
     }
 
   } catch (error) {
-    queueLogger.error(`[PDF Render] Error queueing PDF page render for ${task.pageId}:`, error)
+    queueLogger.error(`[PDF Render] Error rendering PDF page ${task.pageId}:`, error)
     await handleRenderError(task.pageId, error instanceof Error ? error.message : 'Unknown render error')
   }
 }
@@ -526,26 +470,35 @@ export async function queuePDFPages(
   fileId?: string
 ): Promise<void> {
   try {
-    // Create pages for each PDF page (if not already created)
+    // Generate a source ID for the cache (prefer fileId if available)
+    const sourceId = fileId || `src_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    
+    // Cache the PDF data once for all pages of this file
+    pdfSourceCache.set(sourceId, {
+      data: pdfData,
+      totalPages: pageCount,
+      processedCount: 0
+    })
+
+    // Create pages for each PDF page
     const pages: DBPage[] = []
     const startOrder = await db.getNextOrder()
 
     for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-      // Generate page name: <PDF文件名>_<page number>.png
       const baseName = file.name.replace(/\.pdf$/i, '')
       const pageFileName = `${baseName}_${pageNum}.png`
 
       pages.push({
         id: generatePageId(),
         fileName: pageFileName,
-        fileSize: 0, // Will be updated after rendering
-        fileType: 'image/png', // Rendered as PNG
+        fileSize: 0,
+        fileType: 'image/png',
         origin: 'pdf_generated',
         status: 'pending_render',
         progress: 0,
-        order: startOrder + pageNum - 1, // Set explicit order
-        fileId, // Link to source file
-        pageNumber: pageNum, // Store explicit page number
+        order: startOrder + pageNum - 1,
+        fileId,
+        pageNumber: pageNum,
         outputs: [],
         logs: [{
           id: Date.now().toString(),
@@ -558,37 +511,23 @@ export async function queuePDFPages(
       })
     }
 
-    // Save pages to database
-    const savedPageIds: string[] = []
-    for (const pageData of pages) {
+    // Save pages to database and queue for rendering
+    for (let i = 0; i < pages.length; i++) {
+      const pageData = pages[i]!
       const pageId = await db.savePage(pageData)
-      if (!pageId) {
-        throw new Error('Failed to save page to database - no ID returned')
-      }
-      savedPageIds.push(pageId)
       
-      // Emit queued event so store can load the page immediately
-      pdfEvents.emit('pdf:page:queued', { pageId })
-    }
+      if (pageId) {
+        // Emit queued event so store can load the page immediately
+        pdfEvents.emit('pdf:page:queued', { pageId })
 
-    // Queue each page for rendering
-    for (let i = 0; i < savedPageIds.length; i++) {
-      const pageId = savedPageIds[i]
-      const pageNumber = i + 1
-
-      // Validate pageId before queuing
-      if (!pageId) {
-        queueLogger.error(`Invalid pageId at index ${i}:`, pageId)
-        continue
+        // Queue for rendering - NOT awaited to allow rapid queuing of multiple files
+        queuePDFPageRender({
+          pageId,
+          pageNumber: i + 1,
+          fileName: file.name,
+          sourceId
+        })
       }
-
-      // Each task will create its own copy when needed
-      await queuePDFPageRender({
-        pageId,
-        pdfData,
-        pageNumber,
-        fileName: file.name
-      })
     }
 
     // Emit processing start event
