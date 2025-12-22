@@ -615,9 +615,10 @@ export async function resumePDFProcessing(): Promise<void> {
     const pendingPages = await db.getPagesByStatus('pending_render')
     const renderingPages = await db.getPagesByStatus('rendering')
     
-    // Combine and filter for PDF generated pages
+    // Combine and filter for PDF generated pages, then sort by order to ensure sequential processing
     const incompletePages = [...pendingPages, ...renderingPages]
       .filter(page => page.origin === 'pdf_generated')
+      .sort((a, b) => a.order - b.order)
 
     if (incompletePages.length === 0) {
       return
