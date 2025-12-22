@@ -55,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect, onMounted } from 'vue'
+import { ref, watchEffect, onMounted, computed } from 'vue'
 import { usePagesStore } from './stores/pages'
 import type { Page } from './stores/pages'
 import { uiLogger } from '@/services/logger'
@@ -68,7 +68,10 @@ const pagesStore = usePagesStore()
 const { message } = createDiscreteApi(['message'])
 
 const currentFileName = ref('No file added')
-const currentPage = ref<Page | null>(null)
+const selectedPageId = ref<string | null>(null)
+const currentPage = computed(() => 
+  pagesStore.pages.find(p => p.id === selectedPageId.value) || null
+)
 const pageListRef = ref()
 
 // Simple toast notification replacement
@@ -88,7 +91,7 @@ function handlePageSelected(page: Page) {
     pagesStore.clearSelection()
   }
 
-  currentPage.value = page
+  selectedPageId.value = page.id
 }
 
 // Simple toast notification function
@@ -232,7 +235,7 @@ async function handleDeletion(pagesToDelete: Page[]) {
 
       // Update current page if it was deleted
       if (currentPage.value && pageIds.includes(currentPage.value.id)) {
-        currentPage.value = pagesStore.pages[0] || null
+        selectedPageId.value = pagesStore.pages[0]?.id || null
       }
 
       // Clear selection after deletion
@@ -262,7 +265,7 @@ async function handleUndoDelete() {
 
       // Update current page to the first restored page if no page is selected
       if (!currentPage.value && restoredPages.length > 0) {
-        currentPage.value = restoredPages[0]
+        selectedPageId.value = restoredPages[0].id
       }
     }
   } catch (error) {
@@ -329,18 +332,18 @@ function handleDragOver(event: DragEvent) {
 
 // Watch for page list updates and sync current page
 watchEffect(() => {
-  if (pageListRef.value && pageListRef.value.currentPage && !currentPage.value) {
-    currentPage.value = pageListRef.value.currentPage
+  if (pageListRef.value && pageListRef.value.currentPage && !selectedPageId.value) {
+    selectedPageId.value = pageListRef.value.currentPage.id
   }
 })
 
 // Load pages from database on mount and resume PDF processing
 onMounted(async () => {
   await pagesStore.loadPagesFromDB()
-  if (pagesStore.pages.length > 0 && !currentPage.value) {
+  if (pagesStore.pages.length > 0 && !selectedPageId.value) {
     const firstPage = pagesStore.pages[0]
     if (firstPage) {
-      currentPage.value = firstPage
+      selectedPageId.value = firstPage.id
       currentFileName.value = pagesStore.pages.length === 1
         ? firstPage.fileName
         : `${pagesStore.pages.length} files`

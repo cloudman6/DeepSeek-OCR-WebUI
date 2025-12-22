@@ -1,13 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist'
-import { enhancedPdfRenderer } from '@/services/pdf/enhancedPdfRenderer'
 import { workerLogger } from '@/services/logger'
 
 // Configure PDF.js worker
-
-pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/legacy/build/pdf.worker.mjs',
-  import.meta.url
-).toString()
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
   
 interface PDFRenderMessage {
   type: 'render'
@@ -143,6 +139,10 @@ self.addEventListener('message', async (event: MessageEvent<WorkerMessage>) => {
       type: mimeType,
       quality: imageFormat === 'jpeg' ? quality : undefined
     })
+
+    // Clean up resources to prevent memory leaks
+    page.cleanup()
+    await pdfDocument.destroy()
 
     // Send result back to main thread
     const response: PDFRenderResult = {

@@ -297,14 +297,7 @@ export const usePagesStore = defineStore('pages', () => {
       pages.value[pageIndex] = {
         ...currentPage,
         ...updates,
-        id: currentPage.id, // Ensure id is preserved
-        fileId: currentPage.fileId,
-        pageNumber: currentPage.pageNumber,
-        fileName: currentPage.fileName, // Ensure required fields are preserved
-        fileSize: currentPage.fileSize,
-        fileType: currentPage.fileType,
-        status: currentPage.status,
-        progress: currentPage.progress,
+        id: currentPage.id, // Ensure id is always preserved
         updatedAt: new Date()
       }
     }

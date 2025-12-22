@@ -3,7 +3,7 @@ import { queuePDFPages, resumePDFProcessing } from './pdfQueue'
 import { pdfEvents } from './events'
 import { db } from '@/db/index'
 import { pdfLogger } from '@/services/logger'
-import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 
 // Configure PDF.js worker (for main thread usage)
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
