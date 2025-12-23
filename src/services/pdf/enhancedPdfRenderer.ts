@@ -19,7 +19,7 @@ export interface EnhancedRenderOptions {
 
 export class EnhancedPdfRenderer {
   private static instance: EnhancedPdfRenderer
-  private documentCache = new Map<string, pdfjsLib.PDFDocumentProxy>()
+  private fontAnalysisCache = new Map<string, string>() // sourceId -> fallbackFontFamily
 
   static getInstance(): EnhancedPdfRenderer {
     if (!EnhancedPdfRenderer.instance) {
@@ -42,135 +42,12 @@ export class EnhancedPdfRenderer {
   }
 
   /**
-   * Get or load a PDF document
-   */
-  private async getDocument(pdfData: ArrayBuffer, sourceId?: string): Promise<pdfjsLib.PDFDocumentProxy> {
-    // If we have a sourceId and it's in cache, return it
-    if (sourceId && this.documentCache.has(sourceId)) {
-      return this.documentCache.get(sourceId)!
-    }
-
-    // Load PDF document with enhanced configuration
-    const uint8Array = new Uint8Array(pdfData)
-    const loadingTask = pdfjsLib.getDocument({
-      data: uint8Array,
-      cMapUrl: CMAP_URL,
-      cMapPacked: CMAP_PACKED,
-      useSystemFonts: true,
-      fontExtraProperties: true,
-      verbosity: 0
-    })
-
-    const pdfDocument = await loadingTask.promise
-
-    // Cache if sourceId is provided
-    if (sourceId) {
-      this.documentCache.set(sourceId, pdfDocument)
-    }
-
-    return pdfDocument
-  }
-
-  /**
-   * Explicitly destroy a cached document
+   * Explicitly destroy a cached document analysis
    */
   async destroyDocument(sourceId: string): Promise<void> {
-    const doc = this.documentCache.get(sourceId)
-    if (doc) {
-      try {
-        await doc.destroy()
-        this.documentCache.delete(sourceId)
-        pdfLogger.info(`[Enhanced PDF Renderer] Destroyed document handle for: ${sourceId}`)
-      } catch (error) {
-        pdfLogger.warn(`[Enhanced PDF Renderer] Error destroying document ${sourceId}:`, error)
-      }
-    }
-  }
-
-  /**
-   * Render PDF page with enhanced font support
-   */
-  async renderPage(
-    pdfData: ArrayBuffer,
-    pageNumber: number,
-    options: EnhancedRenderOptions = {}
-  ): Promise<{ imageBlob: Blob; width: number; height: number; fileSize: number }> {
-    const {
-      scale = 2.5,
-      imageFormat = 'png',
-      quality = 0.95,
-      useEnhancedFonts = true,
-      fallbackFontFamily,
-      sourceId
-    } = options
-
-    let pdfDocument: pdfjsLib.PDFDocumentProxy | null = null
-
-    try {
-      // Use cached document or load new one
-      pdfDocument = await this.getDocument(pdfData, sourceId)
-
-      // Get page
-      const page = await pdfDocument.getPage(pageNumber)
-      const viewport = page.getViewport({ scale })
-
-      // Create canvas with enhanced settings
-      const canvas = new OffscreenCanvas(viewport.width, viewport.height)
-      const context = canvas.getContext('2d', {
-        alpha: false,
-        desynchronized: true,
-        willReadFrequently: false
-      })!
-
-      // Enhanced canvas settings
-      context.imageSmoothingEnabled = true
-      context.imageSmoothingQuality = 'high'
-      context.textRenderingOptimization = 'optimizeQuality'
-
-      // Apply font fallback if needed
-      if (useEnhancedFonts && fallbackFontFamily) {
-        context.font = `${16 * scale}px ${fallbackFontFamily}`
-      }
-
-      // Render with enhanced settings
-      const renderContext = {
-        canvasContext: context,
-        viewport: viewport,
-        intent: 'print' as const,
-        renderInteractiveForms: true
-      }
-
-      await page.render(renderContext).promise
-
-      // Convert to image Blob
-      const mimeType = imageFormat === 'jpeg' ? 'image/jpeg' : 'image/png'
-      const imageBlob = await canvas.convertToBlob({
-        type: mimeType,
-        quality: imageFormat === 'jpeg' ? quality : undefined
-      })
-
-      // Clean up page resources
-      page.cleanup()
-
-      // IMPORTANT: If we are NOT using cache (no sourceId), destroy document immediately
-      if (!sourceId && pdfDocument) {
-        await pdfDocument.destroy()
-      }
-
-      return {
-        imageBlob,
-        width: viewport.width,
-        height: viewport.height,
-        fileSize: imageBlob.size
-      }
-
-    } catch (error) {
-      pdfLogger.error('[Enhanced PDF Renderer] Render failed:', error)
-      // Attempt cleanup on error if not using cache
-      if (!sourceId && pdfDocument) {
-        try { await pdfDocument.destroy() } catch (e) { }
-      }
-      throw error
+    if (this.fontAnalysisCache.has(sourceId)) {
+      this.fontAnalysisCache.delete(sourceId)
+      pdfLogger.info(`[Enhanced PDF Renderer] Cleared font analysis cache for: ${sourceId}`)
     }
   }
 
@@ -178,6 +55,7 @@ export class EnhancedPdfRenderer {
    * Analyze PDF font usage
    */
   async analyzeFonts(pdfData: ArrayBuffer): Promise<string[]> {
+    let pdfDocument: pdfjsLib.PDFDocumentProxy | null = null
     try {
       const uint8Array = new Uint8Array(pdfData)
       const loadingTask = pdfjsLib.getDocument({
@@ -185,10 +63,11 @@ export class EnhancedPdfRenderer {
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
         useSystemFonts: true,
-        fontExtraProperties: true
+        fontExtraProperties: true,
+        verbosity: 0
       })
 
-      const pdfDocument = await loadingTask.promise
+      pdfDocument = await loadingTask.promise
       const fontNames: string[] = []
 
       // Analyze first few pages to determine font usage
@@ -216,18 +95,38 @@ export class EnhancedPdfRenderer {
     } catch (error) {
       pdfLogger.error('[Enhanced PDF Renderer] Font analysis failed:', error)
       return []
+    } finally {
+      if (pdfDocument) {
+        try {
+          await pdfDocument.destroy()
+        } catch (e) {
+          pdfLogger.warn('[Enhanced PDF Renderer] Error destroying document in analyzeFonts:', e)
+        }
+      }
     }
   }
 
   /**
    * Get optimal fallback font for this PDF
    */
-  async getOptimalFallbackFont(pdfData: ArrayBuffer): Promise<string> {
+  async getOptimalFallbackFont(pdfData: ArrayBuffer, sourceId?: string): Promise<string> {
+    // If we have a cached result for this sourceId, return it
+    if (sourceId && this.fontAnalysisCache.has(sourceId)) {
+      return this.fontAnalysisCache.get(sourceId)!
+    }
+
     try {
       // Create a safe copy of the ArrayBuffer to avoid detachment issues
       const pdfDataCopy = pdfData.slice(0)
       const textContent = await this.extractTextContent(pdfDataCopy)
-      return fontLoader.getBestFont(textContent)
+      const font = fontLoader.getBestFont(textContent)
+
+      // Cache the result if we have a sourceId
+      if (sourceId) {
+        this.fontAnalysisCache.set(sourceId, font)
+      }
+
+      return font
     } catch (error) {
       pdfLogger.warn('[Enhanced PDF Renderer] Could not determine optimal font:', error)
       return 'sans-serif'
@@ -238,16 +137,18 @@ export class EnhancedPdfRenderer {
    * Extract text content for font analysis
    */
   private async extractTextContent(pdfData: ArrayBuffer): Promise<string> {
+    let pdfDocument: pdfjsLib.PDFDocumentProxy | null = null
     try {
       const uint8Array = new Uint8Array(pdfData)
       const loadingTask = pdfjsLib.getDocument({
         data: uint8Array,
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
-        useSystemFonts: true
+        useSystemFonts: true,
+        verbosity: 0
       })
 
-      const pdfDocument = await loadingTask.promise
+      pdfDocument = await loadingTask.promise
       let allText = ''
 
       // Extract text from first few pages
@@ -275,18 +176,15 @@ export class EnhancedPdfRenderer {
     } catch (error) {
       pdfLogger.error('[Enhanced PDF Renderer] Text extraction failed:', error)
       return ''
+    } finally {
+      if (pdfDocument) {
+        try {
+          await pdfDocument.destroy()
+        } catch (e) {
+          pdfLogger.warn('[Enhanced PDF Renderer] Error destroying document in extractTextContent:', e)
+        }
+      }
     }
-  }
-
-  /**
-   * Convert blob to base64
-   */
-  private async blobToBase64(blob: Blob): Promise<string> {
-    return new Promise((resolve) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.readAsDataURL(blob)
-    })
   }
 }
 

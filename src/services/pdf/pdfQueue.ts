@@ -41,10 +41,12 @@ function getWorker(): Worker {
 
       if (response.type === 'error') {
         handleRenderError(response.payload.pageId, response.payload.error)
-      } else {
-        // Validate response data before processing
-        if (!response.pageId) {
-          queueLogger.warn('[PDF Queue] Received worker response without pageId:', response)
+      } else if (response.pageId) {
+        // Only process messages that have a pageId - others are internal/ready signals
+
+        // Check if we're still tracking this task
+        if (!renderingTasks.has(response.pageId)) {
+          queueLogger.warn(`[PDF Queue] Received response for unknown task: ${response.pageId}`)
           return
         }
 
@@ -53,13 +55,7 @@ function getWorker(): Worker {
           return
         }
 
-        // Check if we're still tracking this task
-        if (!renderingTasks.has(response.pageId)) {
-          queueLogger.warn(`[PDF Queue] Received response for unknown task: ${response.pageId}`)
-          return
-        }
-
-        // Worker now returns Blob directly
+        // Worker returns Blob directly
         handleRenderSuccess(
           response.pageId,
           response.imageBlob,
@@ -68,6 +64,9 @@ function getWorker(): Worker {
           response.pageNumber,
           response.fileSize
         )
+      } else {
+        // Log internal signals only at debug level if needed, or ignore
+        // queueLogger.debug('[PDF Queue] Internal worker signal:', response)
       }
     })
 
@@ -418,56 +417,23 @@ async function renderPDFPage(task: PDFRenderTask): Promise<void> {
     // Create a fresh copy of PDF data for this rendering attempt to avoid detachment issues
     const pdfDataCopy = source.data.slice(0)
 
-    // Try enhanced rendering first, fallback to worker if needed
-    try {
-      // Get optimal fallback font for this PDF
-      const fallbackFont = await enhancedPdfRenderer.getOptimalFallbackFont(pdfDataCopy)
+    // Get Optimal fallback font for the document (cached)
+    const fallbackFont = await enhancedPdfRenderer.getOptimalFallbackFont(pdfDataCopy, task.sourceId)
 
-      // Use enhanced renderer
-      const result = await enhancedPdfRenderer.renderPage(pdfDataCopy, task.pageNumber, {
+    // Send to worker for isolated rendering
+    const worker = getWorker()
+    worker.postMessage({
+      type: 'render',
+      payload: {
+        pdfData: pdfDataCopy,
+        pageId: task.pageId,
+        pageNumber: task.pageNumber,
         scale: 2.5,
         imageFormat: 'png',
         quality: 0.95,
-        useEnhancedFonts: true,
-        fallbackFontFamily: fallbackFont,
-        sourceId: task.sourceId // Pass sourceId for document caching
-      })
-
-      // Double check if page was deleted during rendering
-      const pageStillExists = await db.getPage(task.pageId)
-      if (!pageStillExists) {
-        queueLogger.warn(`[PDF Render] Page ${task.pageId} deleted during rendering. Discarding output.`)
-        handleRenderError(task.pageId, 'Page deleted during rendering')
-        return
+        fallbackFontFamily: fallbackFont
       }
-
-      // Handle successful enhanced rendering
-      await handleRenderSuccess(
-        task.pageId,
-        result.imageBlob,
-        result.width,
-        result.height,
-        task.pageNumber,
-        result.fileSize
-      )
-
-    } catch (enhancedError) {
-      queueLogger.warn(`[PDF Render] Enhanced rendering failed for ${task.pageId}, falling back to worker:`, enhancedError)
-
-      // Fallback to worker rendering
-      const worker = getWorker()
-      worker.postMessage({
-        type: 'render',
-        payload: {
-          pdfData: pdfDataCopy, // Worker will take ownership or clone it
-          pageId: task.pageId,
-          pageNumber: task.pageNumber,
-          scale: 2.5,
-          imageFormat: 'png',
-          quality: 0.95
-        }
-      })
-    }
+    })
 
   } catch (error) {
     queueLogger.error(`[PDF Render] Error rendering PDF page ${task.pageId}:`, error)
