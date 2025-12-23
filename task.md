@@ -5,10 +5,10 @@ Your task is NOT to implement this yet, but to fully understand and prepare.
 Here is exactly what I need implemented:
 
 ```
-支持PDF文件。
-1. Add file按钮支持添加PDF文件，可多选。对于PDF文件，单个文件大小不超过100M。对于图片文件，单个文件大小不超过10M。
-2. 通过 pdfjs-dist 将PDF每一页转换为图片，每张图片的命名为 <PDF文件名>_<page number>.png , 例如 test.pdf_1.png, test.pdf_2.png 等。
-3. 阅读 pdf-to-image-architecture.md ，了解PDF转换为图片的架构和具体的工作任务。
+Support PDF files.
+1. The "Add file" button supports adding PDF files, allowing multiple selection. For PDF files, individual file size should not exceed 100MB. For image files, individual file size should not exceed 10MB.
+2. Convert each page of the PDF into an image using pdfjs-dist. Each image should be named <PDF filename>_<page number>.png, e.g., test.pdf_1.png, test.pdf_2.png, etc.
+3. Read pdf-to-image-architecture.md to understand the architecture and specific tasks for converting PDF to images.
 ```
 
 ---

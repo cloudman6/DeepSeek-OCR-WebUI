@@ -34,7 +34,7 @@ export interface PDFProcessingOptions {
 export interface PDFDocument {
   file: File
   data: ArrayBuffer
-  base64Data: string // 纯 base64 数据（不含 data: 前缀）
+  base64Data: string // Pure base64 data (without data: prefix)
   pageCount: number
   pages: PDFPageInfo[]
   metadata?: {
@@ -52,14 +52,14 @@ export class PDFService {
   private loadedPDFs = new Map<string, PDFDocument>()
 
   /**
-   * 辅助方法：将 File 转换为纯 base64 字符串（不含 data: 前缀）
+   * Helper method: Convert File to pure base64 string (without data: prefix)
    */
   private async fileToPureBase64(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => {
         const result = reader.result as string
-        // 提取纯 base64 数据，处理极端情况
+        // Extract pure base64 data, handle edge cases
         const base64 = result.split(',')[1] || ''
         resolve(base64)
       }
@@ -69,7 +69,7 @@ export class PDFService {
   }
 
   /**
-   * 辅助方法：将纯 base64 字符串转换为 ArrayBuffer
+   * Helper method: Convert pure base64 string to ArrayBuffer
    */
   private base64ToArrayBuffer(base64: string): ArrayBuffer {
     const binaryString = atob(base64)
@@ -86,24 +86,24 @@ export class PDFService {
    */
   async loadPDF(file: File): Promise<PDFDocument> {
     try {
-      // 1. 验证文件（增强验证逻辑）
+      // 1. Validate file (enhanced validation logic)
       const validateResult = this.validatePDF(file)
       if (!validateResult.valid) {
         throw new Error(validateResult.error!)
       }
 
-      // 2. 转换为纯 base64（作为可靠的中间载体）
+      // 2. Convert to pure base64 (as a reliable intermediate carrier)
       const base64Data = await this.fileToPureBase64(file)
-      // 3. 从 base64 转换为 ArrayBuffer（避免直接依赖 file.arrayBuffer() 的分离问题）
+      // 3. Convert from base64 to ArrayBuffer (avoiding separation issues with direct file.arrayBuffer() dependency)
       const arrayBuffer = this.base64ToArrayBuffer(base64Data)
       const uint8Array = new Uint8Array(arrayBuffer)
 
-      // 5. 使用 Uint8Array 加载 PDF（配置 CMAP 解决中文显示）
+      // 5. Load PDF using Uint8Array (configure CMAP for Chinese character display)
       const loadingTask = pdfjsLib.getDocument({
         data: uint8Array,
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
-        // 省略 standardFontDataUrl（中文场景可移除，减少依赖）
+        // Omit standardFontDataUrl (can be removed for Chinese scenarios to reduce dependencies)
         maxMemory: 1024 * 1024 * 512, // 512MB
         // Enable font fallback for better text rendering
         useSystemFonts: true,
@@ -114,10 +114,10 @@ export class PDFService {
       const pdfDocument = await loadingTask.promise
       const pageCount = pdfDocument.numPages
 
-      // 6. 读取 PDF 元数据
+      // 6. Read PDF metadata
       const metadata = await pdfDocument.getMetadata()
 
-      // 7. 提取页面信息
+      // 7. Extract page information
       const pages: PDFPageInfo[] = []
       for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
         const page = await pdfDocument.getPage(pageNum)
@@ -129,15 +129,15 @@ export class PDFService {
           height: viewport.height
         })
 
-        // 释放页面资源（优化内存）
+        // Release page resources (optimize memory)
         page.cleanup()
       }
 
-      // 8. 构建 PDFDocument 对象（使用 base64 转换的 ArrayBuffer，避免分离）
+      // 8. Build PDFDocument object (use ArrayBuffer converted from base64 to avoid separation)
       const pdfDoc: PDFDocument = {
         file,
         data: arrayBuffer,
-        base64Data, // 保存纯 base64 数据
+        base64Data, // Save pure base64 data
         pageCount,
         pages,
         metadata: {
@@ -151,7 +151,7 @@ export class PDFService {
         }
       }
 
-      // 缓存 PDF
+      // Cache PDF
       const cacheKey = `${file.name}_${file.size}_${file.lastModified}`
       this.loadedPDFs.set(cacheKey, pdfDoc)
 
@@ -207,8 +207,8 @@ export class PDFService {
         level: 'info'
       })
 
-      // 修复：从 base64 重新创建 ArrayBuffer，避免使用已分离的原缓冲区
-      // 替代原来的 slice(0) 操作
+      // Fix: Recreate ArrayBuffer from base64 to avoid using the separated original buffer
+      // Alternative to the original slice(0) operation
       const pdfDataCopy = this.base64ToArrayBuffer(pdfDocument.base64Data)
 
       // Queue all pages for rendering, passing the fileId
@@ -234,7 +234,7 @@ export class PDFService {
     size: number = 200
   ): Promise<string> {
     try {
-      // Load PDF document（添加 CMAP 配置，避免缩略图中文乱码）
+      // Load PDF document (add CMAP configuration to avoid garbled Chinese characters in thumbnails)
       const loadingTask = pdfjsLib.getDocument({
         data: new Uint8Array(pdfData),
         cMapUrl: CMAP_URL,
@@ -306,32 +306,32 @@ export class PDFService {
     if (!file) {
       return {
         valid: false,
-        error: '请选择一个文件！'
+        error: 'Please select a file!'
       }
     }
 
-    // 增强：忽略大小写判断文件后缀
+    // Enhanced: case-insensitive check for file extension
     const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
     if (!isPdf) {
       return {
         valid: false,
-        error: `请选择有效的 PDF 文件！当前文件类型: ${file.type || '未知'}`
+        error: `Please select a valid PDF file! Current file type: ${file.type || 'unknown'}`
       }
     }
 
     if (file.size === 0) {
       return {
         valid: false,
-        error: `文件 "${file.name}" 为空`
+        error: `File "${file.name}" is empty`
       }
     }
 
-    // 检查文件大小限制 (100MB)
+    // Check file size limit (100MB)
     const maxSize = 100 * 1024 * 1024
     if (file.size > maxSize) {
       return {
         valid: false,
-        error: `文件 "${file.name}" 过大，最大支持 ${Math.round(maxSize / 1024 / 1024)}MB`
+        error: `File "${file.name}" is too large, maximum supported size is ${Math.round(maxSize / 1024 / 1024)}MB`
       }
     }
 
@@ -339,11 +339,11 @@ export class PDFService {
   }
 
   /**
-   * Get PDF metadata without loading full document（优化：复用 loadPDF 的逻辑，减少冗余）
+   * Get PDF metadata without loading full document (Optimization: Reuse loadPDF logic to reduce redundancy)
    */
   async getPDFMetadata(file: File): Promise<{ pageCount?: number; title?: string; author?: string; subject?: string }> {
     try {
-      // 复用 loadPDF 方法，避免重复的 base64 转换和 PDF 加载逻辑
+      // Reuse loadPDF method to avoid redundant base64 conversion and PDF loading logic
       const pdfDocument = await this.loadPDF(file)
       return {
         pageCount: pdfDocument.pageCount,

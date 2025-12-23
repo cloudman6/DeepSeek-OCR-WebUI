@@ -112,7 +112,7 @@ export class FontLoaderService {
       }
 
       // Test with a character that should be different in different fonts
-      const testChar = '中'
+      const testChar = '\u4e2d'
 
       context.font = `20px ${fontFamily}`
       const width1 = context.measureText(testChar).width

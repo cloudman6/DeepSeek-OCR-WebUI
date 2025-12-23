@@ -65,7 +65,10 @@ pids
 # Playwright test results
 .playwright-mcp/*
 .claude/*
-test*
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
 
 # Editor directories and files
 .vscode/*
