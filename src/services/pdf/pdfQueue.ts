@@ -3,7 +3,7 @@ import { pdfEvents } from './events'
 import { db, generatePageId } from '@/db/index'
 import type { DBPage } from '@/db/index'
 import { enhancedPdfRenderer } from './enhancedPdfRenderer'
-import { queueLogger } from '@/services/logger'
+import { queueLogger } from '@/utils/logger'
 
 // PDF source data cache to avoid memory overhead of per-page copies
 const pdfSourceCache = new Map<string, { data: ArrayBuffer; totalPages: number; processedCount: number }>()

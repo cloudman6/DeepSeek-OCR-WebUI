@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { FontLoaderService, fontLoader, type FontConfig } from '@/services/font/fontLoader'
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 
 // Mock logger
-vi.mock('@/services/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   pdfLogger: {
     warn: vi.fn(),
     info: vi.fn(),

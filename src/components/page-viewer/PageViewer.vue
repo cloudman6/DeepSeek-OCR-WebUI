@@ -99,7 +99,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { uiLogger } from '@/services/logger'
+import { uiLogger } from '@/utils/logger'
 import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText } from 'naive-ui'
 import { db } from '@/db'
 

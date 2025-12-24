@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { EnhancedPdfRenderer, enhancedPdfRenderer } from '@/services/pdf/enhancedPdfRenderer'
 import * as pdfjsLib from 'pdfjs-dist'
 import { fontLoader } from '@/services/font/fontLoader'
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 
 // Mock dependencies
 vi.mock('pdfjs-dist', () => ({
@@ -17,7 +17,7 @@ vi.mock('@/services/font/fontLoader', () => ({
   }
 }))
 
-vi.mock('@/services/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   pdfLogger: {
     info: vi.fn(),
     warn: vi.fn(),

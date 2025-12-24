@@ -4,7 +4,7 @@ import { db, generatePageId } from '@/db/index'
 import type { DBPage } from '@/db/index'
 import fileAddService from '@/services/add'
 import { pdfEvents } from '@/services/pdf/events'
-import { storeLogger } from '@/services/logger'
+import { storeLogger } from '@/utils/logger'
 
 export interface PageProcessingLog {
   id: string

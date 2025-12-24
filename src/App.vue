@@ -58,7 +58,7 @@
 import { ref, watchEffect, onMounted, computed } from 'vue'
 import { usePagesStore } from './stores/pages'
 import type { Page } from './stores/pages'
-import { uiLogger } from '@/services/logger'
+import { uiLogger } from '@/utils/logger'
 import PageList from './components/page-list/PageList.vue'
 import Preview from './components/preview/Preview.vue'
 import PageViewer from './components/page-viewer/PageViewer.vue'

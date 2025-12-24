@@ -4,7 +4,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { queuePDFPages, resumePDFProcessing } from '@/services/pdf/pdfQueue'
 import { pdfEvents } from '@/services/pdf/events'
 import { db } from '@/db/index'
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 
 // Mock dependencies
 vi.mock('pdfjs-dist', () => ({
@@ -32,7 +32,7 @@ vi.mock('@/db/index', () => ({
   }
 }))
 
-vi.mock('@/services/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   pdfLogger: {
     info: vi.fn(),
     warn: vi.fn(),

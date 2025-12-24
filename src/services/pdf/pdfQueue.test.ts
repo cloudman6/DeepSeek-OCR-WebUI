@@ -12,7 +12,7 @@ import {
 import { db } from '@/db/index'
 import { pdfEvents } from '@/services/pdf/events'
 import { enhancedPdfRenderer } from '@/services/pdf/enhancedPdfRenderer'
-import { queueLogger } from '@/services/logger'
+import { queueLogger } from '@/utils/logger'
 
 // Mock dependencies
 (globalThis as any).pageIdCounter = 0
@@ -43,7 +43,7 @@ vi.mock('@/services/pdf/enhancedPdfRenderer', () => ({
   }
 }))
 
-vi.mock('@/services/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   queueLogger: {
     info: vi.fn(),
     warn: vi.fn(),

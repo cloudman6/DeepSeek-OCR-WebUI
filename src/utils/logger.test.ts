@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { logger, pdfLogger, queueLogger, dbLogger, storeLogger, addLogger, uiLogger, workerLogger } from '@/services/logger'
+import { logger, pdfLogger, queueLogger, dbLogger, storeLogger, addLogger, uiLogger, workerLogger } from './logger'
 
 describe('Logger Service', () => {
   it('should export the root logger', () => {

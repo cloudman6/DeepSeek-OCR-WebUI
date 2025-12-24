@@ -2,7 +2,7 @@ import * as pdfjsLib from 'pdfjs-dist'
 import { queuePDFPages, resumePDFProcessing } from './pdfQueue'
 import { pdfEvents } from './events'
 import { db } from '@/db/index'
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
 
 // Configure PDF.js worker (for main thread usage)

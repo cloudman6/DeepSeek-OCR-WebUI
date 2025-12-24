@@ -1,6 +1,6 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import { CMAP_URL, CMAP_PACKED } from '../services/pdf/config'
-import { workerLogger } from '@/services/logger'
+import { workerLogger } from '@/utils/logger'
 
 // Configure PDF.js worker
 import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';

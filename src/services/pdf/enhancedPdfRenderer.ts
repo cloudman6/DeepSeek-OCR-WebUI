@@ -6,7 +6,7 @@
 import * as pdfjsLib from 'pdfjs-dist'
 import { CMAP_URL, CMAP_PACKED } from './config'
 import { fontLoader } from '../font/fontLoader'
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 
 export interface EnhancedRenderOptions {
   scale?: number

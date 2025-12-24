@@ -3,7 +3,7 @@
  * Handles font loading, fallback, and caching for PDF rendering
  */
 
-import { pdfLogger } from '@/services/logger'
+import { pdfLogger } from '@/utils/logger'
 
 export interface FontConfig {
   family: string

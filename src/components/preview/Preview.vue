@@ -31,7 +31,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { NTabs, NTabPane, NEmpty } from 'naive-ui'
 import { db } from '@/db'
-import { uiLogger } from '@/services/logger'
+import { uiLogger } from '@/utils/logger'
 
 interface Page {
   id: string

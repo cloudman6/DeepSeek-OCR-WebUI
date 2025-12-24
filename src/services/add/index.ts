@@ -1,5 +1,5 @@
 import type { Page } from '@/stores/pages'
-import { addLogger } from '@/services/logger'
+import { addLogger } from '@/utils/logger'
 
 export interface FileAddResult {
   success: boolean

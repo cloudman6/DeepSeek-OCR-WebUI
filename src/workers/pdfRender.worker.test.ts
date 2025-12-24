@@ -19,7 +19,7 @@ vi.mock('pdfjs-dist/legacy/build/pdf.worker.mjs?url', () => {
 });
 
 // Mock logger
-vi.mock('@/services/logger', () => ({
+vi.mock('@/utils/logger', () => ({
   workerLogger: {
     warn: vi.fn(),
     error: vi.fn(),
@@ -393,7 +393,7 @@ describe('pdfRender.worker', () => {
     // Should have called render twice
     expect(mockPage.render).toHaveBeenCalledTimes(2);
     // Should verify warning log
-    const { workerLogger } = await import('@/services/logger');
+    const { workerLogger } = await import('@/utils/logger');
     expect(workerLogger.warn).toHaveBeenCalledWith(
         expect.stringContaining('Enhanced rendering failed'),
         expect.any(Error)
@@ -420,7 +420,7 @@ describe('pdfRender.worker', () => {
 
     await messageHandler(createEvent({ type: 'render', payload }));
 
-    const { workerLogger } = await import('@/services/logger');
+    const { workerLogger } = await import('@/utils/logger');
     expect(workerLogger.error).toHaveBeenCalledWith(
         'PDF rendering error:',
         expect.any(Error)
