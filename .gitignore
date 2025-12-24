@@ -2,6 +2,9 @@
 CLAUDE.md
 GEMINI.md
 !.agent/
+.claude/
+.vscode/
+.playwright-mcp/
 
 # Logs
 logs
@@ -14,6 +17,9 @@ lerna-debug.log*
 
 # Dependency directories
 node_modules/
+
+# test coverage
+coverage/
 
 # Build outputs
 dist/
@@ -63,19 +69,15 @@ pids
 .stylelintcache
 
 # Playwright test results
-.playwright-mcp/*
-.claude/*
+.playwright-mcp/
+.claude/
 test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
 
 # Editor directories and files
-.vscode/*
-!.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
+.vscode/
 .idea/
 .DS_Store
 .DS_Store?
