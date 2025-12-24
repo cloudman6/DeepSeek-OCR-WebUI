@@ -56,8 +56,8 @@ export class Scan2DocDB extends Dexie {
   processingQueue!: Table<DBProcessingQueue>
   pageImages!: Table<PageImage>
 
-  constructor() {
-    super('Scan2DocDatabase')
+  constructor(name: string = 'Scan2DocDatabase') {
+    super(name)
 
     // Define schema
     this.version(4).stores({
@@ -69,7 +69,7 @@ export class Scan2DocDB extends Dexie {
       // Migration to version 4: Move imageData from pages table to pageImages table
       const pagesTable = tx.table('pages')
       const pageImagesTable = tx.table('pageImages')
-      
+
       const pages = await pagesTable.toArray()
       for (const page of pages) {
         if (page.id && page.imageData && page.imageData.startsWith('data:')) {
@@ -77,13 +77,13 @@ export class Scan2DocDB extends Dexie {
             // Convert Base64 to Blob
             const response = await fetch(page.imageData)
             const blob = await response.blob()
-            
+
             // Save to new table
             await pageImagesTable.put({
               pageId: page.id,
               blob
             })
-            
+
             // Remove from old table (update strictly the imageData field)
             // Note: We're doing this in the upgrade transaction
             await pagesTable.update(page.id, { imageData: undefined })
@@ -97,32 +97,33 @@ export class Scan2DocDB extends Dexie {
 
   // File methods
   async saveFile(file: DBFile): Promise<string> {
-    if (file.id) {
-      await this.files.put(file)
-      return file.id
-    } else {
-      // Use put instead of add to handle ID generation correctly with string IDs if needed
-      // But for auto-increment keys (if we used number), add is fine.
-      // Since we defined ++id, it will be a number or string depending on Dexie config.
-      // Let's assume standard behavior.
-      const id = await this.files.add(file)
-      return id.toString()
+    const cleanFile = { ...file }
+    if (cleanFile.id === undefined) {
+      delete cleanFile.id
     }
+
+    if (cleanFile.id) {
+      await this.files.put(cleanFile)
+      return cleanFile.id
+    }
+
+    const id = await this.files.add(cleanFile)
+    return id.toString()
   }
 
   async getFile(id: string): Promise<DBFile | undefined> {
-    // Try to parse as number if the ID looks like a number, since we used ++id
-    // But we'll try string access first to be generic
-    let file = await this.files.get(id)
-    if (!file && !isNaN(Number(id))) {
-       file = await this.files.get(Number(id))
+    const fileByString = await this.files.get(id)
+    if (fileByString) return fileByString
+
+    if (/^\d+$/.test(id)) {
+      return await this.files.get(Number(id))
     }
-    return file
+    return undefined
   }
 
   async deleteFile(id: string): Promise<void> {
     await this.files.delete(id)
-    if (!isNaN(Number(id))) {
+    if (/^\d+$/.test(id)) {
       await this.files.delete(Number(id))
     }
   }
@@ -139,11 +140,16 @@ export class Scan2DocDB extends Dexie {
 
   // Page methods
   async savePage(page: DBPage): Promise<string> {
-    if (page.id) {
-      await this.pages.put(page)
-      return page.id
+    const cleanPage = { ...page } as DBPage
+    if (!cleanPage.id) {
+      cleanPage.id = generatePageId()
+    }
+
+    if (Object.prototype.hasOwnProperty.call(page, 'id') && page.id !== undefined) {
+      await this.pages.put(cleanPage)
+      return cleanPage.id
     } else {
-      return await this.pages.add(page)
+      return await this.pages.add(cleanPage)
     }
   }
 
@@ -216,7 +222,7 @@ export class Scan2DocDB extends Dexie {
   async saveAddedPage(pageData: Omit<DBPage, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const dbPage: DBPage = {
       ...pageData,
-      id: undefined,
+      id: generatePageId(),
       createdAt: new Date(),
       updatedAt: new Date()
     }
