@@ -111,7 +111,7 @@ function handleDelete() {
   emit('delete', props.page)
 }
 
-function handleCheckboxChange(checked: boolean) {
+function handleCheckboxChange() {
   pagesStore.togglePageSelection(props.page.id)
 }
 
