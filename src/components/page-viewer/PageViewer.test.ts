@@ -2,6 +2,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import PageViewer from './PageViewer.vue'
 import { db } from '@/db'
+import { uiLogger } from '@/utils/logger'
+
+// Mock logger
+vi.mock('@/utils/logger', () => ({
+  uiLogger: {
+    info: vi.fn(),
+    error: vi.fn()
+  }
+}))
 
 // Mock Naive UI components
 vi.mock('naive-ui', () => ({
@@ -56,11 +65,11 @@ vi.mock('@/db', () => ({
 
 // Mock URL methods
 const mockObjectUrl = 'blob:http://localhost/mock-url'
-global.URL.createObjectURL = vi.fn(() => mockObjectUrl)
-global.URL.revokeObjectURL = vi.fn()
+globalThis.URL.createObjectURL = vi.fn(() => mockObjectUrl)
+globalThis.URL.revokeObjectURL = vi.fn()
 
 describe('PageViewer.vue', () => {
-  let mockPage: any
+  let mockPage: Partial<import("@/stores/pages").Page>
 
   beforeEach(() => {
     mockPage = {
@@ -100,7 +109,7 @@ describe('PageViewer.vue', () => {
 
     // Should call getPageImage
     expect(db.getPageImage).toHaveBeenCalledWith(mockPage.id)
-    
+
     // Wait for async image loading
     await vi.waitFor(() => {
       if (!wrapper.find('.page-image').exists()) throw new Error('not found')
@@ -116,24 +125,24 @@ describe('PageViewer.vue', () => {
     })
 
     // Initial zoom is 1
-    expect(wrapper.vm.zoomLevel).toBe(1)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(1)
 
     // Zoom in
     const buttons = wrapper.findAll('button')
     const zoomInBtn = buttons.find(b => b.text() === '+')
     await zoomInBtn?.trigger('click')
-    expect(wrapper.vm.zoomLevel).toBe(1.25)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(1.25)
 
     // Zoom out
     const zoomOutBtn = buttons.find(b => b.text() === '−')
     await zoomOutBtn?.trigger('click')
-    expect(wrapper.vm.zoomLevel).toBe(1.0)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(1.0)
 
     // Fit to screen
     const fitBtn = buttons.find(b => b.text() === 'Fit')
     await zoomInBtn?.trigger('click') // zoom to 1.25 again
     await fitBtn?.trigger('click')
-    expect(wrapper.vm.zoomLevel).toBe(1)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(1)
   })
 
   it('limits zoom level between 0.25 and 3', async () => {
@@ -146,32 +155,32 @@ describe('PageViewer.vue', () => {
 
     // Test upper limit
     for (let i = 0; i < 10; i++) await zoomInBtn?.trigger('click')
-    expect(wrapper.vm.zoomLevel).toBe(3)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(3)
     expect(zoomInBtn?.attributes('disabled')).toBeDefined()
 
     // Test lower limit
     for (let i = 0; i < 15; i++) await zoomOutBtn?.trigger('click')
-    expect(wrapper.vm.zoomLevel).toBe(0.25)
+    expect((wrapper.vm as unknown).zoomLevel).toBe(0.25)
     expect(zoomOutBtn?.attributes('disabled')).toBeDefined()
   })
 
   it('shows error message if image is not found in DB', async () => {
-    vi.mocked(db.getPageImage).mockResolvedValue(null)
-    
-    mount(PageViewer, {
+    vi.mocked(db.getPageImage).mockResolvedValue(undefined)
+
+    const wrapper = mount(PageViewer, {
       props: { currentPage: mockPage }
     })
 
     await vi.waitFor(() => {
-      if (db.getPageImage.mock.calls.length === 0) throw new Error('not called')
+      if (vi.mocked(db.getPageImage).mock.calls.length === 0) throw new Error('not called')
     })
 
-    // The component sets imageError.value = 'Full image not found in storage'
-    // But since it's a watch, we need to wait for the next tick
+    expect(wrapper.find('.error-overlay').exists()).toBe(true) // Should show error overlay when image not found
+    expect(db.getPageImage).toHaveBeenCalled()
   })
 
   it('displays correct status text for all statuses', () => {
-    const statuses: any[] = ['pending_render', 'rendering', 'ready', 'recognizing', 'completed', 'error', 'unknown']
+    const statuses: string[] = ['pending_render', 'rendering', 'ready', 'recognizing', 'completed', 'error', 'unknown']
     const expectedTexts = ['Pending Render', 'Rendering', 'Ready', 'Recognizing', 'Completed', 'Error', 'Unknown']
 
     statuses.forEach((status, index) => {
@@ -205,14 +214,14 @@ describe('PageViewer.vue', () => {
     })
 
     await vi.waitFor(() => {
-      if (wrapper.vm.fullImageUrl === '') throw new Error('not loaded')
+      if ((wrapper.vm as unknown).fullImageUrl === '') throw new Error('not loaded')
     })
 
-    const oldUrl = wrapper.vm.fullImageUrl
-    
+    const oldUrl = (wrapper.vm as unknown).fullImageUrl
+
     // Change page
     await wrapper.setProps({ currentPage: { ...mockPage, id: 'page-2' } })
-    
+
     expect(URL.revokeObjectURL).toHaveBeenCalledWith(oldUrl)
   })
 
@@ -226,9 +235,9 @@ describe('PageViewer.vue', () => {
     })
 
     // Explicitly call the handler to ensure coverage of those lines
-    await wrapper.vm.onImageError()
-    expect(wrapper.vm.imageSize).toBe('Load failed')
-    expect(wrapper.vm.imageError).toBe('Failed to load image')
+    await (wrapper.vm as unknown).onImageError()
+    expect((wrapper.vm as unknown).imageSize).toBe('Load failed')
+    expect((wrapper.vm as unknown).imageError).toBe('Failed to load image')
   })
 
   it('guards runOCR execution', () => {
@@ -236,20 +245,21 @@ describe('PageViewer.vue', () => {
     const wrapper1 = mount(PageViewer, {
       props: { currentPage: null }
     })
-    wrapper1.vm.runOCR() // Should return early
-    
+      ; (wrapper1.vm as unknown).runOCR() // Should return early
+
     // 2. Status is processing (mocked as recognizing in this context for guard check)
     const processingPage = { ...mockPage, status: 'recognizing' }
     const wrapper2 = mount(PageViewer, {
       props: { currentPage: processingPage }
     })
-    wrapper2.vm.runOCR() // Should return early
-    
+      ; (wrapper2.vm as unknown).runOCR() // Should return early
+
     // 3. Normal execution
     const wrapper3 = mount(PageViewer, {
       props: { currentPage: mockPage }
     })
-    wrapper3.vm.runOCR() // Should log/execute
+      ; (wrapper3.vm as unknown).runOCR() // Should log/execute
+    expect(uiLogger.info).toHaveBeenCalledWith('Running OCR for page', mockPage.id)
   })
 
   it('disables OCR button when status is not ready', async () => {

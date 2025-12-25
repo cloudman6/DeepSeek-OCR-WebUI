@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { EnhancedPdfRenderer, enhancedPdfRenderer } from '@/services/pdf/enhancedPdfRenderer'
 import * as pdfjsLib from 'pdfjs-dist'
 import { fontLoader } from '@/services/font/fontLoader'
@@ -76,10 +76,10 @@ describe('EnhancedPdfRenderer', () => {
     it('should extract unique font names from first 3 pages', async () => {
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(mockDoc)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
 
       const fonts = await enhancedPdfRenderer.analyzeFonts(new ArrayBuffer(10))
-      
+
       expect(pdfjsLib.getDocument).toHaveBeenCalled()
       expect(mockDoc.getPage).toHaveBeenCalledTimes(3) // min(5, 3)
       expect(fonts).toEqual(expect.arrayContaining(['Arial', 'Times']))
@@ -95,10 +95,10 @@ describe('EnhancedPdfRenderer', () => {
       }
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(errorMockDoc)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
 
       const fonts = await enhancedPdfRenderer.analyzeFonts(new ArrayBuffer(10))
-      
+
       expect(fonts).toEqual([])
       expect(pdfLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Failed to analyze page'), expect.any(Error))
     })
@@ -106,10 +106,10 @@ describe('EnhancedPdfRenderer', () => {
     it('should handle document load errors', async () => {
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.reject(new Error('Load error'))
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
 
       const fonts = await enhancedPdfRenderer.analyzeFonts(new ArrayBuffer(10))
-      
+
       expect(fonts).toEqual([])
       expect(pdfLogger.error).toHaveBeenCalledWith(expect.stringContaining('Font analysis failed'), expect.any(Error))
     })
@@ -122,10 +122,10 @@ describe('EnhancedPdfRenderer', () => {
       }
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(destroyErrorDoc)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
 
       await enhancedPdfRenderer.analyzeFonts(new ArrayBuffer(10))
-      
+
       expect(pdfLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Error destroying document'), expect.any(Error))
     })
   })
@@ -147,22 +147,22 @@ describe('EnhancedPdfRenderer', () => {
       // Manually cache something first
       // Since fontAnalysisCache is private, we can't set it directly easily.
       // But getOptimalFallbackFont sets it.
-      
+
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(mockDocText)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
       vi.mocked(fontLoader.getBestFont).mockReturnValue('CachedFont')
 
       // First call to populate cache
       await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10), 'source-1')
-      
+
       // Reset mocks to prove we use cache
       vi.mocked(fontLoader.getBestFont).mockClear()
       vi.mocked(pdfjsLib.getDocument).mockClear()
 
       // Second call
       const font = await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10), 'source-1')
-      
+
       expect(font).toBe('CachedFont')
       expect(fontLoader.getBestFont).not.toHaveBeenCalled()
       expect(pdfjsLib.getDocument).not.toHaveBeenCalled()
@@ -171,11 +171,11 @@ describe('EnhancedPdfRenderer', () => {
     it('should extract text and determine best font on cache miss', async () => {
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(mockDocText)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
       vi.mocked(fontLoader.getBestFont).mockReturnValue('Arial')
 
       const font = await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10))
-      
+
       expect(font).toBe('Arial')
       expect(fontLoader.getBestFont).toHaveBeenCalledWith('Hello World ')
     })
@@ -183,11 +183,11 @@ describe('EnhancedPdfRenderer', () => {
     it('should fallback to sans-serif on error', async () => {
       vi.mocked(pdfjsLib.getDocument).mockReturnValue({
         promise: Promise.resolve(mockDocText)
-      } as any)
+      } as ReturnType<typeof pdfjsLib.getDocument>)
       vi.mocked(fontLoader.getBestFont).mockImplementation(() => { throw new Error('Font detection error') })
 
       const font = await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10))
-      
+
       expect(font).toBe('sans-serif')
       expect(pdfLogger.warn).toHaveBeenCalledWith(expect.stringContaining('Could not determine optimal font'), expect.any(Error))
     })
@@ -201,11 +201,11 @@ describe('EnhancedPdfRenderer', () => {
         getPage: vi.fn().mockResolvedValue({ getTextContent: vi.fn().mockResolvedValue({ items: [] }), cleanup: vi.fn() }),
         destroy: vi.fn()
       }
-      vi.mocked(pdfjsLib.getDocument).mockReturnValue({ promise: Promise.resolve(mockDocText) } as any)
+      vi.mocked(pdfjsLib.getDocument).mockReturnValue({ promise: Promise.resolve(mockDocText) } as ReturnType<typeof pdfjsLib.getDocument>)
       vi.mocked(fontLoader.getBestFont).mockReturnValue('FontA')
 
       await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10), 'id-to-delete')
-      
+
       // Verify cache hit logic (indirectly)
       vi.mocked(pdfjsLib.getDocument).mockClear()
       await enhancedPdfRenderer.getOptimalFallbackFont(new ArrayBuffer(10), 'id-to-delete')

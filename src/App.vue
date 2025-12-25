@@ -1,19 +1,43 @@
 <template>
-  <n-layout class="app-container" @drop="handleDrop" @dragover="handleDragOver">
+  <n-layout
+    class="app-container"
+    @drop="handleDrop"
+    @dragover="handleDragOver"
+  >
     <!-- Header -->
-    <n-layout-header class="app-header" bordered>
-      <n-space align="center" size="medium">
-        <n-button @click="handleFileAdd">Add File</n-button>
-        <n-text strong>{{ currentFileName }}</n-text>
-        <n-text type="success">✔ Saved locally</n-text>
+    <n-layout-header
+      class="app-header"
+      bordered
+    >
+      <n-space
+        align="center"
+        size="medium"
+      >
+        <n-button @click="handleFileAdd">
+          Add File
+        </n-button>
+        <n-text strong>
+          {{ currentFileName }}
+        </n-text>
+        <n-text type="success">
+          ✔ Saved locally
+        </n-text>
       </n-space>
-      <n-space align="center" size="medium">
-        <n-button type="primary">Export Markdown</n-button>
+      <n-space
+        align="center"
+        size="medium"
+      >
+        <n-button type="primary">
+          Export Markdown
+        </n-button>
       </n-space>
     </n-layout-header>
 
     <!-- Main Content -->
-    <n-layout has-sider class="app-main">
+    <n-layout
+      has-sider
+      class="app-main"
+    >
       <!-- Page List -->
       <n-layout-sider
         :width="260"
@@ -116,11 +140,17 @@ function showToast(message: string, type: 'info' | 'success' | 'error' = 'info',
   // Create toast element - position below page list on left side
   const toast = document.createElement('div')
   toast.id = 'toast-notification'
+  const colors: Record<string, string> = {
+    error: '#ef4444',
+    success: '#10b981',
+    info: '#3b82f6'
+  }
+  const bgColor = colors[type] || colors.info
   toast.style.cssText = `
     position: fixed;
     bottom: 20px;
     left: 10px; /* Position below page list (260px width + margin) */
-    background: ${type === 'error' ? '#ef4444' : type === 'success' ? '#10b981' : '#3b82f6'};
+    background: ${bgColor};
     color: white;
     padding: 12px 16px;
     border-radius: 8px;
@@ -276,8 +306,10 @@ async function handleUndoDelete() {
 
 // Handle file add
 async function handleFileAdd() {
+  console.log('[App] handleFileAdd clicked');
   try {
     const result = await pagesStore.addFiles()
+    console.log('[App] addFiles result:', result);
 
     if (result.success && result.pages.length > 0) {
       // Update current file name to show the first added file

@@ -11,7 +11,7 @@ export interface PageProcessingLog {
   timestamp: Date
   level: 'info' | 'warning' | 'error' | 'success'
   message: string
-  details?: any
+  details?: unknown
 }
 
 export interface PageOutput {
@@ -27,7 +27,7 @@ export interface Page {
   fileName: string
   fileSize: number
   fileType: string
-  origin: 'upload' | 'scanner'
+  origin: 'upload' | 'scanner' | 'pdf_generated'
   status: PageStatus
   progress: number
   ocrText?: string
@@ -98,7 +98,7 @@ export const usePagesStore = defineStore('pages', () => {
 
     // Create the page object
     const newPage: Page = {
-      ...(page as any),
+      ...page,
       id,
       order,
       createdAt: new Date(),
@@ -145,7 +145,7 @@ export const usePagesStore = defineStore('pages', () => {
     if (index !== -1) {
       pages.value[index]!.logs.push({
         ...log,
-        id: `page_log_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        id: `page_log_${Date.now()}_${crypto.randomUUID().split('-')[0]}`,
         timestamp: new Date()
       })
       pages.value[index]!.updatedAt = new Date()
@@ -308,9 +308,7 @@ export const usePagesStore = defineStore('pages', () => {
   }
 
   function reset() {
-    pages.value = []
-    selectedPageIds.value = []
-    processingQueue.value = []
+    deleteAllPages()
   }
 
   // Database actions
@@ -359,7 +357,7 @@ export const usePagesStore = defineStore('pages', () => {
   async function addFiles() {
     try {
       const files = await fileAddService.triggerFileSelect()
-      if (!files || files.length === 0) return { success: false, error: 'No files selected' }
+      if (!files || files.length === 0) return { success: false, error: 'No files selected', pages: [] }
 
       const result = await fileAddService.processFiles(files)
       if (result.success && result.pages) {
@@ -371,7 +369,7 @@ export const usePagesStore = defineStore('pages', () => {
       return result
     } catch (error) {
       storeLogger.error('[Pages Store] Error adding files:', error)
-      return { success: false, error: 'Failed to add files' }
+      return { success: false, error: 'Failed to add files', pages: [] }
     }
   }
 
@@ -400,6 +398,7 @@ export const usePagesStore = defineStore('pages', () => {
   function dbPageToPage(dbPage: DBPage): Page {
     return {
       ...dbPage,
+      id: dbPage.id!,
       createdAt: dbPage.createdAt || new Date(),
       updatedAt: dbPage.updatedAt || new Date(),
       outputs: dbPage.outputs || [],

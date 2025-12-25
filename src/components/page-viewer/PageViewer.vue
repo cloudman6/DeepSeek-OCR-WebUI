@@ -1,29 +1,62 @@
 <template>
   <div class="page-viewer">
     <!-- Header with page info and controls -->
-    <n-card class="viewer-header" size="small" :bordered="false">
-      <n-space justify="space-between" align="center">
+    <n-card
+      class="viewer-header"
+      size="small"
+      :bordered="false"
+    >
+      <n-space
+        justify="space-between"
+        align="center"
+      >
         <h3 class="page-title">
           Page {{ currentPage?.id?.toString().padStart(3, '0') || '---' }}
         </h3>
-        <n-space align="center" size="small">
+        <n-space
+          align="center"
+          size="small"
+        >
           <n-button-group size="small">
-            <n-button @click="zoomOut" :disabled="zoomLevel <= 0.25">
-              <template #icon>−</template>
+            <n-button
+              :disabled="zoomLevel <= 0.25"
+              @click="zoomOut"
+            >
+              <template #icon>
+                −
+              </template>
             </n-button>
-            <n-button disabled>{{ Math.round(zoomLevel * 100) }}%</n-button>
-            <n-button @click="zoomIn" :disabled="zoomLevel >= 3">
-              <template #icon>+</template>
+            <n-button disabled>
+              {{ Math.round(zoomLevel * 100) }}%
+            </n-button>
+            <n-button
+              :disabled="zoomLevel >= 3"
+              @click="zoomIn"
+            >
+              <template #icon>
+                +
+              </template>
             </n-button>
           </n-button-group>
-          <n-button size="small" @click="fitToScreen">Fit</n-button>
+          <n-button
+            size="small"
+            @click="fitToScreen"
+          >
+            Fit
+          </n-button>
         </n-space>
       </n-space>
     </n-card>
 
     <!-- Main image display area -->
-    <div class="image-container" ref="imageContainer">
-      <div v-if="currentPage" class="image-wrapper">
+    <div
+      ref="imageContainer"
+      class="image-container"
+    >
+      <div
+        v-if="currentPage"
+        class="image-wrapper"
+      >
         <img
           v-if="fullImageUrl"
           :src="fullImageUrl"
@@ -32,20 +65,47 @@
           alt=""
           @load="onImageLoad"
           @error="onImageError"
-        />
-        <n-empty v-else-if="!imageLoading" description="No image available">
+        >
+        <n-empty
+          v-else-if="!imageLoading"
+          description="No image available"
+        >
           <template #icon>
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-              <circle cx="8.5" cy="8.5" r="1.5"/>
-              <polyline points="21 15 16 10 5 21"/>
+            <svg
+              width="64"
+              height="64"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+            >
+              <rect
+                x="3"
+                y="3"
+                width="18"
+                height="18"
+                rx="2"
+                ry="2"
+              />
+              <circle
+                cx="8.5"
+                cy="8.5"
+                r="1.5"
+              />
+              <polyline points="21 15 16 10 5 21" />
             </svg>
           </template>
         </n-empty>
 
         <!-- Loading overlay -->
-        <n-spin v-if="imageLoading" size="large" class="loading-overlay">
-          <template #description>Loading image...</template>
+        <n-spin
+          v-if="imageLoading"
+          size="large"
+          class="loading-overlay"
+        >
+          <template #description>
+            Loading image...
+          </template>
         </n-spin>
 
         <!-- Error overlay -->
@@ -56,39 +116,82 @@
           class="error-overlay"
         />
       </div>
-      <n-empty v-else description="Select a page to view" class="placeholder-select">
+      <n-empty
+        v-else
+        description="Select a page to view"
+        class="placeholder-select"
+      >
         <template #icon>
-          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
+          <svg
+            width="64"
+            height="64"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line
+              x1="16"
+              y1="13"
+              x2="8"
+              y2="13"
+            />
+            <line
+              x1="16"
+              y1="17"
+              x2="8"
+              y2="17"
+            />
+            <polyline points="10 9 9 9 8 9" />
           </svg>
         </template>
       </n-empty>
     </div>
 
     <!-- Bottom toolbar -->
-    <n-card class="viewer-toolbar" size="small" :bordered="false">
-      <n-space justify="space-between" align="center">
+    <n-card
+      class="viewer-toolbar"
+      size="small"
+      :bordered="false"
+    >
+      <n-space
+        justify="space-between"
+        align="center"
+      >
         <n-space size="medium">
           <n-text depth="3">
-            Status: <n-text :type="getStatusType()" depth="1">{{ statusText }}</n-text>
+            Status: <n-text
+              :type="getStatusType()"
+              depth="1"
+            >
+              {{ statusText }}
+            </n-text>
           </n-text>
-          <n-text v-if="imageSize" depth="3">
-            Size: <n-text depth="1">{{ imageSize }}</n-text>
+          <n-text
+            v-if="imageSize"
+            depth="3"
+          >
+            Size: <n-text depth="1">
+              {{ imageSize }}
+            </n-text>
           </n-text>
-          <n-text v-if="currentPage?.fileSize !== undefined" depth="3">
-            File: <n-text depth="1">{{ formatFileSize(currentPage.fileSize) }}</n-text>
+          <n-text
+            v-if="currentPage?.fileSize !== undefined"
+            depth="3"
+          >
+            File: <n-text depth="1">
+              {{ formatFileSize(currentPage.fileSize) }}
+            </n-text>
           </n-text>
         </n-space>
         <n-button
           :type="status === 'recognizing' ? 'info' : 'primary'"
           :loading="status === 'recognizing'"
           :disabled="!currentPage || status === 'recognizing' || status === 'pending_render' || status === 'rendering'"
-          @click="runOCR"
           size="small"
+          @click="runOCR"
         >
           {{ status === 'recognizing' ? 'Processing OCR...' : 'Run OCR' }}
         </n-button>
@@ -103,33 +206,14 @@ import { uiLogger } from '@/utils/logger'
 import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText } from 'naive-ui'
 import { db } from '@/db'
 
-interface Page {
-  id: string
-  fileName: string
-  fileSize: number
-  fileType: string
-  origin: 'upload' | 'pdf_generated'
-  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
-  progress: number
-  imageData?: string
-  thumbnailData?: string
-  width?: number
-  height?: number
-  ocrText?: string
-  ocrConfidence?: number
-  outputs: any[]
-  logs: any[]
-  createdAt: Date
-  updatedAt: Date
-  processedAt?: Date
-}
+import type { Page } from '@/stores/pages'
 
 const props = defineProps<{
   currentPage?: Page | null
 }>()
 
 const zoomLevel = ref(1)
-const imageContainer = ref<HTMLElement>()
+// const imageContainer = ref<HTMLElement>() // Unused ref removed
 const imageSize = ref<string>('')
 const imageLoading = ref(false)
 const imageError = ref<string>('')
@@ -141,44 +225,63 @@ const status = computed(() => props.currentPage?.status || 'ready')
 watch(
   [() => props.currentPage?.id, () => props.currentPage?.status],
   async ([newPageId, newStatus], [oldPageId, oldStatus]) => {
-    // If ID changed, or status became 'ready', reload image
-    const idChanged = newPageId !== oldPageId
-    const becameReady = newStatus === 'ready' && oldStatus !== 'ready'
-
-    if (!idChanged && !becameReady) {
-      return
-    }
-
-    // Clear previous URL and error if ID changed
-    if (idChanged && fullImageUrl.value) {
-      URL.revokeObjectURL(fullImageUrl.value)
-      fullImageUrl.value = ''
-    }
-    
-    imageError.value = ''
-    imageSize.value = ''
-
-    if (!newPageId || newStatus === 'pending_render' || newStatus === 'rendering') {
-      return
-    }
-
-    imageLoading.value = true
-    try {
-      const blob = await db.getPageImage(newPageId)
-      if (blob) {
-        fullImageUrl.value = URL.createObjectURL(blob)
-      } else {
-        imageError.value = 'Full image not found in storage'
-      }
-    } catch (error) {
-      uiLogger.error('Failed to load full image', error)
-      imageError.value = 'Failed to load image from storage'
-    } finally {
-      imageLoading.value = false
-    }
+    await handlePageChange(newPageId, newStatus, oldPageId, oldStatus)
   },
   { immediate: true }
 )
+
+/**
+ * Handle page or status change to load full image
+ */
+async function handlePageChange(
+  newPageId: string | undefined, 
+  newStatus: string | undefined, 
+  oldPageId: string | undefined, 
+  oldStatus: string | undefined
+) {
+  const idChanged = newPageId !== oldPageId
+  const becameReady = newStatus === 'ready' && oldStatus !== 'ready'
+
+  if (!idChanged && !becameReady) return
+
+  cleanupPreviousUrl(idChanged)
+  
+  if (!newPageId || newStatus === 'pending_render' || newStatus === 'rendering') return
+
+  await loadPageBlob(newPageId)
+}
+
+/**
+ * Cleanup previous object URL
+ */
+function cleanupPreviousUrl(idChanged: boolean) {
+  if (idChanged && fullImageUrl.value) {
+    URL.revokeObjectURL(fullImageUrl.value)
+    fullImageUrl.value = ''
+  }
+  imageError.value = ''
+  imageSize.value = ''
+}
+
+/**
+ * Load image blob from DB
+ */
+async function loadPageBlob(pageId: string) {
+  imageLoading.value = true
+  try {
+    const blob = await db.getPageImage(pageId)
+    if (blob) {
+      fullImageUrl.value = URL.createObjectURL(blob)
+    } else {
+      imageError.value = 'Full image not found in storage'
+    }
+  } catch (error) {
+    uiLogger.error('Failed to load full image', error)
+    imageError.value = 'Failed to load image from storage'
+  } finally {
+    imageLoading.value = false
+  }
+}
 
 // Cleanup on unmount
 onUnmounted(() => {
@@ -248,7 +351,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function runOCR() {
-  if (!props.currentPage || status.value === 'processing') return
+  if (!props.currentPage || status.value === 'recognizing' || status.value === 'rendering') return
   uiLogger.info('Running OCR for page', props.currentPage.id)
 }
 </script>

@@ -17,6 +17,14 @@ export interface EnhancedRenderOptions {
   sourceId?: string // Optional ID for document caching
 }
 
+// PDF.js text content item type (subset of fields we use)
+// Using Partial to allow compatibility with TextItem | TextMarkedContent
+interface TextContentItem {
+  str?: string
+  fontName?: string
+  [key: string]: unknown // Allow other properties from PDF.js
+}
+
 export class EnhancedPdfRenderer {
   private static instance: EnhancedPdfRenderer
   private fontAnalysisCache = new Map<string, string>() // sourceId -> fallbackFontFamily
@@ -78,7 +86,7 @@ export class EnhancedPdfRenderer {
           const page = await pdfDocument.getPage(pageNum)
           const textContent = await page.getTextContent()
 
-          textContent.items.forEach((item: any) => {
+          textContent.items.forEach((item: TextContentItem) => {
             if (item.fontName) {
               fontNames.push(item.fontName)
             }
@@ -159,7 +167,7 @@ export class EnhancedPdfRenderer {
           const page = await pdfDocument.getPage(pageNum)
           const textContent = await page.getTextContent()
 
-          textContent.items.forEach((item: any) => {
+          textContent.items.forEach((item: TextContentItem) => {
             if (item.str) {
               allText += item.str + ' '
             }

@@ -54,7 +54,7 @@ export interface ExportPageData {
   pageNumber: number
   text?: string
   imageData?: string  // base64 image data
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 export interface ExportOptions {
@@ -84,7 +84,7 @@ export interface ExportResponse {
 export interface APIError {
   code: string
   message: string
-  details?: any
+  details?: unknown
   timestamp: string
 }
 
@@ -113,5 +113,5 @@ export interface ThirdPartyAPIConfig {
   apiKey?: string
   endpoint?: string
   region?: string
-  options?: Record<string, any>
+  options?: Record<string, unknown>
 }

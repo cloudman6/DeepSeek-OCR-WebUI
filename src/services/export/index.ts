@@ -1,6 +1,8 @@
 // Export Service - Placeholder implementation
 // This service will handle exporting processed documents to various formats
 
+import type { Page } from '@/stores/pages'
+
 export interface ExportOptions {
   format: 'markdown' | 'html' | 'docx' | 'pdf'
   includeImages?: boolean
@@ -25,29 +27,29 @@ export interface ExportResult {
 export class ExportService {
   // Placeholder methods - to be implemented
   async exportToMarkdown(
-    pages: any[],
-    options: ExportOptions
+    _pages: Page[],
+    _options: ExportOptions
   ): Promise<ExportResult> {
     throw new Error('Not implemented yet')
   }
 
   async exportToHTML(
-    pages: any[],
-    options: ExportOptions
+    _pages: Page[],
+    _options: ExportOptions
   ): Promise<ExportResult> {
     throw new Error('Not implemented yet')
   }
 
   async exportToDOCX(
-    pages: any[],
-    options: ExportOptions
+    _pages: Page[],
+    _options: ExportOptions
   ): Promise<ExportResult> {
     throw new Error('Not implemented yet')
   }
 
   async exportToPDF(
-    pages: any[],
-    options: ExportOptions
+    _pages: Page[],
+    _options: ExportOptions
   ): Promise<ExportResult> {
     throw new Error('Not implemented yet')
   }
@@ -58,7 +60,7 @@ export class ExportService {
     timestamp: Date = new Date()
   ): Promise<string> {
     const dateStr = timestamp.toISOString().split('T')[0]
-    const timeStr = timestamp.toTimeString().split(' ')[0].replace(/:/g, '-')
+    const timeStr = (timestamp.toTimeString().split(' ')[0] || '').replace(/:/g, '-')
     const sanitizedName = documentName.replace(/[^a-zA-Z0-9]/g, '_')
 
     return `${sanitizedName}_${dateStr}_${timeStr}.${format}`

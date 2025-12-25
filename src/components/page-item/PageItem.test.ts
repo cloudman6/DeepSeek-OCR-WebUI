@@ -29,7 +29,7 @@ vi.mock('naive-ui', () => ({
 
 describe('PageItem.vue', () => {
     let mockPage: Page
-    let pinia: any
+    let pinia: ReturnType<typeof import("pinia").createPinia>
 
     beforeEach(() => {
         mockPage = {

@@ -5,13 +5,15 @@
     @mouseenter="isPageHovered = true"
     @mouseleave="isPageHovered = false"
   >
-    <div class="drag-handle">⋮⋮</div>
+    <div class="drag-handle">
+      ⋮⋮
+    </div>
     <NCheckbox
       :checked="isSelected"
-      @update:checked="handleCheckboxChange"
-      @click.stop
       size="small"
       class="page-checkbox"
+      @update:checked="handleCheckboxChange"
+      @click.stop
     />
     <NButton
       text
@@ -25,30 +27,51 @@
         opacity: isPageHovered || isDeleteHovered ? 1 : 0,
         transition: 'all 0.2s ease'
       }"
+      title="Delete page"
       @click.stop="handleDelete"
       @mouseenter="isDeleteHovered = true"
       @mouseleave="isDeleteHovered = false"
-      title="Delete page"
     >
       <template #icon>
         <img
           :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'"
           alt="Delete"
           style="width: 16px; height: 16px; transition: all 0.2s ease;"
-        />
+        >
       </template>
     </NButton>
     <div class="page-thumbnail">
       <transition name="fade">
-        <img v-if="page.thumbnailData" :src="page.thumbnailData" alt="" class="thumbnail-img" />
-        <div v-else class="status-placeholder" :class="page.status">
-          <div class="shimmer" v-if="page.status === 'rendering' || page.status === 'pending_render'"></div>
+        <img
+          v-if="page.thumbnailData"
+          :src="page.thumbnailData"
+          alt=""
+          class="thumbnail-img"
+        >
+        <div
+          v-else
+          class="status-placeholder"
+          :class="page.status"
+        >
+          <div
+            v-if="page.status === 'rendering' || page.status === 'pending_render'"
+            class="shimmer"
+          />
           <div class="placeholder-content">
             <span class="page-hint">{{ page.order + 1 }}</span>
             <div class="status-indicator">
-              <n-spin v-if="page.status === 'rendering'" size="small" />
-              <span v-else-if="page.status === 'pending_render'" class="pending-dot">...</span>
-              <span v-else-if="page.status === 'error'" class="error-sign">!</span>
+              <n-spin
+                v-if="page.status === 'rendering'"
+                size="small"
+              />
+              <span
+                v-else-if="page.status === 'pending_render'"
+                class="pending-dot"
+              >...</span>
+              <span
+                v-else-if="page.status === 'error'"
+                class="error-sign"
+              >!</span>
             </div>
             <span class="status-label">{{ getShortStatusText(page.status) }}</span>
           </div>
@@ -56,12 +79,17 @@
       </transition>
     </div>
     <div class="page-meta">
-      <div class="page-name">{{ page.fileName }}</div>
+      <div class="page-name">
+        {{ page.fileName }}
+      </div>
       <div class="page-info">
         {{ formatFileSize(page.fileSize) }}
       </div>
       <div class="status-row">
-        <n-tag :type="getStatusType(page.status)" size="small">
+        <n-tag
+          :type="getStatusType(page.status)"
+          size="small"
+        >
           OCR
         </n-tag>
       </div>

@@ -43,8 +43,8 @@ export interface PDFDocument {
     subject?: string
     creator?: string
     producer?: string
-    creationDate?: any
-    modificationDate?: any
+    creationDate?: string | Date
+    modificationDate?: string | Date
   }
 }
 
@@ -104,7 +104,6 @@ export class PDFService {
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
         // Omit standardFontDataUrl (can be removed for Chinese scenarios to reduce dependencies)
-        maxMemory: 1024 * 1024 * 512, // 512MB
         // Enable font fallback for better text rendering
         useSystemFonts: true,
         // Increase font rendering quality
@@ -114,41 +113,19 @@ export class PDFService {
       const pdfDocument = await loadingTask.promise
       const pageCount = pdfDocument.numPages
 
-      // 6. Read PDF metadata
       const metadata = await pdfDocument.getMetadata()
 
       // 7. Extract page information
-      const pages: PDFPageInfo[] = []
-      for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-        const page = await pdfDocument.getPage(pageNum)
-        const viewport = page.getViewport({ scale: 1.0 })
+      const pages = await this.getPDFPageInfos(pdfDocument)
 
-        pages.push({
-          pageNumber: pageNum,
-          width: viewport.width,
-          height: viewport.height
-        })
-
-        // Release page resources (optimize memory)
-        page.cleanup()
-      }
-
-      // 8. Build PDFDocument object (use ArrayBuffer converted from base64 to avoid separation)
+      // 8. Build PDFDocument object
       const pdfDoc: PDFDocument = {
         file,
         data: arrayBuffer,
-        base64Data, // Save pure base64 data
+        base64Data,
         pageCount,
         pages,
-        metadata: {
-          title: metadata.info?.Title,
-          author: metadata.info?.Author,
-          subject: metadata.info?.Subject,
-          creator: metadata.info?.Creator,
-          producer: metadata.info?.Producer,
-          creationDate: metadata.info?.CreationDate,
-          modificationDate: metadata.info?.ModDate
-        }
+        metadata: this.extractMetadataFromPDF((metadata.info as unknown) as Record<string, unknown>)
       }
 
       // Cache PDF
@@ -265,6 +242,7 @@ export class PDFService {
       // Render page to canvas
       await page.render({
         canvasContext: context,
+        canvas: canvas as unknown as HTMLCanvasElement,
         viewport: thumbViewport
       }).promise
 
@@ -355,6 +333,60 @@ export class PDFService {
     } catch (error) {
       pdfLogger.error('Error getting PDF metadata:', error)
       return {}
+    }
+  }
+
+  /**
+   * Helper: Extract page information from PDF document
+   */
+  private async getPDFPageInfos(pdfDocument: pdfjsLib.PDFDocumentProxy): Promise<PDFPageInfo[]> {
+    const pages: PDFPageInfo[] = []
+    const pageCount = pdfDocument.numPages
+
+    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+      const page = await pdfDocument.getPage(pageNum)
+      const viewport = page.getViewport({ scale: 1.0 })
+
+      pages.push({
+        pageNumber: pageNum,
+        width: viewport.width,
+        height: viewport.height
+      })
+
+      // Release page resources (optimize memory)
+      page.cleanup()
+    }
+    return pages
+  }
+
+  /**
+   * Helper: Extract and normalize metadata from PDF info object
+   */
+  private extractMetadataFromPDF(info: Record<string, unknown>): PDFDocument['metadata'] {
+    if (!info) return {}
+
+    // Helper to safely extract string values
+    const getString = (key: string): string | undefined => {
+      const value = info[key]
+      return typeof value === 'string' ? value : undefined
+    }
+
+    // Helper to safely extract date values
+    const getDate = (key: string): string | Date | undefined => {
+      const value = info[key]
+      if (value instanceof Date) return value
+      if (typeof value === 'string') return value
+      return undefined
+    }
+
+    return {
+      title: getString('Title'),
+      author: getString('Author'),
+      subject: getString('Subject'),
+      creator: getString('Creator'),
+      producer: getString('Producer'),
+      creationDate: getDate('CreationDate'),
+      modificationDate: getDate('ModDate')
     }
   }
 }

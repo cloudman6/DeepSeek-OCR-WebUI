@@ -17,7 +17,7 @@ export interface Task extends BaseEntity {
   progress: number
   message?: string
   error?: string
-  result?: any
+  result?: unknown
   priority: number
 }
 
@@ -39,7 +39,7 @@ export interface ProcessedFile extends FileInfo {
 export interface ModalState {
   isOpen: boolean
   title?: string
-  content?: any
+  content?: unknown
 }
 
 export interface NotificationState {
@@ -64,7 +64,7 @@ export interface AppConfig {
 export interface AppError {
   code: string
   message: string
-  details?: any
+  details?: unknown
   timestamp: Date
   stack?: string
 }
@@ -72,7 +72,7 @@ export interface AppError {
 // Event types
 export interface AppEvent {
   type: string
-  payload: any
+  payload: unknown
   timestamp: Date
 }
 

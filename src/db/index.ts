@@ -17,7 +17,7 @@ export interface DBPage {
   fileName: string
   fileSize: number
   fileType: string
-  origin: 'upload' | 'pdf_generated'
+  origin: 'upload' | 'pdf_generated' | 'scanner'
   status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
   progress: number
   order: number  // Sort order for drag and drop
@@ -274,5 +274,5 @@ export const db = new Scan2DocDB()
  * Generate a unique page ID
  */
 export function generatePageId(): string {
-  return `page_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`
+  return `page_${Date.now()}_${crypto.randomUUID().split('-')[0]}`
 }

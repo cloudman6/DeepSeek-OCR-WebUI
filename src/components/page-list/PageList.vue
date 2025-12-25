@@ -1,12 +1,15 @@
 <template>
   <div class="page-list-container">
     <!-- Selection Toolbar -->
-    <div v-if="pages.length > 0" class="selection-toolbar">
+    <div
+      v-if="pages.length > 0"
+      class="selection-toolbar"
+    >
       <NCheckbox
         :checked="isAllSelected"
         :indeterminate="isPartiallySelected"
-        @update:checked="handleSelectAll"
         size="small"
+        @update:checked="handleSelectAll"
       />
       <NButton
         v-if="hasSelection"
@@ -17,54 +20,80 @@
           transform: isDeleteHovered ? 'scale(1.1)' : 'scale(1)',
           transition: 'all 0.2s ease'
         }"
+        title="Delete selected pages"
+        class="delete-selected-btn"
         @click="handleBatchDelete"
         @mouseenter="isDeleteHovered = true"
         @mouseleave="isDeleteHovered = false"
-        title="Delete selected pages"
-        class="delete-selected-btn"
       >
         <template #icon>
           <img
             :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'"
             alt="Delete selected"
             style="width: 16px; height: 16px; transition: all 0.2s ease;"
-          />
+          >
         </template>
       </NButton>
     </div>
 
     <n-scrollbar class="page-list">
       <draggable
-      v-model="localPages"
-      item-key="id"
-      ghost-class="ghost"
-      chosen-class="chosen"
-      @end="handleDragEnd"
-    >
-      <template #item="{ element: page }">
-        <PageItem
-          :page="page"
-          :is-active="page.id === currentPage?.id"
-          @click="selectPage"
-          @delete="handlePageDeleted"
-        />
-      </template>
-    </draggable>
+        v-model="localPages"
+        item-key="id"
+        ghost-class="ghost"
+        chosen-class="chosen"
+        @end="handleDragEnd"
+      >
+        <template #item="{ element: page }">
+          <PageItem
+            :page="page"
+            :is-active="page.id === currentPage?.id"
+            @click="selectPage"
+            @delete="handlePageDeleted"
+          />
+        </template>
+      </draggable>
 
-    <!-- Empty state when no pages -->
-    <n-empty v-if="localPages.length === 0" description="No pages added" class="empty-state">
-      <template #icon>
-        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="12" y1="18" x2="12" y2="12"/>
-          <line x1="9" y1="15" x2="12" y2="12"/>
-          <line x1="15" y1="15" x2="12" y2="12"/>
-        </svg>
-      </template>
-    </n-empty>
-  </n-scrollbar>
-</div>
+      <!-- Empty state when no pages -->
+      <n-empty
+        v-if="localPages.length === 0"
+        description="No pages added"
+        class="empty-state"
+      >
+        <template #icon>
+          <svg
+            width="48"
+            height="48"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+          >
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line
+              x1="12"
+              y1="18"
+              x2="12"
+              y2="12"
+            />
+            <line
+              x1="9"
+              y1="15"
+              x2="12"
+              y2="12"
+            />
+            <line
+              x1="15"
+              y1="15"
+              x2="12"
+              y2="12"
+            />
+          </svg>
+        </template>
+      </n-empty>
+    </n-scrollbar>
+  </div>
 </template>
 
 <script setup lang="ts">
@@ -136,7 +165,12 @@ function handleBatchDelete() {
   }
 }
 
-async function handleDragEnd(event: any) {
+interface DragEndEvent {
+  oldIndex: number
+  newIndex: number
+}
+
+async function handleDragEnd(event: DragEndEvent) {
   const { oldIndex, newIndex } = event
 
   if (oldIndex !== newIndex) {

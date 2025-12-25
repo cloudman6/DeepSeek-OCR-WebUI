@@ -88,30 +88,39 @@ class FileAddService {
       const ctx = canvas.getContext('2d')!
       const img = new Image()
 
+      const objectUrl = URL.createObjectURL(file)
+
       img.onload = () => {
-        // Calculate thumbnail dimensions maintaining aspect ratio
-        const { width, height } = this.calculateDimensions(
-          img.width,
-          img.height,
-          maxSize.width,
-          maxSize.height
-        )
+        try {
+          // Calculate thumbnail dimensions maintaining aspect ratio
+          const { width, height } = this.calculateDimensions(
+            img.width,
+            img.height,
+            maxSize.width,
+            maxSize.height
+          )
 
-        canvas.width = width
-        canvas.height = height
+          canvas.width = width
+          canvas.height = height
 
-        // Draw and resize image
-        ctx.drawImage(img, 0, 0, width, height)
+          // Draw and resize image
+          ctx.drawImage(img, 0, 0, width, height)
 
-        // Convert to base64
-        const base64 = canvas.toDataURL('image/jpeg', 0.8)
-        resolve(base64)
+          // Convert to base64
+          const base64 = canvas.toDataURL('image/jpeg', 0.8)
+          resolve(base64)
+        } finally {
+          URL.revokeObjectURL(objectUrl)
+        }
       }
 
-      img.onerror = () => reject(new Error('Failed to load image for thumbnail generation'))
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('Failed to load image for thumbnail generation'))
+      }
 
       // Load the image
-      img.src = URL.createObjectURL(file)
+      img.src = objectUrl
     })
   }
 
@@ -159,13 +168,19 @@ class FileAddService {
     return new Promise((resolve, reject) => {
       const img = new Image()
 
+      const objectUrl = URL.createObjectURL(file)
+
       img.onload = () => {
+        URL.revokeObjectURL(objectUrl)
         resolve({ width: img.width, height: img.height })
       }
 
-      img.onerror = () => reject(new Error('Failed to load image'))
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl)
+        reject(new Error('Failed to load image'))
+      }
 
-      img.src = URL.createObjectURL(file)
+      img.src = objectUrl
     })
   }
 
@@ -269,30 +284,11 @@ class FileAddService {
     }
 
     for (const file of files) {
-      const validation = this.validateFile(file, mergedOptions)
-      if (!validation.valid) {
-        errors.push(validation.error!)
-        continue
-      }
-
-      const lowerType = (file.type || '').toLowerCase()
-
-      if (lowerType.startsWith('image/')) {
-        try {
-          const page = await this.processImageFile(file, mergedOptions)
-          pages.push(page)
-        } catch (error) {
-          errors.push(`Failed to process "${file.name}": ${error instanceof Error ? error.message : 'Unknown error'}`)
-        }
-      } else if (lowerType === 'application/pdf') {
-        try {
-          const pdfPages = await this.processPDFFile(file, mergedOptions)
-          pages.push(...pdfPages)
-        } catch (error) {
-          errors.push(`Failed to process PDF "${file.name}": ${error instanceof Error ? error.message : 'Unknown error'}`)
-        }
-      } else {
-        errors.push(`Skipping unsupported file "${file.name}" (type: ${file.type})`)
+      try {
+        const result = await this.processSingleFile(file, mergedOptions)
+        pages.push(...result)
+      } catch (error) {
+        errors.push(error instanceof Error ? error.message : String(error))
       }
     }
 
@@ -301,6 +297,29 @@ class FileAddService {
       pages,
       error: errors.length > 0 ? errors.join('; ') : undefined
     }
+  }
+
+  /**
+   * Internal helper to process a single file (Image or PDF)
+   */
+  private async processSingleFile(file: File, options: FileProcessingOptions): Promise<Page[]> {
+    const validation = this.validateFile(file, options)
+    if (!validation.valid) {
+      throw new Error(validation.error)
+    }
+
+    const lowerType = (file.type || '').toLowerCase()
+
+    if (lowerType.startsWith('image/')) {
+      const page = await this.processImageFile(file, options)
+      return [page]
+    }
+
+    if (lowerType === 'application/pdf') {
+      return await this.processPDFFile(file, options)
+    }
+
+    throw new Error(`Skipping unsupported file "${file.name}" (type: ${file.type})`)
   }
 }
 

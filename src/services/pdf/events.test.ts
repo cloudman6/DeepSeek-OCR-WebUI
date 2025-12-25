@@ -13,7 +13,7 @@ describe('PDF Events', () => {
     let received = false
     const handler = () => { received = true }
     
-    // We need to use 'as any' because the strict typing of mitt might complain 
+    // We need to use 'as unknown' because the strict typing of mitt might complain 
     // about arbitrary events if not in the type definition, 
     // but here we are testing the mechanism itself.
     // However, better to use a valid event from the definition.

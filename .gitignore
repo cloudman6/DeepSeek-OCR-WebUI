@@ -107,6 +107,9 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
+*_report.json
+lint_*.txt
+lint_report*.json
 
 # Local development
 .local/

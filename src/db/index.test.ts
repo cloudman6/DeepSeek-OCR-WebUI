@@ -4,8 +4,8 @@ import 'fake-indexeddb/auto'
 import { db, Scan2DocDB, generatePageId, type DBPage, type DBFile } from './index'
 
 // Helper to clean object for Dexie (remove id if it's an auto-increment key)
-function cleanForAdd<T extends { id?: any }>(obj: T): T {
-    const newObj: any = {}
+function cleanForAdd<T extends { id?: string | number }>(obj: T): T {
+    const newObj: Record<string, unknown> = {}
     for (const key in obj) {
         if (key === 'id' && (obj[key] === undefined || obj[key] === null)) {
             continue
@@ -115,7 +115,7 @@ describe('Scan2DocDB', () => {
 
             // Explicitly put a record with numeric ID
             await numericDb.files.put({
-                id: 123 as any,
+                id: 123 as unknown,
                 name: 'numeric.pdf',
                 content: new Blob([]),
                 size: 0,
@@ -249,7 +249,7 @@ describe('Scan2DocDB', () => {
                 logs: []
             }
 
-            const id = await db.saveAddedPage(cleanForAdd(pageData as any))
+            const id = await db.saveAddedPage(cleanForAdd(pageData as unknown))
             const retrieved = await db.getPage(id)
             expect(retrieved?.createdAt).toBeDefined()
         })
@@ -318,7 +318,7 @@ describe('Scan2DocDB', () => {
 
         it('should return 0 if navigator.storage is missing', async () => {
             const originalStorage = window.navigator.storage
-            // @ts-ignore
+            // @ts-expect-error: intentional for testing
             delete window.navigator.storage
             const size = await db.getStorageSize()
             expect(size).toBe(0)
@@ -351,7 +351,7 @@ describe('Scan2DocDB', () => {
             const originalFetch = window.fetch
             window.fetch = vi.fn().mockResolvedValue({
                 blob: () => Promise.resolve(new Blob(['dummy']))
-            } as any)
+            } as import("@/db").DBPage)
 
             const testV4 = new Scan2DocDB(migrationDbName)
             await testV4.open()

@@ -310,7 +310,7 @@ describe('Pages Store', () => {
             const mockDBPages = [
                 { id: '1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'ready', progress: 0, order: 1, outputs: [], logs: [], createdAt: new Date(), updatedAt: new Date() }
             ]
-            vi.mocked(db.getAllPagesForDisplay).mockResolvedValue(mockDBPages as any)
+            vi.mocked(db.getAllPagesForDisplay).mockResolvedValue(mockDBPages as unknown as import("@/db").DBPage[])
 
             await store.loadPagesFromDB()
             expect(store.pages).toHaveLength(1)
@@ -325,7 +325,7 @@ describe('Pages Store', () => {
             const fullPage = { id: '1', fileName: 'f', fileSize: 0, fileType: '', origin: 'upload', status: 'ready', progress: 0, outputs: [], logs: [], createdAt: new Date(), updatedAt: new Date() }
 
             try {
-                await store.savePageToDB(fullPage as any)
+                await store.savePageToDB(fullPage as unknown as import("@/stores/pages").Page)
                 expect(true).toBe(false)
             } catch (error) {
                 expect(error).toBe(dbError)
@@ -369,7 +369,7 @@ describe('Pages Store', () => {
             vi.mocked(fileAddService.triggerFileSelect).mockResolvedValue(mockFiles)
             vi.mocked(fileAddService.processFiles).mockResolvedValue({
                 success: true,
-                pages: [{ id: 'new-id', fileName: 'test.png', fileSize: 0, fileType: 'image/png', origin: 'upload', status: 'ready', progress: 100, outputs: [], logs: [] } as any]
+                pages: [{ id: 'new-id', fileName: 'test.png', fileSize: 0, fileType: 'image/png', origin: 'upload', status: 'ready', progress: 100, outputs: [], logs: [] } as unknown as import("@/stores/pages").Page]
             })
 
             await store.addFiles()
@@ -383,11 +383,11 @@ describe('Pages Store', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
             const dbPage = { id: 'pdf-p1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'pending_render', progress: 0, order: 1, outputs: [], logs: [], createdAt: new Date(), updatedAt: new Date() }
-            vi.mocked(db.getPage).mockResolvedValue(dbPage as any)
+            vi.mocked(db.getPage).mockResolvedValue(dbPage as unknown as import("@/db").DBPage)
 
-            const queuedHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:queued')?.[1]
+            const queuedHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:queued')?.[1]
             if (queuedHandler) {
-                await (queuedHandler as any)({ pageId: 'pdf-p1' })
+                await (queuedHandler as (arg: any) => Promise<void>)({ pageId: 'pdf-p1' })
                 expect(store.pages).toHaveLength(1)
                 expect(store.pages[0]!.id).toBe('pdf-p1')
             }
@@ -397,9 +397,9 @@ describe('Pages Store', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
             vi.mocked(db.getPage).mockRejectedValue(new Error('Queued Load Fail'))
-            const handler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:queued')?.[1]
+            const handler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:queued')?.[1]
             if (handler) {
-                await (handler as any)({ pageId: 'q-err' })
+                await (handler as (arg: any) => Promise<void>)({ pageId: 'q-err' })
                 expect(store.pages).toHaveLength(0)
             }
         })
@@ -407,9 +407,9 @@ describe('Pages Store', () => {
         it('should handle pdf:page:rendering', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
-            const renderingHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:rendering')?.[1]
+            const renderingHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:rendering')?.[1]
             if (renderingHandler) {
-                (renderingHandler as any)({ pageId: 'rendering-p' })
+                (renderingHandler as (arg: any) => void)({ pageId: 'rendering-p' })
                 // This updates status via updatePageStatus, we verify call definition
                 expect(renderingHandler).toBeDefined()
             }
@@ -419,11 +419,11 @@ describe('Pages Store', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
             const dbPage = { id: 'missing-p', fileName: 'f', fileSize: 0, fileType: '', origin: 'upload', status: 'rendering', progress: 0, order: 1, outputs: [], logs: [], createdAt: new Date(), updatedAt: new Date() }
-            vi.mocked(db.getPage).mockResolvedValue(dbPage as any)
+            vi.mocked(db.getPage).mockResolvedValue(dbPage as unknown as import("@/db").DBPage)
 
-            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:done')?.[1]
+            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:done')?.[1]
             if (doneHandler) {
-                await (doneHandler as any)({
+                await (doneHandler as (arg: any) => Promise<void>)({
                     pageId: 'missing-p',
                     thumbnailData: 'data:thumb',
                     width: 100,
@@ -440,9 +440,9 @@ describe('Pages Store', () => {
             store.setupPDFEventListeners()
             await store.addPage({ id: 'pdf-p1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'rendering', progress: 0, outputs: [], logs: [] })
 
-            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:done')?.[1]
+            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:done')?.[1]
             if (doneHandler) {
-                await (doneHandler as any)({
+                await (doneHandler as (arg: any) => Promise<void>)({
                     pageId: 'pdf-p1',
                     thumbnailData: 'data:thumb',
                     width: 100,
@@ -459,9 +459,9 @@ describe('Pages Store', () => {
             store.setupPDFEventListeners()
             vi.mocked(db.getPage).mockResolvedValue(undefined)
 
-            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:done')?.[1]
+            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:done')?.[1]
             if (doneHandler) {
-                await (doneHandler as any)({
+                await (doneHandler as (arg: any) => Promise<void>)({
                     pageId: 'missing-p',
                     thumbnailData: 'data:thumb',
                     width: 100,
@@ -477,9 +477,9 @@ describe('Pages Store', () => {
             store.setupPDFEventListeners()
             vi.mocked(db.getPage).mockRejectedValue(new Error('Load Fail'))
 
-            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:done')?.[1]
+            const doneHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:done')?.[1]
             if (doneHandler) {
-                await (doneHandler as any)({ pageId: 'err-p' })
+                await (doneHandler as (arg: any) => Promise<void>)({ pageId: 'err-p' })
                 expect(store.pages).toHaveLength(0)
             }
         })
@@ -489,9 +489,9 @@ describe('Pages Store', () => {
             store.setupPDFEventListeners()
             await store.addPage({ id: 'pdf-p1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'rendering', progress: 0, outputs: [], logs: [] })
 
-            const errorHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:page:error')?.[1]
+            const errorHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:error')?.[1]
             if (errorHandler) {
-                await (errorHandler as any)({ pageId: 'pdf-p1', error: 'Render crash' })
+                await (errorHandler as (arg: any) => Promise<void>)({ pageId: 'pdf-p1', error: 'Render crash' })
                 expect(store.pages[0]!.status).toBe('error')
             }
         })
@@ -499,9 +499,9 @@ describe('Pages Store', () => {
         it('should handle pdf:processing-error', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
-            const errorHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:processing-error')?.[1]
+            const errorHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:processing-error')?.[1]
             if (errorHandler) {
-                (errorHandler as any)({ file: { name: 'err.pdf' }, error: 'Global PDF error' })
+                (errorHandler as (arg: any) => void)({ file: { name: 'err.pdf' }, error: 'Global PDF error' })
                 expect(errorHandler).toBeDefined()
             }
         })
@@ -509,9 +509,9 @@ describe('Pages Store', () => {
         it('should handle pdf:progress', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
-            const progressHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:progress')?.[1]
+            const progressHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:progress')?.[1]
             if (progressHandler) {
-                (progressHandler as any)({ done: 5, total: 10 })
+                (progressHandler as (arg: any) => void)({ done: 5, total: 10 })
                 expect(store.pdfProcessing.completed).toBe(5)
                 expect(store.pdfProcessing.total).toBe(10)
             }
@@ -520,17 +520,17 @@ describe('Pages Store', () => {
         it('should handle pdf:processing-start and pdf:processing-complete', () => {
             const store = usePagesStore()
             store.setupPDFEventListeners()
-            const startHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:processing-start')?.[1]
-            const completeHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:processing-complete')?.[1]
+            const startHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:processing-start')?.[1]
+            const completeHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:processing-complete')?.[1]
 
             if (startHandler) {
-                (startHandler as any)({ file: { name: 'test.pdf' }, totalPages: 10 })
+                (startHandler as (arg: any) => void)({ file: { name: 'test.pdf' }, totalPages: 10 })
                 expect(store.pdfProcessing.active).toBe(true)
                 expect(store.pdfProcessing.currentFile).toBe('test.pdf')
             }
 
             if (completeHandler) {
-                (completeHandler as any)()
+                (completeHandler as () => void)()
                 expect(store.pdfProcessing.active).toBe(false)
             }
         })
@@ -540,9 +540,9 @@ describe('Pages Store', () => {
             store.setupPDFEventListeners()
             await store.addPage({ id: 'pdf-p1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'rendering', progress: 0, outputs: [], logs: [] })
 
-            const logHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: any[]) => call[0] === 'pdf:log')?.[1]
+            const logHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:log')?.[1]
             if (logHandler) {
-                (logHandler as any)({ pageId: 'pdf-p1', message: 'ocr done', level: 'info' })
+                (logHandler as (arg: any) => void)({ pageId: 'pdf-p1', message: 'ocr done', level: 'info' })
                 expect(store.pages[0]!.logs.some(l => l.message === 'ocr done')).toBe(true)
             }
         })
@@ -557,7 +557,7 @@ describe('Pages Store', () => {
                 status: 'ready', progress: 100, outputs: [{ format: 'text', content: 'c' }], logs: [],
                 createdAt: now, updatedAt: now, processedAt: now
             }
-            await store.savePageToDB(page as any)
+            await store.savePageToDB(page as unknown as import("@/stores/pages").Page)
             expect(db.savePage).toHaveBeenCalledWith(expect.objectContaining({
                 processedAt: expect.any(Date),
                 outputs: [{ format: 'text', content: 'c' }]
@@ -572,7 +572,7 @@ describe('Pages Store', () => {
                 status: 'ready', progress: 100, outputs: [], logs: [],
                 createdAt: now, updatedAt: now
             }
-            vi.mocked(db.getAllPagesForDisplay).mockResolvedValue([dbPage as any])
+            vi.mocked(db.getAllPagesForDisplay).mockResolvedValue([dbPage as unknown as import("@/db").DBPage])
             await store.loadPagesFromDB()
             expect(store.pages[0]!.id).toBe('d1')
         })
@@ -601,6 +601,87 @@ describe('Pages Store', () => {
 
             store.clearSelection()
             expect(store.selectedPageIds).toHaveLength(0)
+        })
+    })
+    describe('Coverage Gaps', () => {
+        beforeEach(() => {
+            vi.useFakeTimers()
+        })
+
+        afterEach(() => {
+            vi.useRealTimers()
+        })
+
+        it('deletePages should clear previous timeout on consecutive deletes', async () => {
+            const store = usePagesStore()
+            await store.addPage({ id: '1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'ready', progress: 0, outputs: [], logs: [] })
+            await store.addPage({ id: '2', fileName: 'f2', fileSize: 0, fileType: '', origin: 'upload', status: 'ready', progress: 0, outputs: [], logs: [] })
+
+            store.deletePage('1')
+            expect(store.selectedPageIds).not.toContain('1')
+
+            // Should invoke clearTimeout internally
+            const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout')
+            store.deletePage('2')
+            expect(clearTimeoutSpy).toHaveBeenCalled()
+        })
+
+        it('undoDelete should insert at correct index (middle)', async () => {
+            const store = usePagesStore()
+            await store.addPage({ id: '1', order: 10 } as unknown as import("@/db").DBPage)
+            await store.addPage({ id: '2', order: 20 } as unknown as import("@/db").DBPage) // To be deleted
+            await store.addPage({ id: '3', order: 30 } as unknown as import("@/db").DBPage)
+
+            store.deletePage('2')
+            expect(store.pages.map(p => p.id)).toEqual(['1', '3'])
+
+            store.undoDelete()
+            expect(store.pages.map(p => p.id)).toEqual(['1', '2', '3'])
+        })
+
+        it('pdf:page:queued should ignore duplicate pages', async () => {
+            const store = usePagesStore()
+            store.setupPDFEventListeners()
+            await store.addPage({ id: 'p1', fileName: 'f1' } as unknown as import("@/db").DBPage)
+
+            const queuedHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:page:queued')?.[1]
+            if (queuedHandler) {
+                // Call with existing ID
+                await (queuedHandler as (arg: any) => Promise<void>)({ pageId: 'p1' })
+                expect(db.getPage).not.toHaveBeenCalled()
+            }
+        })
+
+        it('reorderPages should skip missing pages', async () => {
+            const store = usePagesStore()
+            await store.addPage({ id: '1', order: 10 } as unknown as import("@/db").DBPage)
+            // Update '2' which doesn't exist
+            await store.reorderPages([{ id: '1', order: 10 }, { id: '2', order: 20 }])
+            expect(store.pages.find(p => p.id === '1')!.order).toBe(10)
+        })
+
+        it('addFiles should handle specific failure', async () => {
+            const store = usePagesStore()
+            vi.mocked(fileAddService.triggerFileSelect).mockResolvedValue([new File([], 'f')])
+            vi.mocked(fileAddService.processFiles).mockResolvedValue({ success: false, error: 'Process Fail', pages: [] })
+
+            const result = await store.addFiles()
+            expect(result.success).toBe(false)
+            expect(result.error).toBe('Process Fail')
+        })
+
+        it('pdf:log should default to info level', async () => {
+            const store = usePagesStore()
+            store.setupPDFEventListeners()
+            // Add a page first so log can be attached
+            await store.addPage({ id: 'p1' } as unknown as import("@/db").DBPage)
+
+            const logHandler = vi.mocked(pdfEvents.on).mock.calls.find((call: unknown[]) => call[0] === 'pdf:log')?.[1]
+            if (logHandler) {
+                // @ts-expect-error: expecting partial type for testing
+                (logHandler as unknown)({ pageId: 'p1', message: 'msg' }) // missing level
+                expect(store.pages[0]!.logs.some(l => l.message === 'msg' && l.level === 'info')).toBe(true)
+            }
         })
     })
 })

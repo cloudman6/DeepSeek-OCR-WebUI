@@ -30,19 +30,31 @@ Use this workflow when modifying existing code to add features, fix bugs, or per
      - Mock external boundaries (DB, APIs) correctly.
    - Verify the test passes.
 
-4. **Refactor & Coverage Polish**
-   - Clean up the code and test structure (names, DRY, types).
-   - Check coverage to ensure the new implementation is fully covered (100% Lines preferred):
-     ```bash
-     npm run test:unit -- <file-path> --coverage
-     ```
-   - If new branches were created, ensure they are tested using the "Refactor for Seams" philosophy.
+4. **Refactor & Quality Gate Check**
+   - Clean up code and test structure (names, DRY, types).
+   - **Quality Gate Verification**:
+     - **Coverage**: Run with coverage and ensure **>= 90% Lines, >= 70% Branches, >= 80% Functions** for the modified logic:
+       ```bash
+       npm run test:unit -- <file-path> --coverage
+       ```
+     - **Complexity**: Run static analysis to ensure the new implementation satisfies the complexity limits (Cyclomatic <= 10):
+       ```bash
+       npm run lint:complexity
+       ```
+   - If complexity or coverage thresholds are not met, refactor according to the "Refactor for Seams & Complexity" philosophy.
 
 5. **Regression & Safety Check**
    - Remove any `.only` tags.
-   - Run ALL tests in the module/file to ensure no regressions were introduced.
-   - Verify resource cleanup (e.g., `URL.revokeObjectURL`).
-
+   - **Global Regression Test**: Run ALL tests in the project to ensure no regressions:
+      ```bash
+      npm run test:unit
+      ```
+   - **Global Coverage Check** (Optional): To verify global thresholds are met:
+        ```bash
+        npm run test:unit -- --coverage
+        ```
+   - Verify resource cleanup (e.g., `URL.revokeObjectURL` via spies) and state reset.
+   - Ensure the final state is consistent with **generate-tests.md**.
 6. **Final Documentation**
    - Create/Update `walkthrough.md` with:
      - Verified feature behavior or bug fix confirmation.

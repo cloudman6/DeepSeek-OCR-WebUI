@@ -12,15 +12,30 @@
         :tab="view.label"
       >
         <div class="preview-content">
-          <div v-if="currentView === 'image'" class="image-preview">
-            <div v-if="fullImageUrl" class="image-wrapper">
-              <img :src="fullImageUrl" alt="Preview" class="preview-img" />
-            </div>
-            <n-empty v-else :description="currentPage?.status === 'rendering' ? 'Rendering...' : 'No image available'" />
+          <div
+            v-if="view.key === 'image'"
+            class="image-wrapper"
+          >
+            <img
+              v-if="fullImageUrl"
+              :src="fullImageUrl"
+              alt="Preview"
+              class="preview-img"
+            >
+            <n-empty
+              v-else
+              :description="currentPage?.status === 'rendering' ? 'Rendering...' : 'No image available'"
+            />
           </div>
-          <pre v-else-if="currentView === 'md'" class="markdown-preview">{{ currentPageContent?.md || 'No markdown content available' }}</pre>
-          <div v-else-if="currentView === 'html'" class="html-preview" v-html="currentPageContent?.html || '<p>No HTML content available</p>'"></div>
-          <n-empty v-else description="Select a page to preview" />
+          <pre
+            v-else-if="view.key === 'md'"
+            class="markdown-preview"
+          >{{ currentPageContent?.md || 'No markdown content available' }}</pre>
+          <div
+            v-else-if="view.key === 'html'"
+            class="html-preview"
+            v-html="currentPageContent?.html || '<p>No HTML content available</p>'"
+          />
         </div>
       </n-tab-pane>
     </n-tabs>
@@ -33,25 +48,11 @@ import { NTabs, NTabPane, NEmpty } from 'naive-ui'
 import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
 
-interface Page {
-  id: string
-  fileName: string
-  fileSize: number
-  fileType: string
-  origin: 'upload' | 'pdf_generated'
-  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
-  progress: number
-  imageData?: string
-  thumbnailData?: string
-  width?: number
-  height?: number
-  ocrText?: string
-  ocrConfidence?: number
-  outputs: any[]
-  logs: any[]
-  createdAt: Date
-  updatedAt: Date
-  processedAt?: Date
+import type { Page } from '@/stores/pages'
+
+interface Output {
+  format: string
+  content?: string
 }
 
 const props = defineProps<{
@@ -67,35 +68,69 @@ const views = [
   { key: 'html' as const, label: 'HTML' }
 ]
 
-const currentPageContent = computed(() => props.currentPage)
+const currentPageContent = computed(() => {
+  if (!props.currentPage) return { md: '', html: '' }
+  
+  const outputs = (props.currentPage.outputs || []) as Output[]
+  const md = outputs.find((o: Output) => o.format === 'markdown')?.content || ''
+  const html = outputs.find((o: Output) => o.format === 'html')?.content || ''
+  
+  return { md, html }
+})
 
 // Watch for page change or status change to load image
 watch(
   [() => props.currentPage?.id, () => props.currentPage?.status],
   async ([newPageId, newStatus], [oldPageId, oldStatus]) => {
-    const idChanged = newPageId !== oldPageId
-    const becameReady = newStatus === 'ready' && oldStatus !== 'ready'
-
-    if (!idChanged && !becameReady) return
-
-    if (idChanged && fullImageUrl.value) {
-      URL.revokeObjectURL(fullImageUrl.value)
-      fullImageUrl.value = ''
-    }
-
-    if (!newPageId || newStatus === 'pending_render' || newStatus === 'rendering') return
-
-    try {
-      const blob = await db.getPageImage(newPageId)
-      if (blob) {
-        fullImageUrl.value = URL.createObjectURL(blob)
-      }
-    } catch (error) {
-      uiLogger.error('Failed to load image for preview', error)
-    }
+    await handlePreviewPageChange(newPageId, newStatus, oldPageId, oldStatus)
   },
   { immediate: true }
 )
+
+/**
+ * Handle page or status change for preview
+ */
+async function handlePreviewPageChange(
+  newPageId: string | undefined,
+  newStatus: string | undefined,
+  oldPageId: string | undefined,
+  oldStatus: string | undefined
+) {
+  const idChanged = newPageId !== oldPageId
+  const becameReady = newStatus === 'ready' && oldStatus !== 'ready'
+
+  if (!idChanged && !becameReady) return
+
+  cleanupPreviewUrl(idChanged)
+
+  if (!newPageId || newStatus === 'pending_render' || newStatus === 'rendering') return
+
+  await loadPreviewBlob(newPageId)
+}
+
+/**
+ * Cleanup preview object URL
+ */
+function cleanupPreviewUrl(idChanged: boolean) {
+  if (idChanged && fullImageUrl.value) {
+    URL.revokeObjectURL(fullImageUrl.value)
+    fullImageUrl.value = ''
+  }
+}
+
+/**
+ * Load preview blob from DB
+ */
+async function loadPreviewBlob(pageId: string) {
+  try {
+    const blob = await db.getPageImage(pageId)
+    if (blob) {
+      fullImageUrl.value = URL.createObjectURL(blob)
+    }
+  } catch (error) {
+    uiLogger.error('Failed to load image for preview', error)
+  }
+}
 
 onUnmounted(() => {
   if (fullImageUrl.value) {
@@ -103,9 +138,7 @@ onUnmounted(() => {
   }
 })
 
-function switchView(view: 'image' | 'md' | 'html') {
-  currentView.value = view
-}
+
 </script>
 
 <style scoped>

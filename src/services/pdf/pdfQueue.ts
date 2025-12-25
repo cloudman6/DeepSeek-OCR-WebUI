@@ -6,7 +6,7 @@ import { enhancedPdfRenderer } from './enhancedPdfRenderer'
 import { queueLogger } from '@/utils/logger'
 
 // PDF source data cache to avoid memory overhead of per-page copies
-const pdfSourceCache = new Map<string, { data: ArrayBuffer; totalPages: number; processedCount: number }>()
+export const pdfSourceCache = new Map<string, { data: ArrayBuffer; totalPages: number; processedCount: number }>()
 
 // PDF page render task interface
 interface PDFRenderTask {
@@ -36,39 +36,7 @@ function getWorker(): Worker {
     })
 
     // Handle worker messages
-    workerInstance.addEventListener('message', (event) => {
-      const response = event.data
-
-      if (response.type === 'error') {
-        handleRenderError(response.payload.pageId, response.payload.error)
-      } else if (response.pageId) {
-        // Only process messages that have a pageId - others are internal/ready signals
-
-        // Check if we're still tracking this task
-        if (!renderingTasks.has(response.pageId)) {
-          queueLogger.warn(`[PDF Queue] Received response for unknown task: ${response.pageId}`)
-          return
-        }
-
-        if (!response.imageBlob) {
-          queueLogger.warn('[PDF Queue] Received worker response without imageBlob:', response)
-          return
-        }
-
-        // Worker returns Blob directly
-        handleRenderSuccess(
-          response.pageId,
-          response.imageBlob,
-          response.width,
-          response.height,
-          response.pageNumber,
-          response.fileSize
-        )
-      } else {
-        // Log internal signals only at debug level if needed, or ignore
-        // queueLogger.debug('[PDF Queue] Internal worker signal:', response)
-      }
-    })
+    workerInstance.addEventListener('message', handleWorkerMessage)
 
     // Handle worker errors
     workerInstance.addEventListener('error', (error) => {
@@ -83,13 +51,75 @@ function getWorker(): Worker {
   return workerInstance
 }
 
+/**
+ * Handle worker message
+ */
+function handleWorkerMessage(event: MessageEvent) {
+  const response = event.data
+
+  if (response.type === 'error') {
+    handleRenderError(response.payload.pageId, response.payload.error)
+    return
+  }
+
+  if (response.pageId) {
+    processWorkerSuccess(response)
+  }
+}
+
+/**
+ * Worker response message structure
+ */
+interface WorkerResponse {
+  type?: 'error' | 'success'
+  pageId: string
+  imageBlob?: Blob
+  width?: number
+  height?: number
+  pageNumber?: number
+  fileSize?: number
+  payload?: {
+    pageId: string
+    error: string
+  }
+}
+
+/**
+ * Process successful worker response
+ */
+function processWorkerSuccess(response: WorkerResponse) {
+  // Check if we're still tracking this task
+  if (!renderingTasks.has(response.pageId)) {
+    queueLogger.warn(`[PDF Queue] Received response for unknown task: ${response.pageId}`)
+    return
+  }
+
+  if (!response.imageBlob) {
+    queueLogger.warn('[PDF Queue] Received worker response without imageBlob:', response)
+    return
+  }
+
+  // Worker returns Blob directly
+  handleRenderSuccess(
+    response.pageId,
+    response.imageBlob,
+    response.width!,
+    response.height!,
+    response.pageNumber!,
+    response.fileSize!
+  )
+}
+
 
 
 
 /**
  * Generate thumbnail from Blob
  */
-async function generateThumbnailFromBlob(
+/**
+ * Generate thumbnail from Blob
+ */
+export async function generateThumbnailFromBlob(
   blob: Blob,
   maxSize: number = 200
 ): Promise<string> {
@@ -134,56 +164,15 @@ async function handleRenderSuccess(
   queueLogger.info(`[PDF Success] Render success for pageId: ${pageId}`)
 
   try {
-    const task = renderingTasks.get(pageId)
-    if (!task) {
-      queueLogger.error(`[PDF Error] No task found for pageId: ${pageId}`)
-      return
-    }
+    const task = renderingTasks.get(pageId)!
+
 
     // Get the page from database
     const page = await db.getPage(pageId)
     if (!page) {
       queueLogger.warn(`[PDF Success] Page ${pageId} no longer in database (deleted?). Skipping remaining success logic but proceeding with cleanup.`)
-      // Still need to perform cleanup below
     } else {
-      // Generate thumbnail from Blob
-      let thumbnailData: string
-      try {
-        thumbnailData = await generateThumbnailFromBlob(imageBlob, 200)
-      } catch (thumbError) {
-        queueLogger.warn(`[PDF Warning] Failed to generate thumbnail for ${pageId}:`, thumbError)
-        // If thumbnail fails, we don't have a good fallback here without Base64
-        // We'll leave it undefined, the UI should handle it
-        thumbnailData = ''
-      }
-
-      // Save full image Blob directly to separate table
-      await db.savePageImage(pageId, imageBlob)
-
-      // Update page metadata
-      const updatedPage: DBPage = {
-        ...page,
-        imageData: undefined,
-        thumbnailData,
-        width,
-        height,
-        fileSize,
-        status: 'ready',
-        progress: 100,
-        updatedAt: new Date(),
-        processedAt: new Date()
-      }
-
-      await db.savePage(updatedPage)
-
-      // Emit success event
-      pdfEvents.emit('pdf:page:done', {
-        pageId,
-        thumbnailData,
-        width,
-        height,
-        fileSize
-      })
+      await updatePageMetadata(page, imageBlob, width, height, fileSize)
     }
 
     // Update processed count and clean up cache if needed
@@ -264,6 +253,56 @@ async function handleRenderError(pageId: string, errorMessage: string): Promise<
   } catch (error) {
     queueLogger.error(`[PDF Error] Error handling render error for ${pageId}:`, error)
   }
+}
+
+/**
+ * Update page metadata and save to DB
+ */
+async function updatePageMetadata(
+  page: DBPage,
+  imageBlob: Blob,
+  width: number,
+  height: number,
+  fileSize: number
+): Promise<void> {
+  const pageId = page.id!
+  // Generate thumbnail from Blob
+  // Generate thumbnail from Blob
+  let thumbnailData: string
+  try {
+    thumbnailData = await generateThumbnailFromBlob(imageBlob, 200)
+  } catch (thumbError) {
+    queueLogger.warn(`[PDF Warning] Failed to generate thumbnail for ${pageId}:`, thumbError)
+    thumbnailData = ''
+  }
+
+  // Save full image Blob directly to separate table
+  await db.savePageImage(pageId, imageBlob)
+
+  // Update page metadata
+  const updatedPage: DBPage = {
+    ...page,
+    imageData: undefined,
+    thumbnailData,
+    width,
+    height,
+    fileSize,
+    status: 'ready',
+    progress: 100,
+    updatedAt: new Date(),
+    processedAt: new Date()
+  }
+
+  await db.savePage(updatedPage)
+
+  // Emit success event
+  pdfEvents.emit('pdf:page:done', {
+    pageId,
+    thumbnailData,
+    width,
+    height,
+    fileSize
+  })
 }
 
 /**
@@ -452,7 +491,7 @@ export async function queuePDFPages(
 ): Promise<void> {
   try {
     // Generate a source ID for the cache (prefer fileId if available)
-    const sourceId = fileId || `src_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+    const sourceId = fileId || `src_${crypto.randomUUID().split('-')[0]}`
 
     // Cache the PDF data once for all pages of this file
     pdfSourceCache.set(sourceId, {
@@ -462,35 +501,8 @@ export async function queuePDFPages(
     })
 
     // Create pages for each PDF page
-    const pages: DBPage[] = []
     const startOrder = await db.getNextOrder()
-
-    for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
-      const baseName = file.name.replace(/\.pdf$/i, '')
-      const pageFileName = `${baseName}_${pageNum}.png`
-
-      pages.push({
-        id: generatePageId(),
-        fileName: pageFileName,
-        fileSize: 0,
-        fileType: 'image/png',
-        origin: 'pdf_generated',
-        status: 'pending_render',
-        progress: 0,
-        order: startOrder + pageNum - 1,
-        fileId,
-        pageNumber: pageNum,
-        outputs: [],
-        logs: [{
-          id: Date.now().toString(),
-          timestamp: new Date(),
-          level: 'info',
-          message: `Page ${pageNum} of ${file.name} ready for rendering`
-        }],
-        createdAt: new Date(),
-        updatedAt: new Date()
-      })
-    }
+    const pages = createPDFPages(file, pageCount, fileId, startOrder)
 
     // Save pages to database and queue for rendering
     for (let i = 0; i < pages.length; i++) {
@@ -527,6 +539,41 @@ export async function queuePDFPages(
 }
 
 /**
+ * Create DBPage objects for PDF pages
+ */
+function createPDFPages(file: File, pageCount: number, fileId: string | undefined, startOrder: number): DBPage[] {
+  const pages: DBPage[] = []
+  const baseName = file.name.replace(/\.pdf$/i, '')
+
+  for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
+    const pageFileName = `${baseName}_${pageNum}.png`
+
+    pages.push({
+      id: generatePageId(),
+      fileName: pageFileName,
+      fileSize: 0,
+      fileType: 'image/png',
+      origin: 'pdf_generated',
+      status: 'pending_render',
+      progress: 0,
+      order: startOrder + pageNum - 1,
+      fileId,
+      pageNumber: pageNum,
+      outputs: [],
+      logs: [{
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        level: 'info',
+        message: `Page ${pageNum} of ${file.name} ready for rendering`
+      }],
+      createdAt: new Date(),
+      updatedAt: new Date()
+    })
+  }
+  return pages
+}
+
+/**
  * Resume processing of interrupted PDF pages
  */
 export async function resumePDFProcessing(): Promise<void> {
@@ -547,125 +594,148 @@ export async function resumePDFProcessing(): Promise<void> {
     queueLogger.info(`[Resume] Found ${incompletePages.length} incomplete PDF pages to resume`)
 
     // 2. Group pages by fileId
-    const pagesByFileId = new Map<string, DBPage[]>()
-    // For legacy pages without fileId, group by filename (will fail but handled gracefully)
-    const legacyPages: DBPage[] = []
-
-    for (const page of incompletePages) {
-      if (page.fileId) {
-        if (!pagesByFileId.has(page.fileId)) {
-          pagesByFileId.set(page.fileId, [])
-        }
-        pagesByFileId.get(page.fileId)!.push(page)
-      } else {
-        legacyPages.push(page)
-      }
-    }
+    const { pagesByFileId, legacyPages } = groupPagesByFileId(incompletePages)
 
     // Handle legacy pages (mark as error or warn)
     if (legacyPages.length > 0) {
-      queueLogger.warn(`[Resume] Found ${legacyPages.length} legacy pages without fileId link`)
-      // Group by filename just to log meaningful warnings
-      const byName = new Map<string, DBPage[]>()
-      legacyPages.forEach(p => {
-        const name = p.fileName.split('_')[0] + '.pdf' // Crude guess
-        if (!byName.has(name)) byName.set(name, [])
-        byName.get(name)!.push(p)
-      })
-
-      for (const [name, pages] of byName) {
-        const firstPage = pages[0]
-        if (firstPage && firstPage.id) {
-          pdfEvents.emit('pdf:log', {
-            pageId: firstPage.id,
-            message: `Legacy PDF "${name}" pages cannot be auto-resumed. Please re-upload.`,
-            level: 'warning'
-          })
-        }
-        // Update status to error to stop "stuck" state
-        for (const page of pages) {
-          await db.savePage({ ...page, status: 'error' })
-        }
-      }
+      await handleLegacyPages(legacyPages)
     }
 
     // 3. Process each file group
     for (const [fileId, pages] of pagesByFileId) {
-      try {
-        // Load file from DB
-        const dbFile = await db.getFile(fileId)
-
-        if (!dbFile) {
-          queueLogger.error(`[Resume] Source file not found for fileId: ${fileId}`)
-          // Mark all pages as error
-          for (const page of pages) {
-            pdfEvents.emit('pdf:log', {
-              pageId: page.id!,
-              message: `Source PDF file missing. Cannot resume processing.`,
-              level: 'error'
-            })
-            await db.savePage({ ...page, status: 'error' })
-          }
-          continue
-        }
-
-        queueLogger.info(`[Resume] Loaded source file "${dbFile.name}" (${dbFile.size} bytes)`)
-
-        // Use fileId as sourceId
-        const sourceId = fileId
-
-        // Convert Blob to ArrayBuffer
-        const pdfData = await dbFile.content.arrayBuffer()
-
-        // Populate cache for the resumed file
-        // We need to know the total pages to properly clear the cache later
-        // For simplicity during resume, we count the pages we are about to re-queue
-        pdfSourceCache.set(sourceId, {
-          data: pdfData,
-          totalPages: pages.length,
-          processedCount: 0
-        })
-
-        // Re-queue pages
-        for (const page of pages) {
-          // Determine page number
-          let pageNumber = page.pageNumber
-          if (!pageNumber) {
-            // Fallback: extract from filename (e.g. "foo_1.png")
-            const match = page.fileName.match(/_(\d+)\.png$/)
-            if (match && match[1]) pageNumber = parseInt(match[1])
-          }
-
-          if (!pageNumber) {
-            queueLogger.error(`[Resume] Could not determine page number for page ${page.id}`)
-            await db.savePage({ ...page, status: 'error' })
-            continue
-          }
-
-          // Reset status to pending if it was rendering
-          if (page.status === 'rendering') {
-            await db.savePage({ ...page, status: 'pending_render', progress: 0 })
-          }
-
-          // Queue render task with correctly populated sourceId
-          queuePDFPageRender({
-            pageId: page.id!,
-            pageNumber,
-            fileName: dbFile.name,
-            sourceId
-          })
-        }
-
-        queueLogger.info(`[Resume] Successfully re-queued ${pages.length} pages for "${dbFile.name}"`)
-
-      } catch (error) {
-        queueLogger.error(`[Resume] Failed to resume file ${fileId}:`, error)
-      }
+      await resumeFileGroup(fileId, pages)
     }
-
   } catch (error) {
     queueLogger.error('Error resuming PDF processing:', error)
   }
+}
+
+/**
+ * Group incomplete pages by their fileId
+ */
+function groupPagesByFileId(pages: DBPage[]): { pagesByFileId: Map<string, DBPage[]>, legacyPages: DBPage[] } {
+  const pagesByFileId = new Map<string, DBPage[]>()
+  const legacyPages: DBPage[] = []
+
+  for (const page of pages) {
+    if (page.fileId) {
+      if (!pagesByFileId.has(page.fileId)) {
+        pagesByFileId.set(page.fileId, [])
+      }
+      pagesByFileId.get(page.fileId)!.push(page)
+    } else {
+      legacyPages.push(page)
+    }
+  }
+
+  return { pagesByFileId, legacyPages }
+}
+
+/**
+ * Handle legacy pages without fileId (mark as error to prevent stuck state)
+ */
+async function handleLegacyPages(legacyPages: DBPage[]): Promise<void> {
+  queueLogger.warn(`[Resume] Found ${legacyPages.length} legacy pages without fileId link`)
+  // Group by filename just to log meaningful warnings
+  const byName = new Map<string, DBPage[]>()
+  legacyPages.forEach(p => {
+    const name = p.fileName.split('_')[0] + '.pdf' // Crude guess
+    if (!byName.has(name)) byName.set(name, [])
+    byName.get(name)!.push(p)
+  })
+
+  for (const [name, pages] of byName) {
+    const firstPage = pages[0]
+    if (firstPage && firstPage.id) {
+      pdfEvents.emit('pdf:log', {
+        pageId: firstPage.id,
+        message: `Legacy PDF "${name}" pages cannot be auto-resumed. Please re-upload.`,
+        level: 'warning'
+      })
+    }
+    // Update status to error to stop "stuck" state
+    for (const page of pages) {
+      await db.savePage({ ...page, status: 'error' })
+    }
+  }
+}
+
+/**
+ * Resume processing for a group of pages belonging to the same source file
+ */
+async function resumeFileGroup(fileId: string, pages: DBPage[]): Promise<void> {
+  try {
+    // Load file from DB
+    const dbFile = await db.getFile(fileId)
+
+    if (!dbFile) {
+      queueLogger.error(`[Resume] Source file not found for fileId: ${fileId}`)
+      // Mark all pages as error
+      for (const page of pages) {
+        pdfEvents.emit('pdf:log', {
+          pageId: page.id!,
+          message: `Source PDF file missing. Cannot resume processing.`,
+          level: 'error'
+        })
+        await db.savePage({ ...page, status: 'error' })
+      }
+      return
+    }
+
+    queueLogger.info(`[Resume] Loaded source file "${dbFile.name}" (${dbFile.size} bytes)`)
+
+    // Convert Blob to ArrayBuffer
+    const pdfData = await dbFile.content.arrayBuffer()
+
+    // Populate cache for the resumed file
+    pdfSourceCache.set(fileId, {
+      data: pdfData,
+      totalPages: pages.length,
+      processedCount: 0
+    })
+
+    // Re-queue pages
+    for (const page of pages) {
+      await resumeSinglePage(page, dbFile.name, fileId)
+    }
+
+    queueLogger.info(`[Resume] Successfully re-queued ${pages.length} pages for "${dbFile.name}"`)
+
+  } catch (error) {
+    queueLogger.error(`[Resume] Failed to resume file ${fileId}:`, error)
+  }
+}
+
+/**
+ * Resume a single page's rendering task
+ */
+async function resumeSinglePage(page: DBPage, fileName: string, sourceId: string): Promise<void> {
+  // Determine page number
+  let pageNumber = page.pageNumber
+  if (!pageNumber) {
+    // Fallback: extract from filename (e.g. "foo_1.png")
+    const match = page.fileName.match(/_(\d+)\.png$/)
+    if (match && match[1]) pageNumber = parseInt(match[1])
+  }
+
+  if (!pageNumber) {
+    queueLogger.error(`[Resume] Could not determine page number for page ${page.id}`)
+    await db.savePage({ ...page, status: 'error' })
+    return
+  }
+
+  // Reset status to pending if it was rendering
+  if (page.status === 'rendering') {
+    await db.savePage({ ...page, status: 'pending_render', progress: 0 })
+  }
+
+  // Queue render task with correctly populated sourceId
+  queuePDFPageRender({
+    pageId: page.id!,
+    pageNumber,
+    fileName: fileName,
+    sourceId
+  })
 }
 
 /**
