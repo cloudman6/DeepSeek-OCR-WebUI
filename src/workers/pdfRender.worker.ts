@@ -38,9 +38,30 @@ type WorkerResponse = PDFRenderResult | { type: 'error'; payload: PDFErrorMessag
 
 // Polyfill global document for PDF.js internals that expect it even in workers
 if (typeof self !== 'undefined' && !self.document) {
-  // @ts-expect-error: Worker polyfill - PDF.js may check for document.createElement
-  self.document = {
-    createElement: () => new OffscreenCanvas(1, 1)
+  const mockElement = () => ({
+    style: {},
+    remove: () => { },
+    appendChild: (child: unknown) => child,
+    removeChild: (child: unknown) => child,
+    setAttribute: () => { },
+    getAttribute: () => null,
+    textContent: '',
+  });
+
+  (self as unknown as { document: unknown }).document = {
+    createElement: (tagName: string) => {
+      if (tagName === 'canvas') {
+        return new OffscreenCanvas(1, 1);
+      }
+      return mockElement();
+    },
+    documentElement: mockElement(),
+    head: mockElement(),
+    body: mockElement(),
+    getElementsByTagName: () => [],
+    createEvent: () => ({
+      initEvent: () => { },
+    }),
   };
 }
 
@@ -124,9 +145,9 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
     cMapPacked: CMAP_PACKED,
     useSystemFonts: true,
     fontExtraProperties: true,
-    canvasFactory: new OffscreenCanvasFactory(),
+    // @ts-expect-error - Custom CanvasFactory
+    canvasFactory: new OffscreenCanvasFactory() as unknown,
     verbosity: 0
-    // @ts-expect-error: PDF.js types may not match exactly
   })
 
   const pdfDocument = await loadingTask.promise
@@ -142,17 +163,17 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
     const renderContext = createRenderContext(context, viewport)
 
     try {
-      // @ts-expect-error: PDF.js RenderParameters has complex canvas context types
-      await page.render(renderContext).promise
+      // @ts-expect-error - Custom parameters
+      await (page.render(renderContext as unknown).promise)
     } catch (renderError) {
       workerLogger.warn('Enhanced rendering failed, falling back to standard rendering:', renderError)
-      // @ts-expect-error: Fallback rendering with minimal required fields
-      await page.render({
-        canvasContext: context,
+      await (page.render({
+        canvasContext: context as unknown as CanvasRenderingContext2D,
         viewport: viewport,
         intent: 'print',
-        canvasFactory: new OffscreenCanvasFactory()
-      }).promise
+        // @ts-expect-error - Custom CanvasFactory
+        canvasFactory: new OffscreenCanvasFactory() as unknown
+      } as unknown).promise)
     }
 
     const mimeType = imageFormat === 'jpeg' ? 'image/jpeg' : 'image/png'
@@ -195,13 +216,12 @@ function configureRenderContext(canvas: OffscreenCanvas, scale: number, fallback
     alpha: false,
     desynchronized: true,
     willReadFrequently: false
-  })!
+  }) as unknown as OffscreenCanvasRenderingContext2D
 
   context.imageSmoothingEnabled = true
   context.imageSmoothingQuality = 'high'
 
   if (fallbackFontFamily) {
-    // @ts-expect-error: OffscreenCanvas context font handling
     context.font = `${16 * scale}px ${fallbackFontFamily}`
   }
   return context

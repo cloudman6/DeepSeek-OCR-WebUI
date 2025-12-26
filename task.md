@@ -5,10 +5,11 @@ Your task is NOT to implement this yet, but to fully understand and prepare.
 Here is exactly what I need implemented:
 
 ```
-Support PDF files.
-1. The "Add file" button supports adding PDF files, allowing multiple selection. For PDF files, individual file size should not exceed 100MB. For image files, individual file size should not exceed 10MB.
-2. Convert each page of the PDF into an image using pdfjs-dist. Each image should be named <PDF filename>_<page number>.png, e.g., test.pdf_1.png, test.pdf_2.png, etc.
-3. Read pdf-to-image-architecture.md to understand the architecture and specific tasks for converting PDF to images.
+tests/e2e/specs/file-processing.spec.ts 中增加如下测试用例：
+- 多文件上传: 一次性选择多个 PDF / 图片并验证列表生成顺序。
+- 重复上传: 验证上传同名或相同内容文件时的系统表现。
+
+请使用 tests/e2e/fixtures 中的 pdf/图片测试文件
 ```
 
 ---
