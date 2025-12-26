@@ -82,8 +82,12 @@ description: E2E test development workflow using Playwright. Use this for creati
 ### 红色阶段：先写失败的 E2E 测试
 
 1. **创建或更新测试文件**
-   - 使用 Playwright 的 `test` 和 `expect` API
-   - 描述用户流程的每个步骤
+   - 沿用 Playwright 的 `test` (测试声明) 和 `expect` (断言) API 风格进行编写。
+   - **必须**使用从自定义 fixture (`base-test.ts`) 导出的版本，以确保“质量门禁”自动开启：
+     ```typescript
+     import { test, expect } from '../fixtures/base-test';
+     ```
+   - 描述用户流程的每个步骤。
 
 2. **使用聚焦模式开发**
    ```bash
@@ -172,6 +176,12 @@ description: E2E test development workflow using Playwright. Use this for creati
 
 ## E2E 测试最佳实践
 
+### 全局质量门禁 (Console Monitoring)
+本项目强制要求所有 E2E 测试保持浏览器控制台“清洁”。任何未处理的 `Error` 或 `Warning` 都会导致测试失败。
+- **实现方式**：自动通过 `fixtures/base-test.ts` 实现。
+- **标准**：测试结束时，控制台日志累积量必须为 0。
+- **排除**：如果某些第三方警告无法修复且不影响功能，可在 `base-test.ts` 中配置白名单过滤。
+
 ### 选择器策略（优先级从高到低）
 | 优先级 | 选择器类型 | 示例 |
 |--------|-----------|------|
@@ -202,10 +212,11 @@ const fileChooser = await fileChooserPromise;
 await fileChooser.setFiles('path/to/test-file.pdf');
 ```
 
-### 测试隔离
-- 每个测试应独立运行，不依赖其他测试的状态
-- 使用 `beforeEach` 清理或重置状态
-- 考虑使用 `test.describe.serial` 处理有序依赖的测试组
+### 测试隔离与环境标准
+- 每个测试应独立运行，不依赖其他测试的状态。
+- 使用 `beforeEach` 清理或重置状态。
+- **必须使用 `../fixtures/base-test`** 替代直接从 `@playwright/test` 导入。
+- 对于具有严格先后顺序依赖的测试组，可以使用 `test.describe.serial`。
 
 ### 调试技巧
 ```bash

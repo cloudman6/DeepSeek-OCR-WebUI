@@ -18,7 +18,7 @@ interface PDFRenderTask {
 
 // Create singleton queue instance
 export const pdfRenderQueue = new PQueue({
-  concurrency: 2, // Process 2 pages at a time to balance performance and responsiveness
+  concurrency: 1, // Reduced to 1 to avoid IndexedDB lock/concurrency issues in Webkit
   autoStart: true
 })
 
@@ -684,8 +684,10 @@ async function resumeFileGroup(fileId: string, pages: DBPage[]): Promise<void> {
 
     queueLogger.info(`[Resume] Loaded source file "${dbFile.name}" (${dbFile.size} bytes)`)
 
-    // Convert Blob to ArrayBuffer
-    const pdfData = await dbFile.content.arrayBuffer()
+    // Convert Blob/ArrayBuffer to ArrayBuffer safely
+    const pdfData = dbFile.content instanceof ArrayBuffer
+      ? dbFile.content
+      : await dbFile.content.arrayBuffer()
 
     // Populate cache for the resumed file
     pdfSourceCache.set(fileId, {

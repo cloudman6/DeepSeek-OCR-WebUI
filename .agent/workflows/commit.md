@@ -98,6 +98,7 @@ description: Pipeline for validating quality gates before committing and pushing
 1. **生成 Commit信息**
    - 遵循 **Conventional Commits** 规范。
    - 格式：`<type>(<scope>): <subject>`
+   - **重要：Commit Message 必须使用英文。**
    - 常用类型：
      - `feat`: 新功能
      - `fix`: 修复 Bug
@@ -106,7 +107,7 @@ description: Pipeline for validating quality gates before committing and pushing
      - `refactor`: 重构
      - `test`: 增加测试
      - `chore`: 构建流程、辅助工具变动
-   - 示例：`feat(ocr): 添加百度 OCR API 支持`
+   - 示例：`feat(ocr): add support for Baidu OCR API`
 
 ---
 

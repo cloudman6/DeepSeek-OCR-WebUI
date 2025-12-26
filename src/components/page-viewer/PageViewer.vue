@@ -264,22 +264,34 @@ function cleanupPreviousUrl(idChanged: boolean) {
 }
 
 /**
- * Load image blob from DB
+ * Load image blob from DB with a retry for stability (esp. for Webkit)
  */
-async function loadPageBlob(pageId: string) {
+async function loadPageBlob(pageId: string, retry = true) {
   imageLoading.value = true
   try {
     const blob = await db.getPageImage(pageId)
     if (blob) {
       fullImageUrl.value = URL.createObjectURL(blob)
+      imageError.value = ''
+    } else if (retry) {
+      // Small delay and retry once - sometimes IDB is not ready immediately in Safari
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await loadPageBlob(pageId, false)
     } else {
       imageError.value = 'Full image not found in storage'
     }
   } catch (error) {
     uiLogger.error('Failed to load full image', error)
-    imageError.value = 'Failed to load image from storage'
+    if (retry) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      await loadPageBlob(pageId, false)
+    } else {
+      imageError.value = 'Failed to load image from storage'
+    }
   } finally {
-    imageLoading.value = false
+    if (!retry) {
+      imageLoading.value = false
+    }
   }
 }
 

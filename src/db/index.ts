@@ -1,10 +1,11 @@
 import Dexie, { type Table } from 'dexie'
 import type { PageProcessingLog, PageOutput } from '@/stores/pages'
+import { isWebkit } from '@/utils/browser'
 
 export interface DBFile {
   id?: string
   name: string
-  content: Blob
+  content: Blob | ArrayBuffer
   size: number
   type: string
   createdAt: Date
@@ -47,7 +48,7 @@ export interface DBProcessingQueue {
 
 export interface PageImage {
   pageId: string
-  blob: Blob
+  blob: Blob | ArrayBuffer
 }
 
 export class Scan2DocDB extends Dexie {
@@ -64,7 +65,7 @@ export class Scan2DocDB extends Dexie {
       pages: 'id, fileId, pageNumber, fileName, fileSize, fileType, origin, status, progress, order, createdAt, updatedAt, processedAt',
       files: '++id, name, size, createdAt',
       processingQueue: '++id, pageId, priority, addedAt',
-      pageImages: 'pageId' // pageId is primary key
+      pageImages: 'pageId' // pageId is primary key, no other indexes to minimize overhead
     }).upgrade(async tx => {
       // Migration to version 4: Move imageData from pages table to pageImages table
       const pagesTable = tx.table('pages')
@@ -102,6 +103,15 @@ export class Scan2DocDB extends Dexie {
       delete cleanFile.id
     }
 
+    // Webkit workaround for Large Blobs
+    if (isWebkit() && cleanFile.content instanceof Blob) {
+      try {
+        cleanFile.content = await cleanFile.content.arrayBuffer()
+      } catch (e) {
+        console.error('[DB-ERROR] Failed to convert file content to arrayBuffer', e)
+      }
+    }
+
     if (cleanFile.id) {
       await this.files.put(cleanFile)
       return cleanFile.id
@@ -112,13 +122,21 @@ export class Scan2DocDB extends Dexie {
   }
 
   async getFile(id: string): Promise<DBFile | undefined> {
-    const fileByString = await this.files.get(id)
-    if (fileByString) return fileByString
-
-    if (/^\d+$/.test(id)) {
-      return await this.files.get(Number(id))
+    const file = await this.files.get(id)
+    if (!file && /^\d+$/.test(id)) {
+      const numericFile = await this.files.get(Number(id))
+      if (numericFile) {
+        return this.ensureBlobContent(numericFile)
+      }
     }
-    return undefined
+    return file ? this.ensureBlobContent(file) : undefined
+  }
+
+  private ensureBlobContent(file: DBFile): DBFile {
+    if (file.content instanceof ArrayBuffer) {
+      file.content = new Blob([file.content], { type: file.type })
+    }
+    return file
   }
 
   async deleteFile(id: string): Promise<void> {
@@ -130,12 +148,39 @@ export class Scan2DocDB extends Dexie {
 
   // Page Image methods (Blob storage)
   async savePageImage(pageId: string, blob: Blob): Promise<void> {
-    await this.pageImages.put({ pageId, blob })
+    try {
+      let dataToSave: Blob | ArrayBuffer = blob
+
+      // Webkit/Safari has a known issue storing Blobs that came from workers or have been transferred.
+      // Error: "Error preparing Blob/File data to be stored in object store"
+      // Converting to ArrayBuffer is the most reliable workaround.
+      if (isWebkit()) {
+        dataToSave = await blob.arrayBuffer()
+      }
+
+      await this.transaction('rw', this.pageImages, async () => {
+        await this.pageImages.put({ pageId, blob: dataToSave })
+      })
+    } catch (error) {
+      console.error(`[DB-ERROR] Failed to save image for page ${pageId}:`, error)
+      throw error
+    }
   }
 
   async getPageImage(pageId: string): Promise<Blob | undefined> {
-    const record = await this.pageImages.get(pageId)
-    return record?.blob
+    try {
+      const record = await this.pageImages.get(pageId)
+      if (!record) return undefined
+
+      // If we stored it as ArrayBuffer (Webkit workaround), convert back to Blob
+      if (record.blob instanceof ArrayBuffer) {
+        return new Blob([record.blob], { type: 'image/png' })
+      }
+      return record.blob
+    } catch (error) {
+      console.error(`[DB-ERROR] Failed to get image for page ${pageId}:`, error)
+      return undefined
+    }
   }
 
   // Page methods
@@ -274,5 +319,8 @@ export const db = new Scan2DocDB()
  * Generate a unique page ID
  */
 export function generatePageId(): string {
-  return `page_${Date.now()}_${crypto.randomUUID().split('-')[0]}`
+  // Use more entropy to avoid collisions in high-concurrency environments like Webkit
+  // eslint-disable-next-line sonarjs/pseudo-random
+  const randomPart = Math.random().toString(36).substring(2, 9)
+  return `page_${Date.now()}_${randomPart}_${crypto.randomUUID().split('-')[0]}`
 }

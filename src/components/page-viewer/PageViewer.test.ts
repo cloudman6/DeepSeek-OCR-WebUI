@@ -69,7 +69,7 @@ globalThis.URL.createObjectURL = vi.fn(() => mockObjectUrl)
 globalThis.URL.revokeObjectURL = vi.fn()
 
 describe('PageViewer.vue', () => {
-  let mockPage: Partial<import("@/stores/pages").Page>
+  let mockPage: import("@/stores/pages").Page
 
   beforeEach(() => {
     mockPage = {
@@ -83,7 +83,8 @@ describe('PageViewer.vue', () => {
       createdAt: new Date(),
       updatedAt: new Date(),
       outputs: [],
-      logs: []
+      logs: [],
+      order: 0
     }
     vi.clearAllMocks()
     vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['mock-image'], { type: 'image/png' }))
@@ -125,24 +126,24 @@ describe('PageViewer.vue', () => {
     })
 
     // Initial zoom is 1
-    expect((wrapper.vm as unknown).zoomLevel).toBe(1)
+    expect((wrapper.vm as any).zoomLevel).toBe(1)
 
     // Zoom in
     const buttons = wrapper.findAll('button')
     const zoomInBtn = buttons.find(b => b.text() === '+')
     await zoomInBtn?.trigger('click')
-    expect((wrapper.vm as unknown).zoomLevel).toBe(1.25)
+    expect((wrapper.vm as any).zoomLevel).toBe(1.25)
 
     // Zoom out
     const zoomOutBtn = buttons.find(b => b.text() === '−')
     await zoomOutBtn?.trigger('click')
-    expect((wrapper.vm as unknown).zoomLevel).toBe(1.0)
+    expect((wrapper.vm as any).zoomLevel).toBe(1.0)
 
     // Fit to screen
     const fitBtn = buttons.find(b => b.text() === 'Fit')
     await zoomInBtn?.trigger('click') // zoom to 1.25 again
     await fitBtn?.trigger('click')
-    expect((wrapper.vm as unknown).zoomLevel).toBe(1)
+    expect((wrapper.vm as any).zoomLevel).toBe(1)
   })
 
   it('limits zoom level between 0.25 and 3', async () => {
@@ -155,12 +156,12 @@ describe('PageViewer.vue', () => {
 
     // Test upper limit
     for (let i = 0; i < 10; i++) await zoomInBtn?.trigger('click')
-    expect((wrapper.vm as unknown).zoomLevel).toBe(3)
+    expect((wrapper.vm as any).zoomLevel).toBe(3)
     expect(zoomInBtn?.attributes('disabled')).toBeDefined()
 
     // Test lower limit
     for (let i = 0; i < 15; i++) await zoomOutBtn?.trigger('click')
-    expect((wrapper.vm as unknown).zoomLevel).toBe(0.25)
+    expect((wrapper.vm as any).zoomLevel).toBe(0.25)
     expect(zoomOutBtn?.attributes('disabled')).toBeDefined()
   })
 
@@ -171,11 +172,15 @@ describe('PageViewer.vue', () => {
       props: { currentPage: mockPage }
     })
 
+    // Should call getPageImage (at least once, maybe twice due to retry)
     await vi.waitFor(() => {
       if (vi.mocked(db.getPageImage).mock.calls.length === 0) throw new Error('not called')
-    })
+      // If it fails, wait long enough for the retry to finish (100ms delay in code)
+      if (wrapper.find('.error-overlay').exists()) return
+      throw new Error('error overlay not shown')
+    }, { timeout: 1000 })
 
-    expect(wrapper.find('.error-overlay').exists()).toBe(true) // Should show error overlay when image not found
+    expect(wrapper.find('.error-overlay').exists()).toBe(true)
     expect(db.getPageImage).toHaveBeenCalled()
   })
 
@@ -185,7 +190,7 @@ describe('PageViewer.vue', () => {
 
     statuses.forEach((status, index) => {
       const wrapper = mount(PageViewer, {
-        props: { currentPage: { ...mockPage, status } }
+        props: { currentPage: { ...mockPage, status: status as any } }
       })
       expect(wrapper.find('.viewer-toolbar').text()).toContain(`Status: ${expectedTexts[index]}`)
     })
@@ -214,10 +219,10 @@ describe('PageViewer.vue', () => {
     })
 
     await vi.waitFor(() => {
-      if ((wrapper.vm as unknown).fullImageUrl === '') throw new Error('not loaded')
+      if ((wrapper.vm as any).fullImageUrl === '') throw new Error('not loaded')
     })
 
-    const oldUrl = (wrapper.vm as unknown).fullImageUrl
+    const oldUrl = (wrapper.vm as any).fullImageUrl
 
     // Change page
     await wrapper.setProps({ currentPage: { ...mockPage, id: 'page-2' } })
@@ -263,7 +268,7 @@ describe('PageViewer.vue', () => {
   })
 
   it('disables OCR button when status is not ready', async () => {
-    const processingPage = { ...mockPage, status: 'recognizing' }
+    const processingPage = { ...mockPage, status: 'recognizing' as const }
     const wrapper = mount(PageViewer, {
       props: { currentPage: processingPage }
     })
