@@ -9,28 +9,14 @@
       class="app-header"
       bordered
     >
-      <n-space
-        align="center"
-        size="medium"
-      >
+      <div style="display: flex; align-items: center; gap: 12px;">
         <n-button @click="handleFileAdd">
           Add File
         </n-button>
         <n-text strong>
-          {{ currentFileName }}
+          {{ pageCountText }}
         </n-text>
-        <n-text type="success">
-          ✔ Saved locally
-        </n-text>
-      </n-space>
-      <n-space
-        align="center"
-        size="medium"
-      >
-        <n-button type="primary">
-          Export Markdown
-        </n-button>
-      </n-space>
+      </div>
     </n-layout-header>
 
     <!-- Main Content -->
@@ -86,12 +72,17 @@ import { uiLogger } from '@/utils/logger'
 import PageList from './components/page-list/PageList.vue'
 import Preview from './components/preview/Preview.vue'
 import PageViewer from './components/page-viewer/PageViewer.vue'
-import { NLayout, NLayoutHeader, NLayoutSider, NLayoutContent, NSpace, NButton, NText, createDiscreteApi } from 'naive-ui'
+import { NLayout, NLayoutHeader, NLayoutSider, NLayoutContent, NButton, NText, createDiscreteApi } from 'naive-ui'
 
 const pagesStore = usePagesStore()
 const { message } = createDiscreteApi(['message'])
 
-const currentFileName = ref('No file added')
+
+const pageCountText = computed(() => {
+  const count = pagesStore.pages.length
+  return `${count} ${count > 1 ? 'pages' : 'page'}`
+})
+
 const selectedPageId = ref<string | null>(null)
 const currentPage = computed(() => 
   pagesStore.pages.find(p => p.id === selectedPageId.value) || null
@@ -315,10 +306,6 @@ async function handleFileAdd() {
       // Update current file name to show the first added file
       const firstPage = result.pages[0]
       if (firstPage) {
-        currentFileName.value = result.pages.length === 1
-          ? firstPage.fileName
-          : `${result.pages.length} files added`
-
         // Select the first added page
         handlePageSelected(firstPage)
       }
@@ -348,9 +335,6 @@ async function handleDrop(event: DragEvent) {
     if (result.success && result.pages.length > 0) {
       const firstPage = result.pages[0]
       if (firstPage) {
-        currentFileName.value = result.pages.length === 1
-          ? firstPage.fileName
-          : `${result.pages.length} files added`
         handlePageSelected(firstPage)
       }
     }
@@ -376,9 +360,6 @@ onMounted(async () => {
     const firstPage = pagesStore.pages[0]
     if (firstPage) {
       selectedPageId.value = firstPage.id
-      currentFileName.value = pagesStore.pages.length === 1
-        ? firstPage.fileName
-        : `${pagesStore.pages.length} files`
     }
   }
 

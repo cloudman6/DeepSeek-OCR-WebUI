@@ -12,7 +12,7 @@ test('Smoke Verification', async ({ page }) => {
 
     // Verify core business elements (Strict semantic matching)
     await expect(page.getByRole('button', { name: /add file/i })).toBeVisible();
-    await expect(page.getByText(/no file added/i)).toBeVisible();
+    await expect(page.getByText(/0 page/i)).toBeVisible();
 
     // Verify core three-column layout (Robust positioning)
     await expect(page.locator('.page-list-container').first()).toBeVisible();

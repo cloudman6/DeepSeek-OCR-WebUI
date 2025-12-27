@@ -6,14 +6,15 @@ Here is exactly what I need implemented:
 
 ```
 增加如下测试用例：
-准备工作：添加包含各种类型的多个文件，请使用 tests/e2e/fixtures 中的 pdf/图片测试文件，pdf用 sample3.pdf,此文件页数较多，便于测试
+准备工作：添加包含各种类型的多个文件，请使用 tests/e2e/fixtures 中的pdf/图片测试文件
 
-- 全部页面ready后拖拽改变顺序：当所有文件都加载完成，验证能通过点击缩图，拖拽改变顺序。刷新页面，确认顺序依然为拖拽后的顺序。
-- 部分页面ready后拖拽改变顺序：当部分文件加载完成，验证能通过点击ready的文件的缩图，拖拽改变顺序。刷新页面，确认顺序依然为拖拽后的顺序。
-- 部分页面ready后拖拽改变顺序：当部分文件加载完成，验证能通过点击非ready的文件的缩图，拖拽改变顺序。刷新页面，确认顺序依然为拖拽后的顺序。
+验证page-list 的UI交互功能
+1.page-item默认不显示删除按钮。只有当鼠标移某个page-item上，此page-item的删除按钮才显示，当鼠标移到删除按钮，按钮变红，移开恢复原来的颜色。鼠标移出改page-item，删除按钮消失
+2.选中page-list 的 toolbar默认不显示删除按钮。当选中toolbar的checkbox，所有page-item的checkbox都被选中, 并且显示出toolbar的删除按钮。当鼠标移到删除按钮，按钮变红，移开恢复原来的颜色。反选toolbar checkbox, 所有page-item的checkbox都反选，并且toolbar的删除按钮消失
+3.选中某个page-item的checkbox, page-list toolbar上显示出删除按钮。反选checkbox，删除按钮消失
+4.可以通过拖拽移动page-list中的page-item
 
 
-请使用 tests/e2e/fixtures 中的 pdf/图片测试文件
 ```
 
 ---
