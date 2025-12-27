@@ -3,7 +3,7 @@ import { getPdfPageCount } from '../utils/pdf-utils';
 
 import path from 'path';
 
-test.describe('File Processing', () => {
+test.describe('File Adding', () => {
     test('should process uploaded PDF and generate thumbnail', async ({ page }) => {
         await page.goto('/');
 

@@ -27,12 +27,20 @@ export const test = base.extend({
 
         // After test completion, assert that no errors or warnings were logged
         if (logs.length > 0) {
-            const formattedLogs = logs
-                .map(log => `[${log.type.toUpperCase()}] ${log.text}`)
-                .join('\n');
+            // Filter out known benign warnings
+            const filteredLogs = logs.filter(log => {
+                // Ignore Firefox scroll-linked positioning warning
+                return !log.text.includes('scroll-linked positioning effect');
+            });
 
-            // We use a custom message for the expectation failure
-            expect(logs, `Found browser console logs during test:\n${formattedLogs}`).toHaveLength(0);
+            if (filteredLogs.length > 0) {
+                const formattedLogs = filteredLogs
+                    .map(log => `[${log.type.toUpperCase()}] ${log.text}`)
+                    .join('\n');
+
+                // We use a custom message for the expectation failure
+                expect(filteredLogs, `Found browser console logs during test:\n${formattedLogs}`).toHaveLength(0);
+            }
         }
     },
 });
