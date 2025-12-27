@@ -33,11 +33,12 @@
       @mouseleave="isDeleteHovered = false"
     >
       <template #icon>
-        <img
-          :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'"
-          alt="Delete"
-          style="width: 16px; height: 16px; transition: all 0.2s ease;"
+        <n-icon
+          size="18"
+          :color="isDeleteHovered ? '#d03050' : '#666'"
         >
+          <TrashOutline />
+        </n-icon>
       </template>
     </NButton>
     <div class="page-thumbnail">
@@ -99,7 +100,8 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NButton, NTag, NCheckbox, NSpin } from 'naive-ui'
+import { NButton, NTag, NCheckbox, NSpin, NIcon } from 'naive-ui'
+import { TrashOutline } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
 

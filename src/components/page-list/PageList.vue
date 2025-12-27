@@ -27,11 +27,12 @@
         @mouseleave="isDeleteHovered = false"
       >
         <template #icon>
-          <img
-            :src="isDeleteHovered ? '/src/assets/delete_red.svg' : '/src/assets/delete.svg'"
-            alt="Delete selected"
-            style="width: 16px; height: 16px; transition: all 0.2s ease;"
+          <n-icon
+            size="18"
+            :color="isDeleteHovered ? '#d03050' : '#666'"
           >
+            <TrashOutline />
+          </n-icon>
         </template>
       </NButton>
     </div>
@@ -102,7 +103,8 @@ import draggable from 'vuedraggable'
 import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
 import type { Page } from '@/stores/pages'
-import { NScrollbar, NEmpty, NCheckbox, NButton } from 'naive-ui'
+import { TrashOutline } from '@vicons/ionicons5'
+import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon } from 'naive-ui'
 
 const props = defineProps<{
   pages: Page[]

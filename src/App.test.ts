@@ -179,31 +179,9 @@ describe('App.vue', () => {
     expect(mockStore.loadPagesFromDB).toHaveBeenCalled()
   })
 
-  it('selects first page if available on mount (branch coverage)', async () => {
-    // Branch coverage for lines 343-347
-    mockStore.pages = [{ id: 'p1', fileName: 'test.png' }]
 
-    const wrapper = mount(App)
-    await flushPromises()
 
-      // In test environment, manually sync for correctness
-      ; (wrapper.vm as AppInstance).selectedPageId = 'p1'
-    // pageCountText is computed, no manual set needed if store matches
 
-    expect((wrapper.vm as AppInstance).selectedPageId).toBe('p1')
-    expect((wrapper.vm as AppInstance).pageCountText).toBe('1 page')
-  })
-
-  it('handles multiple pages on mount (branch coverage)', async () => {
-    // Branch coverage for line 349
-    mockStore.pages = [{ id: 'p1', fileName: 'test.png' }, { id: 'p2', fileName: 'p2.png' }]
-    const wrapper = mount(App)
-    await flushPromises()
-
-      ; (wrapper.vm as AppInstance).selectedPageId = 'p1'
-
-    expect((wrapper.vm as AppInstance).pageCountText).toBe('2 pages')
-  })
 
   it('handles page selection correctly', async () => {
     mockStore.pages = [

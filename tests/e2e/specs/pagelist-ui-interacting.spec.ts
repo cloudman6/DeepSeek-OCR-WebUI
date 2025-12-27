@@ -68,18 +68,23 @@ test.describe('Page-List UI Interactions', () => {
 
         // 3. Hover over delete button and verify icon changes to red
         await deleteButton.hover();
-        const deleteIcon = deleteButton.locator('img');
+        const deleteIcon = deleteButton.locator('.n-icon');
         await expect(async () => {
-            const src = await deleteIcon.getAttribute('src');
-            expect(src).toContain('delete_red.svg');
+            const color = await deleteIcon.evaluate(el =>
+                window.getComputedStyle(el).color
+            );
+            // rgb(208, 48, 80) is #d03050
+            expect(color).toBe('rgb(208, 48, 80)');
         }).toPass({ timeout: 2000 });
 
         // 4. Move mouse away from delete button (but still on page-item) and verify icon reverts
         await targetPageItem.hover({ position: { x: 10, y: 10 } }); // Hover on left side
         await expect(async () => {
-            const src = await deleteIcon.getAttribute('src');
-            expect(src).toContain('delete.svg');
-            expect(src).not.toContain('delete_red.svg');
+            const color = await deleteIcon.evaluate(el =>
+                window.getComputedStyle(el).color
+            );
+            // rgb(102, 102, 102) is #666
+            expect(color).toBe('rgb(102, 102, 102)');
         }).toPass({ timeout: 2000 });
 
         // 5. Move mouse away from page-item and verify delete button hides (opacity: 0)
@@ -119,18 +124,21 @@ test.describe('Page-List UI Interactions', () => {
 
         // 5. Hover over toolbar delete button and verify icon changes to red
         await toolbarDeleteBtn.hover();
-        const deleteIcon = toolbarDeleteBtn.locator('img');
+        const deleteIcon = toolbarDeleteBtn.locator('.n-icon');
         await expect(async () => {
-            const src = await deleteIcon.getAttribute('src');
-            expect(src).toContain('delete_red.svg');
+            const color = await deleteIcon.evaluate(el =>
+                window.getComputedStyle(el).color
+            );
+            expect(color).toBe('rgb(208, 48, 80)');
         }).toPass({ timeout: 2000 });
 
         // 6. Move mouse away and verify icon reverts
         await page.mouse.move(0, 0);
         await expect(async () => {
-            const src = await deleteIcon.getAttribute('src');
-            expect(src).toContain('delete.svg');
-            expect(src).not.toContain('delete_red.svg');
+            const color = await deleteIcon.evaluate(el =>
+                window.getComputedStyle(el).color
+            );
+            expect(color).toBe('rgb(102, 102, 102)');
         }).toPass({ timeout: 2000 });
 
         // 7. Uncheck toolbar checkbox to deselect all

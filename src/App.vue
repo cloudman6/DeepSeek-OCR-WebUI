@@ -5,61 +5,61 @@
     @dragover="handleDragOver"
   >
     <!-- Header -->
-    <n-layout-header
-      class="app-header"
-      bordered
-    >
-      <div style="display: flex; align-items: center; gap: 12px;">
-        <n-button @click="handleFileAdd">
-          Add File
-        </n-button>
-        <n-text strong>
-          {{ pageCountText }}
-        </n-text>
-      </div>
-    </n-layout-header>
+    <AppHeader 
+      :page-count="pagesStore.pages.length"
+      @add-files="handleFileAdd"
+    />
 
     <!-- Main Content -->
     <n-layout
       has-sider
       class="app-main"
     >
-      <!-- Page List -->
-      <n-layout-sider
-        :width="260"
-        :collapsed-width="0"
-        show-trigger="bar"
-        collapse-mode="width"
-        bordered
+      <div
+        v-if="pagesStore.pages.length === 0"
+        style="width: 100%; height: 100%"
       >
-        <div class="page-list-container">
-          <PageList
-            ref="pageListRef"
-            :pages="pagesStore.pages"
-            @page-selected="handlePageSelected"
-            @page-deleted="handlePageDeleted"
-            @batch-deleted="handleBatchDeleted"
-          />
-        </div>
-      </n-layout-sider>
-
-      <!-- Page Viewer (formerly Inspector) -->
-      <n-layout-content class="page-viewer-container">
-        <PageViewer :current-page="currentPage" />
-      </n-layout-content>
-
-      <!-- Preview -->
-      <n-layout-sider
-        :width="320"
-        :collapsed-width="0"
-        show-trigger="bar"
-        collapse-mode="width"
-        bordered
-      >
-        <div class="preview-container">
-          <Preview :current-page="currentPage" />
-        </div>
-      </n-layout-sider>
+        <EmptyState @add-files="handleFileAdd" />
+      </div>
+      
+      <template v-else>
+        <!-- Page List -->
+        <n-layout-sider
+          :width="260"
+          :collapsed-width="0"
+          show-trigger="bar"
+          collapse-mode="width"
+          bordered
+        >
+          <div class="page-list-container">
+            <PageList
+              ref="pageListRef"
+              :pages="pagesStore.pages"
+              @page-selected="handlePageSelected"
+              @page-deleted="handlePageDeleted"
+              @batch-deleted="handleBatchDeleted"
+            />
+          </div>
+        </n-layout-sider>
+  
+        <!-- Page Viewer (formerly Inspector) -->
+        <n-layout-content class="page-viewer-container">
+          <PageViewer :current-page="currentPage" />
+        </n-layout-content>
+  
+        <!-- Preview -->
+        <n-layout-sider
+          :width="320"
+          :collapsed-width="0"
+          show-trigger="bar"
+          collapse-mode="width"
+          bordered
+        >
+          <div class="preview-container">
+            <Preview :current-page="currentPage" />
+          </div>
+        </n-layout-sider>
+      </template>
     </n-layout>
   </n-layout>
 </template>
@@ -72,16 +72,15 @@ import { uiLogger } from '@/utils/logger'
 import PageList from './components/page-list/PageList.vue'
 import Preview from './components/preview/Preview.vue'
 import PageViewer from './components/page-viewer/PageViewer.vue'
-import { NLayout, NLayoutHeader, NLayoutSider, NLayoutContent, NButton, NText, createDiscreteApi } from 'naive-ui'
+import AppHeader from './components/common/AppHeader.vue'
+import EmptyState from './components/common/EmptyState.vue'
+import { NLayout, NLayoutSider, NLayoutContent, createDiscreteApi } from 'naive-ui'
 
 const pagesStore = usePagesStore()
 const { message } = createDiscreteApi(['message'])
 
 
-const pageCountText = computed(() => {
-  const count = pagesStore.pages.length
-  return `${count} ${count > 1 ? 'pages' : 'page'}`
-})
+
 
 const selectedPageId = ref<string | null>(null)
 const currentPage = computed(() => 
@@ -248,7 +247,7 @@ async function handleDeletion(pagesToDelete: Page[]) {
       // Create appropriate message
       const isSingle = pagesToDelete.length === 1
       const message = isSingle
-        ? `Page "${pagesToDelete[0].fileName}" deleted`
+        ? `Page "${pagesToDelete[0]!.fileName}" deleted`
         : `${pagesToDelete.length} pages deleted`
 
       // Show undo message using simple toast
@@ -286,7 +285,7 @@ async function handleUndoDelete() {
 
       // Update current page to the first restored page if no page is selected
       if (!currentPage.value && restoredPages.length > 0) {
-        selectedPageId.value = restoredPages[0].id
+        selectedPageId.value = restoredPages[0]!.id
       }
     }
   } catch (error) {

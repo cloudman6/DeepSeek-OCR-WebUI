@@ -24,6 +24,11 @@ vi.mock('naive-ui', () => ({
     NSpin: {
         name: 'NSpin',
         template: '<div>Spinning...</div>'
+    },
+    NIcon: {
+        name: 'NIcon',
+        props: ['size', 'color'],
+        template: '<span><slot></slot></span>'
     }
 }))
 
@@ -268,11 +273,11 @@ describe('PageItem.vue', () => {
         expect(deleteBtn.attributes('style')).toContain('opacity: 1')
         expect(deleteBtn.attributes('style')).toContain('scale(1.1)')
 
-        // Check delete icon switch
-        const deleteIcon = deleteBtn.find('img')
-        expect(deleteIcon.attributes('src')).toContain('delete_red.svg')
+        // Check delete icon color switch
+        const deleteIcon = deleteBtn.findComponent({ name: 'NIcon' })
+        expect(deleteIcon.props('color')).toBe('#d03050')
 
         await deleteBtn.trigger('mouseleave')
-        expect(deleteIcon.attributes('src')).toContain('delete.svg')
+        expect(deleteIcon.props('color')).toBe('#666')
     })
 })

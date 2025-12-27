@@ -354,9 +354,14 @@ export const usePagesStore = defineStore('pages', () => {
     }
   }
 
-  async function addFiles() {
+  async function addFiles(inputFiles?: File[]) {
     try {
-      const files = await fileAddService.triggerFileSelect()
+      let files: File[] | undefined | null = inputFiles
+
+      if (!files) {
+        files = await fileAddService.triggerFileSelect()
+      }
+
       if (!files || files.length === 0) return { success: false, error: 'No files selected', pages: [] }
 
       const result = await fileAddService.processFiles(files)

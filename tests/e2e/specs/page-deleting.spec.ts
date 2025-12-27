@@ -333,9 +333,9 @@ test.describe('Page Deleting', () => {
         }).toPass({ timeout: 5000 });
 
         // Verify empty state
-        const emptyState = page.locator('.empty-state');
+        const emptyState = page.locator('.empty-state-hero');
         await expect(emptyState).toBeVisible();
-        await expect(page.locator('text="No pages added"')).toBeVisible();
+        await expect(page.getByText('Drop PDF or Images here to start')).toBeVisible();
 
         // Verify toast
         const toast = page.locator('#toast-notification');

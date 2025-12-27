@@ -25,6 +25,11 @@ vi.mock('naive-ui', () => ({
   NButton: {
     name: 'NButton',
     template: '<button><slot name="icon"></slot><slot></slot></button>'
+  },
+  NIcon: {
+    name: 'NIcon',
+    props: ['size', 'color'],
+    template: '<span><slot></slot></span>'
   }
 }))
 
@@ -347,18 +352,18 @@ describe('PageList.vue', () => {
     })
 
     const deleteBtn = wrapper.find('.delete-selected-btn')
-    const img = deleteBtn.find('img')
+    const icon = deleteBtn.findComponent({ name: 'NIcon' })
 
     // Initial state
-    expect(img.attributes('src')).toContain('delete.svg')
+    expect(icon.props('color')).toBe('#666')
 
     // Hover
     await deleteBtn.trigger('mouseenter')
-    expect(img.attributes('src')).toContain('delete_red.svg')
+    expect(icon.props('color')).toBe('#d03050')
 
     // Leave
     await deleteBtn.trigger('mouseleave')
-    expect(img.attributes('src')).toContain('delete.svg')
+    expect(icon.props('color')).toBe('#666')
   })
 
   it('renders empty state with icon when no pages', () => {
