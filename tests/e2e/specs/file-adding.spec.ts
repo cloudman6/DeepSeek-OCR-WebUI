@@ -104,4 +104,58 @@ test.describe('File Adding', () => {
             await expect(pageItems.nth(i).locator('.thumbnail-img')).toBeVisible({ timeout: 30000 });
         }
     });
+    test('should sync selection when adding two images sequentially', async ({ page }) => {
+        await page.goto('/');
+
+        const pngPath = path.resolve('tests/e2e/fixtures/sample.png');
+        const jpgPath = path.resolve('tests/e2e/fixtures/sample.jpg');
+
+        // 1. Add first image (PNG)
+        const fileChooserPromise1 = page.waitForEvent('filechooser');
+        await page.locator('.app-header button').first().click();
+        const fileChooser1 = await fileChooserPromise1;
+        await fileChooser1.setFiles(pngPath);
+
+        // Verify PNG is selected in PageList
+        const pageItems = page.locator('.page-item');
+        await expect(pageItems.first()).toHaveClass(/active|selected/);
+
+        // Verify Page Viewer shows PNG (Size: 141.8 KB)
+        await expect(page.locator('.page-viewer .page-image')).toBeVisible();
+        // Check title contains "Page" followed by something (ID is alphanumeric)
+        await expect(page.locator('.page-viewer .page-title')).toContainText(/Page .+/);
+        await expect(page.locator('.page-viewer')).toContainText('141.8 KB');
+
+        // 2. Add second image (JPG)
+        const fileChooserPromise2 = page.waitForEvent('filechooser');
+        await page.locator('.app-header button').first().click();
+        const fileChooser2 = await fileChooserPromise2;
+        await fileChooser2.setFiles(jpgPath);
+
+        // Wait for both items
+        await expect(pageItems).toHaveCount(2);
+
+        // Verify second image (JPG) is now selected (auto-switch)
+        await expect(pageItems.nth(1)).toHaveClass(/active|selected/);
+        // Verify first image is NOT selected
+        await expect(pageItems.nth(0)).not.toHaveClass(/active|selected/);
+
+        // Verify Page Viewer displays the NEW image (Size: 9.1 KB)
+        // We can verify this by checking if the image element is visible and perhaps the title or store state implies change.
+        // For E2E without strict image matching, checking visibility and lack of "No image available" is good.
+        await expect(page.locator('.page-viewer .page-image')).toBeVisible();
+        await expect(page.locator('.page-viewer')).not.toContainText('No image available');
+        await expect(page.locator('.page-viewer')).toContainText('9.1 KB');
+
+        // 3. Click back to first image
+        await pageItems.nth(0).click();
+
+        // Verify selection returns to first image
+        await expect(pageItems.nth(0)).toHaveClass(/active|selected/);
+        await expect(pageItems.nth(1)).not.toHaveClass(/active|selected/);
+
+        // Verify Page Viewer updates again to PNG size
+        await expect(page.locator('.page-viewer .page-image')).toBeVisible();
+        await expect(page.locator('.page-viewer')).toContainText('141.8 KB');
+    });
 });
