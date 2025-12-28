@@ -11,6 +11,12 @@ description: TDD development workflow with pre-check and post-verification gates
 
 ---
 
+## 关键规则 (Critical Rules)
+
+**如果在执行本工作流的过程中 Skip (跳过) 或 Ignore (忽略) 了任何用例、Warning 或 Error，你必须明确告知用户并解释原因。**
+这是一条硬性规定，旨在防止问题被静默处理。
+
+
 ## 阶段 0：飞行前检查（必须通过）
 
 在编写任何代码之前，验证项目处于健康状态。
@@ -166,6 +172,7 @@ description: TDD development workflow with pre-check and post-verification gates
      - 认知复杂度：<= 15
    - **Lint 检查**：所有 warning 和 error 必须解决
    - ❌ 如果有任何问题，返回阶段 2 进行修复。
+   - ⚠️ **切记**：如果你在任何步骤中跳过了测试或忽略了警告，必须在最终报告中明确告知用户。
 
 ✅ **只有阶段 3 所有检查通过后，任务才算完成。**
 

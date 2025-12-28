@@ -24,6 +24,7 @@ vi.mock('@/db/index', () => ({
     getPagesByStatus: vi.fn().mockResolvedValue([]),
     getFile: vi.fn(),
     deleteFile: vi.fn(),
+    savePagesBatch: vi.fn().mockImplementation(async (pages) => pages.map((p: any) => p.id)),
   },
   generatePageId: () => `page-id-${++(globalThis as any).pageIdCounter}`
 }))
@@ -112,7 +113,7 @@ describe('pdfQueue', () => {
     const { file, pdfData } = getTestData()
     vi.mocked(db.savePage).mockResolvedValue('page-id-1')
     await queuePDFPages(file, pdfData, 2, 'file-id-1')
-    expect(db.savePage).toHaveBeenCalled()
+    expect(db.savePagesBatch).toHaveBeenCalled()
     await new Promise(res => setTimeout(res, 50))
     expect(pdfEvents.emit).toHaveBeenCalledWith('pdf:processing-start', expect.anything())
     expect(mockWorkerLastMessage).toBeDefined()
@@ -257,7 +258,7 @@ describe('pdfQueue', () => {
   })
 
   it('queue: should handle errors in queuePDFPages', async () => {
-    vi.mocked(db.getNextOrder).mockRejectedValue(new Error('Order failed'))
+    vi.mocked(db.savePagesBatch).mockRejectedValue(new Error('Order failed'))
     await queuePDFPages(new File([], 'f.pdf'), new ArrayBuffer(0), 1)
     expect(queueLogger.error).toHaveBeenCalledWith(expect.stringContaining('Error queueing'), expect.anything())
   })
@@ -397,6 +398,7 @@ describe('pdfQueue', () => {
   it('edge: handle thumbnail generation failure', async () => {
     const { file, pdfData } = getTestData()
     vi.mocked(db.savePage).mockResolvedValueOnce('p-thumb-fail')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p-thumb-fail'])
     vi.mocked(db.getPage).mockResolvedValue({ id: 'p-thumb-fail', logs: [] } as unknown as import("@/db").DBPage)
 
     const OriginalImage = globalThis.Image
@@ -421,6 +423,7 @@ describe('pdfQueue', () => {
     vi.mocked(db.getAllPages).mockResolvedValue([pdfPage as unknown as import("@/db").DBPage])
     vi.mocked(db.getFile).mockResolvedValue({ name: 't.pdf' } as unknown as import("@/db").DBFile)
     vi.mocked(db.savePage).mockResolvedValueOnce('p1')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p1'])
     vi.mocked(db.getPage).mockResolvedValue({ id: 'p1', status: 'pending_render', logs: [] } as unknown as import("@/db").DBPage)
 
     mockWorkerResponseCallback = (worker, _) => {
@@ -459,6 +462,7 @@ describe('Coverage Gaps', () => {
   it('handleRenderSuccess: should catch internal errors', async () => {
     const { file, pdfData } = getTestData()
     vi.mocked(db.savePage).mockResolvedValue('p-crash')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p-crash'])
     // Force exception inside handleRenderSuccess by making db.getPage throw
     // 1. queuePDFPageRender
     // 2. renderPDFPage
@@ -480,6 +484,7 @@ describe('Coverage Gaps', () => {
   it('handleRenderError: should catch internal errors', async () => {
     const { file, pdfData } = getTestData()
     vi.mocked(db.savePage).mockResolvedValue('p-crash-err')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p-crash-err'])
     // Force exception inside handleRenderError
     // 1. queuePDFPageRender
     // 2. renderPDFPage
@@ -537,6 +542,7 @@ describe('Coverage Gaps', () => {
     })
 
     vi.mocked(db.savePage).mockResolvedValue('p-thumb-success')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p-thumb-success'])
     vi.mocked(db.getPage).mockResolvedValue({ id: 'p-thumb-success', status: 'pending_render', logs: [] } as any)
 
     // Explicitly mock db.getAllPages
@@ -610,6 +616,7 @@ describe('Coverage Gaps', () => {
 
   it('generateThumbnail: should handle canvas errors', async () => {
     vi.mocked(db.savePage).mockResolvedValue('p-canvas-fail')
+    vi.mocked(db.savePagesBatch).mockResolvedValue(['p-canvas-fail'])
     vi.mocked(db.getPage).mockResolvedValue({ id: 'p-canvas-fail', status: 'pending_render', logs: [] } as any)
 
     // Manual mocks to bypass JSDOM limitations

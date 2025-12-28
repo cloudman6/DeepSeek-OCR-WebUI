@@ -114,6 +114,7 @@ describe('FileAddService', () => {
         expect(result.pages[0]?.thumbnailData).toBe('data:image/jpeg;base64,mock_thumb')
         expect(result.pages[0]!.width).toBe(100)
         expect(result.pages[0]!.height).toBe(100)
+        expect(result.pages[0]!.order).toBe(-1) // Explicit check for order placeholder
         expect(revokeSpy).toHaveBeenCalled()
         vi.restoreAllMocks()
     })

@@ -56,6 +56,9 @@ export const usePagesStore = defineStore('pages', () => {
     currentFile: undefined as string | undefined
   })
 
+  // Queue to serialize file addition operations (prevents order race conditions)
+  let fileAdditionQueue = Promise.resolve()
+
   // Getters
   const pagesByStatus = computed(() => (status: PageStatus) =>
     pages.value.filter(page => page.status === status)
@@ -88,7 +91,9 @@ export const usePagesStore = defineStore('pages', () => {
   // Actions
   async function addPage(page: Omit<Page, 'id' | 'createdAt' | 'updatedAt' | 'order'> & { id?: string; order?: number }) {
     const id = page.id || generatePageId()
-    const order = page.order || (await db.getNextOrder())
+    // Fix Truthiness Bug: 0 is falsy but valid, -1 is truthy but invalid
+    const hasValidOrder = page.order !== undefined && page.order !== -1
+    const order = hasValidOrder ? page.order! : (await db.getNextOrder())
 
     // Create the page object
     const newPage: Page = {
@@ -302,14 +307,48 @@ export const usePagesStore = defineStore('pages', () => {
 
       if (!files || files.length === 0) return { success: false, error: 'No files selected', pages: [] }
 
-      const result = await fileAddService.processFiles(files)
-      if (result.success && result.pages) {
-        for (const pageData of result.pages) {
-          const page = await addPage(pageData)
-          await savePageToDB(page)
+      // Serializing file processing to prevent order race conditions
+      // This ensures that if addFiles is called multiple times rapidly,
+      // the second call waits for the first one to complete its DB interactions.
+      const processFilesTask = async () => {
+        const result = await fileAddService.processFiles(files)
+
+        if (result.success && result.pages) {
+          // Prepare a promise to wait for PDF pages to be queued if we detect PDF processing
+          const pdfFiles = files!.filter(f => f.type === 'application/pdf')
+          const waitForPDFQueued = pdfFiles.length > 0
+            ? new Promise<void>((resolve) => {
+              const handler = () => {
+                pdfEvents.off('pdf:pages:queued', handler)
+                resolve()
+              }
+              pdfEvents.on('pdf:pages:queued', handler)
+              // Safety timeout to avoid hanging for too long
+              setTimeout(() => {
+                pdfEvents.off('pdf:pages:queued', handler)
+                resolve()
+              }, 10000)
+            })
+            : Promise.resolve()
+
+          for (const pageData of result.pages) {
+            const page = await addPage(pageData)
+            await savePageToDB(page)
+          }
+
+          // Wait for all PDF pages to be at least queued in DB before returning
+          await waitForPDFQueued
         }
+        return result
       }
-      return result
+
+      // Chain the task
+      const resultPromise = fileAdditionQueue.then(processFilesTask)
+
+      // Update queue pointer, catch errors to keep chain alive
+      fileAdditionQueue = resultPromise.catch(() => { }) as Promise<void>
+
+      return resultPromise
     } catch (error) {
       storeLogger.error('[Pages Store] Error adding files:', error)
       return { success: false, error: 'Failed to add files', pages: [] }

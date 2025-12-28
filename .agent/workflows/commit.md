@@ -10,6 +10,12 @@ description: Pipeline for validating quality gates before committing and pushing
 
 ---
 
+## 关键规则 (Critical Rules)
+
+**如果在执行本工作流的过程中 Skip (跳过) 或 Ignore (忽略) 了任何用例、Warning 或 Error，你必须明确告知用户并解释原因。**
+这是一条硬性规定，旨在防止问题被静默处理。
+
+
 ## 阶段 0：质量门禁（必须通过）
 
 > 引用 `/dev` workflow 的阶段 0，确保项目处于健康状态。
@@ -49,6 +55,7 @@ description: Pipeline for validating quality gates before committing and pushing
      - 认知复杂度：<= 15
    - **Lint 检查**：所有 warning 和 error 必须解决
    - ❌ 如果有复杂度超标、warning 或 error，**报告用户并询问**：是否需要修复？
+   - ⚠️ **切记**：如果你决定忽略任何 Warning/Error，必须明确告知用户并给出理由。
 
 ✅ **只有所有检查通过（或用户选择继续）后才能进入阶段 1。**
 

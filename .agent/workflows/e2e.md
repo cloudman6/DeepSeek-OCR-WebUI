@@ -11,6 +11,12 @@ description: E2E test development workflow using Playwright. Use this for creati
 
 ---
 
+## 关键规则 (Critical Rules)
+
+**如果在执行本工作流的过程中 Skip (跳过) 或 Ignore (忽略) 了任何用例、Warning 或 Error，你必须明确告知用户并解释原因。**
+这是一条硬性规定，旨在防止问题被静默处理。
+
+
 ## 阶段 0：飞行前检查（必须通过）
 
 > 引用 `/dev` workflow 的阶段 0，确保项目处于健康状态。
@@ -154,6 +160,7 @@ description: E2E test development workflow using Playwright. Use this for creati
    ```
    - 引用 `/dev` 的质量门禁标准
    - ❌ 如果阈值未达标 → 切换到 `/dev` 流程修复代码
+   - ⚠️ **切记**：如果你在任何步骤中跳过了测试或忽略了警告，必须在最终报告中明确告知用户。
 
 // turbo
 4. **处理开发服务器**

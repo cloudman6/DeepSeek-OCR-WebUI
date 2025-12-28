@@ -328,6 +328,112 @@ describe('Pages Store', () => {
             expect(store.pages).toHaveLength(1)
             expect(db.savePage).toHaveBeenCalled()
         })
+
+        it('addFiles should maintain correct order for multiple pages', async () => {
+            const store = usePagesStore()
+            // Reset getNextOrder to track calls: it will return 0, then 1, then 2
+            let currentOrder = 0
+            vi.mocked(db.getNextOrder).mockImplementation(async () => currentOrder++)
+
+            const mockFiles = [new File([''], 'multi.pdf')]
+            vi.mocked(fileAddService.triggerFileSelect).mockResolvedValue(mockFiles)
+            vi.mocked(fileAddService.processFiles).mockResolvedValue({
+                success: true,
+                pages: [
+                    { id: 'p1', fileName: 'multi.pdf', fileSize: 10, fileType: 'application/pdf', origin: 'upload', status: 'ready', progress: 100, outputs: [], logs: [] },
+                    { id: 'p2', fileName: 'multi.pdf', fileSize: 10, fileType: 'application/pdf', origin: 'upload', status: 'ready', progress: 100, outputs: [], logs: [] },
+                    { id: 'p3', fileName: 'multi.pdf', fileSize: 10, fileType: 'application/pdf', origin: 'upload', status: 'ready', progress: 100, outputs: [], logs: [] }
+                ] as unknown as import("@/stores/pages").Page[]
+            })
+
+            await store.addFiles()
+
+            expect(store.pages).toHaveLength(3)
+            // Verify orders are assigned sequentially
+            expect(store.pages[0]!.order).toBe(0)
+            expect(store.pages[1]!.order).toBe(1)
+            expect(store.pages[2]!.order).toBe(2)
+
+            // Verify they are sorted in store
+            expect(store.pages.map(p => p.id)).toEqual(['p1', 'p2', 'p3'])
+            expect(db.savePage).toHaveBeenCalledTimes(3)
+        })
+
+        it('should maintain order when adding Image then PDF', async () => {
+            const store = usePagesStore()
+            let currentOrder = 0
+            vi.mocked(db.getNextOrder).mockImplementation(async () => currentOrder++)
+
+            // 1. Add an Image
+            vi.mocked(fileAddService.triggerFileSelect).mockResolvedValue([new File([''], 'image.png')])
+            vi.mocked(fileAddService.processFiles).mockResolvedValue({
+                success: true,
+                pages: [{ id: 'img-1', fileName: 'image.png', order: 0 } as any]
+            })
+            await store.addFiles()
+
+            // 2. Add a PDF (simulated via events as addFiles only starts the process)
+            // Mock DB response for the queued PDF page
+            const dbPage = { id: 'pdf-1', fileName: 'test.pdf', order: 1 } as any
+            vi.mocked(db.getPage).mockResolvedValue(dbPage)
+
+            // Trigger event (setupPDFEventListeners is called in store constructor)
+            const queuedHandler = vi.mocked(pdfEvents.on).mock.calls.find(c => c[0] === 'pdf:page:queued')?.[1]
+            await (queuedHandler as any)({ pageId: 'pdf-1' })
+
+            expect(store.pages).toHaveLength(2)
+            expect(store.pages[0]!.id).toBe('img-1')
+            expect(store.pages[0]!.order).toBe(0)
+            expect(store.pages[1]!.id).toBe('pdf-1')
+            expect(store.pages[1]!.order).toBe(1)
+        })
+
+        it('should maintain order when adding PDF then Image', async () => {
+            const store = usePagesStore()
+            let currentOrder = 0
+            vi.mocked(db.getNextOrder).mockImplementation(async () => currentOrder++)
+
+            // 1. Start PDF process (simulated)
+            const dbPage = { id: 'pdf-1', fileName: 'test.pdf', order: 0 } as any
+            vi.mocked(db.getPage).mockResolvedValue(dbPage)
+            const queuedHandler = vi.mocked(pdfEvents.on).mock.calls.find(c => c[0] === 'pdf:page:queued')?.[1]
+            await (queuedHandler as any)({ pageId: 'pdf-1' })
+
+            // 2. Add an Image while PDF is processing
+            vi.mocked(fileAddService.triggerFileSelect).mockResolvedValue([new File([''], 'image.png')])
+            vi.mocked(fileAddService.processFiles).mockResolvedValue({
+                success: true,
+                pages: [{ id: 'img-1', fileName: 'image.png', order: 1 } as any]
+            })
+            await store.addFiles()
+
+            expect(store.pages).toHaveLength(2)
+            expect(store.pages[0]!.id).toBe('pdf-1')
+            expect(store.pages[0]!.order).toBe(0)
+            expect(store.pages[1]!.id).toBe('img-1')
+            expect(store.pages[1]!.order).toBe(1)
+        })
+
+        it('should correct order of -1 and fetch from DB (Truthiness Bug Recovery)', async () => {
+            const store = usePagesStore()
+            vi.mocked(db.getNextOrder).mockResolvedValue(100)
+
+            // Simulate service returning -1
+            await store.addPage({
+                fileName: 'bug.png',
+                fileSize: 0,
+                fileType: 'image/png',
+                origin: 'upload',
+                status: 'ready',
+                progress: 100,
+                order: -1,
+                outputs: [],
+                logs: []
+            })
+
+            expect(db.getNextOrder).toHaveBeenCalled()
+            expect(store.pages[0]!.order).toBe(100)
+        })
     })
 
     describe('PDF Event Listeners', () => {

@@ -8,6 +8,7 @@ type PDFEvents = {
   'pdf:progress': { done: number; total: number }
   'pdf:log': { pageId: string; message: string; level: 'info' | 'warning' | 'error' }
   'pdf:processing-start': { file: File; totalPages: number }
+  'pdf:pages:queued': { file: File; totalPages: number }
   'pdf:processing-complete': { file: File; totalPages: number }
   'pdf:processing-error': { file: File; error: string }
 }

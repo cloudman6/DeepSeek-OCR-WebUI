@@ -1,4 +1,4 @@
-import Dexie, { type Table } from 'dexie'
+import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import type { PageProcessingLog, PageOutput } from '@/stores/pages'
 import { isWebkit } from '@/utils/browser'
 
@@ -52,58 +52,35 @@ export interface PageImage {
 }
 
 export class Scan2DocDB extends Dexie {
-  pages!: Table<DBPage>
-  files!: Table<DBFile>
-  processingQueue!: Table<DBProcessingQueue>
-  pageImages!: Table<PageImage>
+  files!: EntityTable<DBFile, 'id'>
+  pages!: EntityTable<DBPage, 'id'>
+  processingQueue!: EntityTable<DBProcessingQueue, 'id'>
+  pageImages!: EntityTable<PageImage, 'pageId'>
+  counters!: EntityTable<{ id: string; value: number }, 'id'>
 
-  constructor(name: string = 'Scan2DocDatabase') {
-    super(name)
+  constructor() {
+    super('Scan2Doc_V1')
 
-    // Define schema
-    this.version(4).stores({
-      pages: 'id, fileId, pageNumber, fileName, fileSize, fileType, origin, status, progress, order, createdAt, updatedAt, processedAt',
-      files: '++id, name, size, createdAt',
-      processingQueue: '++id, pageId, priority, addedAt',
-      pageImages: 'pageId' // pageId is primary key, no other indexes to minimize overhead
-    }).upgrade(async tx => {
-      // Migration to version 4: Move imageData from pages table to pageImages table
-      const pagesTable = tx.table('pages')
-      const pageImagesTable = tx.table('pageImages')
-
-      const pages = await pagesTable.toArray()
-      for (const page of pages) {
-        if (page.id && page.imageData && page.imageData.startsWith('data:')) {
-          try {
-            // Convert Base64 to Blob
-            const response = await fetch(page.imageData)
-            const blob = await response.blob()
-
-            // Save to new table
-            await pageImagesTable.put({
-              pageId: page.id,
-              blob
-            })
-
-            // Remove from old table (update strictly the imageData field)
-            // Note: We're doing this in the upgrade transaction
-            await pagesTable.update(page.id, { imageData: undefined })
-          } catch (error) {
-            console.error('Failed to migrate image for page', page.id, error)
-          }
-        }
-      }
+    // Define the final schema directly as Version 1
+    // No migration history needed for development reset
+    this.version(1).stores({
+      files: 'id, name, type, createdAt',
+      pages: 'id, fileName, fileId, status, order, createdAt',
+      processingQueue: 'id, pageId, priority, addedAt',
+      pageImages: 'pageId',
+      counters: 'id'
     })
   }
 
   // File methods
   async saveFile(file: DBFile): Promise<string> {
     const cleanFile = { ...file }
-    if (cleanFile.id === undefined) {
-      delete cleanFile.id
+
+    // Ensure ID exists
+    if (!cleanFile.id) {
+      cleanFile.id = generateFileId()
     }
 
-    // Webkit workaround for Large Blobs
     if (isWebkit() && cleanFile.content instanceof Blob) {
       try {
         cleanFile.content = await cleanFile.content.arrayBuffer()
@@ -112,23 +89,18 @@ export class Scan2DocDB extends Dexie {
       }
     }
 
-    if (cleanFile.id) {
+    if (file.id) { // If original file had ID, it's an update
       await this.files.put(cleanFile)
-      return cleanFile.id
+    } else {
+      // New file
+      await this.files.add(cleanFile)
     }
 
-    const id = await this.files.add(cleanFile)
-    return id.toString()
+    return cleanFile.id
   }
 
   async getFile(id: string): Promise<DBFile | undefined> {
     const file = await this.files.get(id)
-    if (!file && /^\d+$/.test(id)) {
-      const numericFile = await this.files.get(Number(id))
-      if (numericFile) {
-        return this.ensureBlobContent(numericFile)
-      }
-    }
     return file ? this.ensureBlobContent(file) : undefined
   }
 
@@ -141,26 +113,16 @@ export class Scan2DocDB extends Dexie {
 
   async deleteFile(id: string): Promise<void> {
     await this.files.delete(id)
-    if (/^\d+$/.test(id)) {
-      await this.files.delete(Number(id))
-    }
   }
 
-  // Page Image methods (Blob storage)
+  // Page Image methods
   async savePageImage(pageId: string, blob: Blob): Promise<void> {
     try {
       let dataToSave: Blob | ArrayBuffer = blob
-
-      // Webkit/Safari has a known issue storing Blobs that came from workers or have been transferred.
-      // Error: "Error preparing Blob/File data to be stored in object store"
-      // Converting to ArrayBuffer is the most reliable workaround.
       if (isWebkit()) {
         dataToSave = await blob.arrayBuffer()
       }
-
-      await this.transaction('rw', this.pageImages, async () => {
-        await this.pageImages.put({ pageId, blob: dataToSave })
-      })
+      await this.pageImages.put({ pageId, blob: dataToSave })
     } catch (error) {
       console.error(`[DB-ERROR] Failed to save image for page ${pageId}:`, error)
       throw error
@@ -171,8 +133,6 @@ export class Scan2DocDB extends Dexie {
     try {
       const record = await this.pageImages.get(pageId)
       if (!record) return undefined
-
-      // If we stored it as ArrayBuffer (Webkit workaround), convert back to Blob
       if (record.blob instanceof ArrayBuffer) {
         return new Blob([record.blob], { type: 'image/png' })
       }
@@ -186,16 +146,57 @@ export class Scan2DocDB extends Dexie {
   // Page methods
   async savePage(page: DBPage): Promise<string> {
     const cleanPage = { ...page } as DBPage
+    if (cleanPage.order === undefined || cleanPage.order === -1) {
+      cleanPage.order = await this.getNextOrder()
+    }
     if (!cleanPage.id) {
       cleanPage.id = generatePageId()
     }
+    await this.pages.put(cleanPage)
+    return cleanPage.id
+  }
 
-    if (Object.prototype.hasOwnProperty.call(page, 'id') && page.id !== undefined) {
-      await this.pages.put(cleanPage)
-      return cleanPage.id
-    } else {
-      return await this.pages.add(cleanPage)
+  async savePagesBatch(pages: Omit<DBPage, 'id' | 'order'>[]): Promise<string[]> {
+    return await this.transaction('rw', [this.pages, this.counters], async (tx) => {
+      const startOrder = await this.getNextOrderBatch(pages.length, tx)
+      const cleanPages = pages.map((page, index) => {
+        const clean = {
+          ...page,
+          order: startOrder + index,
+          createdAt: page.createdAt || new Date(),
+          updatedAt: new Date()
+        } as DBPage
+        if (!clean.id) {
+          clean.id = generatePageId()
+        }
+        return clean
+      })
+      await this.pages.bulkPut(cleanPages)
+      return cleanPages.map(p => p.id!)
+    })
+  }
+
+  private async getNextOrderBatch(count: number, tx?: Transaction): Promise<number> {
+    const operation = async (transaction: Transaction) => {
+      const countersTable = transaction.table('counters')
+      const counterId = 'pages_order'
+      const record = await countersTable.get(counterId)
+      const current = record ? record.value : 0
+      await countersTable.put({ id: counterId, value: current + count })
+      return current
     }
+
+    if (tx) {
+      return await operation(tx)
+    }
+
+    return await this.transaction('rw', this.counters, async (transaction) => {
+      return await operation(transaction)
+    })
+  }
+
+  async getNextOrder(): Promise<number> {
+    return await this.getNextOrderBatch(1)
   }
 
   async getPage(id: string): Promise<DBPage | undefined> {
@@ -203,16 +204,11 @@ export class Scan2DocDB extends Dexie {
   }
 
   async getAllPages(): Promise<DBPage[]> {
-    return await this.pages
-      .orderBy('order')
-      .toArray()
+    return await this.pages.orderBy('order').toArray()
   }
 
   async getPagesByStatus(status: DBPage['status']): Promise<DBPage[]> {
-    return await this.pages
-      .where('status')
-      .equals(status)
-      .toArray()
+    return await this.pages.where('status').equals(status).toArray()
   }
 
   async deletePage(id: string): Promise<void> {
@@ -222,12 +218,12 @@ export class Scan2DocDB extends Dexie {
   }
 
   async deleteAllPages(): Promise<void> {
-    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages], async () => {
+    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages, this.counters], async () => {
       const pages = await this.pages.toArray()
       const pageIds = pages.map(p => p.id!).filter(Boolean)
-
       await this.pages.clear()
       await this.pageImages.clear()
+      await this.counters.clear() // Clean up counters too
       if (pageIds.length > 0) {
         await this.processingQueue.where('pageId').anyOf(pageIds).delete()
       }
@@ -237,15 +233,17 @@ export class Scan2DocDB extends Dexie {
   // Processing queue methods
   async addToQueue(pageId: string, priority: number = 0): Promise<string> {
     const existing = await this.processingQueue.where('pageId').equals(pageId).first()
-    if (existing) {
-      return existing.id!
-    }
+    if (existing) return existing.id!.toString()
 
-    return await this.processingQueue.add({
+    // Explicitly generate ID since schema is not auto-incrementing
+    const newEntry: DBProcessingQueue = {
+      id: generateQueueId(),
       pageId,
       priority,
       addedAt: new Date()
-    })
+    }
+    await this.processingQueue.add(newEntry)
+    return newEntry.id!
   }
 
   async removeFromQueue(pageId: string): Promise<void> {
@@ -253,33 +251,30 @@ export class Scan2DocDB extends Dexie {
   }
 
   async getNextFromQueue(): Promise<DBProcessingQueue | undefined> {
-    return await this.processingQueue
-      .orderBy('priority')
-      .reverse()
-      .first()
+    return await this.processingQueue.orderBy('priority').reverse().first()
   }
 
   async getQueueCount(): Promise<number> {
     return await this.processingQueue.count()
   }
 
-  // Page creation from file add
-  async saveAddedPage(pageData: Omit<DBPage, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
+  async saveAddedPage(pageData: Omit<DBPage, 'id' | 'createdAt' | 'updatedAt' | 'order'>): Promise<string> {
+    const order = await this.getNextOrder()
     const dbPage: DBPage = {
       ...pageData,
       id: generatePageId(),
+      order,
       createdAt: new Date(),
       updatedAt: new Date()
     }
-    return await this.pages.add(dbPage)
+    await this.pages.add(dbPage)
+    return dbPage.id!
   }
 
-  // Get all pages for UI display
   async getAllPagesForDisplay(): Promise<DBPage[]> {
     return await this.getAllPages()
   }
 
-  // Update order for multiple pages
   async updatePagesOrder(pageOrders: { id: string; order: number }[]): Promise<void> {
     await this.transaction('rw', this.pages, async () => {
       for (const { id, order } of pageOrders) {
@@ -288,18 +283,12 @@ export class Scan2DocDB extends Dexie {
     })
   }
 
-  // Get next order value for new pages
-  async getNextOrder(): Promise<number> {
-    const maxOrder = await this.pages.orderBy('order').last()
-    return maxOrder ? maxOrder.order + 1 : 0
-  }
-
-  // Utility methods
   async clearAllData(): Promise<void> {
-    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages], async () => {
+    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages, this.counters], async () => {
       await this.pages.clear()
       await this.processingQueue.clear()
       await this.pageImages.clear()
+      await this.counters.clear()
     })
   }
 
@@ -312,15 +301,25 @@ export class Scan2DocDB extends Dexie {
   }
 }
 
-// Create and export a singleton instance
 export const db = new Scan2DocDB()
 
-/**
- * Generate a unique page ID
- */
+function getSecureRandomPart(): string {
+  const array = new Uint32Array(1)
+  crypto.getRandomValues(array)
+  return array[0].toString(36)
+}
+
 export function generatePageId(): string {
-  // Use more entropy to avoid collisions in high-concurrency environments like Webkit
-  // eslint-disable-next-line sonarjs/pseudo-random
-  const randomPart = Math.random().toString(36).substring(2, 9)
+  const randomPart = getSecureRandomPart()
   return `page_${Date.now()}_${randomPart}_${crypto.randomUUID().split('-')[0]}`
+}
+
+export function generateFileId(): string {
+  const randomPart = getSecureRandomPart()
+  return `file_${Date.now()}_${randomPart}_${crypto.randomUUID().split('-')[0]}`
+}
+
+function generateQueueId(): string {
+  const randomPart = getSecureRandomPart()
+  return `queue_${Date.now()}_${randomPart}`
 }

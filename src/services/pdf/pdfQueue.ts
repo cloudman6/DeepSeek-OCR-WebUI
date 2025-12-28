@@ -508,27 +508,29 @@ export async function queuePDFPages(
       processedCount: 0
     })
 
-    // Create pages for each PDF page
-    const startOrder = await db.getNextOrder()
-    const pages = createPDFPages(file, pageCount, fileId, startOrder)
+    // Create pages for each PDF page - Orders will be assigned atomically in savePagesBatch
+    const pagesData = createPDFPages(file, pageCount, fileId)
 
-    // Save pages to database and queue for rendering
-    for (let i = 0; i < pages.length; i++) {
-      const pageData = pages[i]!
-      const pageId = await db.savePage(pageData)
+    // Save pages to database in a single atomic transaction to lock their orders
+    const pageIds = await db.savePagesBatch(pagesData)
 
-      if (pageId) {
-        // Emit queued event so store can load the page immediately
-        pdfEvents.emit('pdf:page:queued', { pageId })
+    // Emit event that all pages are now queued in DB
+    pdfEvents.emit('pdf:pages:queued', { file, totalPages: pageCount })
 
-        // Queue for rendering - NOT awaited to allow rapid queuing of multiple files
-        queuePDFPageRender({
-          pageId,
-          pageNumber: i + 1,
-          fileName: file.name,
-          sourceId
-        })
-      }
+    // Emit events and queue for rendering
+    for (let i = 0; i < pageIds.length; i++) {
+      const pageId = pageIds[i]!
+
+      // Emit queued event so store can load the page immediately
+      pdfEvents.emit('pdf:page:queued', { pageId })
+
+      // Queue for rendering - NOT awaited to allow rapid queuing of multiple files
+      queuePDFPageRender({
+        pageId,
+        pageNumber: i + 1,
+        fileName: file.name,
+        sourceId
+      })
     }
 
     // Emit processing start event
@@ -547,10 +549,10 @@ export async function queuePDFPages(
 }
 
 /**
- * Create DBPage objects for PDF pages
+ * Create DBPage objects for PDF pages (order will be assigned by database)
  */
-function createPDFPages(file: File, pageCount: number, fileId: string | undefined, startOrder: number): DBPage[] {
-  const pages: DBPage[] = []
+function createPDFPages(file: File, pageCount: number, fileId: string | undefined): Omit<DBPage, 'order'>[] {
+  const pages: Omit<DBPage, 'order'>[] = []
   const baseName = file.name.replace(/\.pdf$/i, '')
 
   for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
@@ -564,7 +566,6 @@ function createPDFPages(file: File, pageCount: number, fileId: string | undefine
       origin: 'pdf_generated',
       status: 'pending_render',
       progress: 0,
-      order: startOrder + pageNum - 1,
       fileId,
       pageNumber: pageNum,
       outputs: [],
