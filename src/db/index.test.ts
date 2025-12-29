@@ -1,8 +1,13 @@
 import 'dexie'
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import 'fake-indexeddb/auto'
 import { db, type DBPage, type DBFile } from './index'
 import { createPinia, setActivePinia } from 'pinia'
+
+// Mock isWebkit to true globally for this test file
+vi.mock('@/utils/browser', () => ({
+    isWebkit: () => true
+}))
 
 // Helper to clean object for Dexie (remove id if it's an auto-increment key)
 function cleanForAdd<T extends { id?: string | number }>(obj: T): T {
@@ -41,15 +46,47 @@ if (typeof window !== 'undefined') {
 }
 
 describe('Scan2DocDB', () => {
-    beforeEach(async () => {
+    // Global setup for all DB tests
+    beforeEach(() => {
         setActivePinia(createPinia())
+
+        // Mock isWebkit to true to force ArrayBuffer storage path for consistent testing
+        // Note: vi.mock is hoisted, but we can also use spyOn if we wanted dynamic behavior.
+        // Since we import isWebkit, we rely on the hoisted mock which we will duplicate/move here if needed, 
+        // or just assume the mock below works. 
+        // Actually, let's look at the structure. 
+    })
+
+    // Polyfill Blob.prototype.arrayBuffer if missing (common in some jsdom ver)
+    if (!Blob.prototype.arrayBuffer) {
+        Blob.prototype.arrayBuffer = function () {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result as ArrayBuffer)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsArrayBuffer(this)
+            })
+        }
+    }
+
+    beforeEach(async () => {
         // Thoroughly clear ALL tables before each test
         await db.pages.clear()
         await db.files.clear()
         await db.pageImages.clear()
         await db.processingQueue.clear()
         await db.counters.clear()
+
+        // Clear new tables
+        await db.pageOCRs.clear()
+        await db.pageMarkdowns.clear()
+        await db.pageHTMLs.clear()
+        await db.pagePDFs.clear()
+        await db.pageDOCXs.clear()
+        await db.pageExtractedImages.clear()
+
         mockEstimate.mockReset()
+        vi.clearAllMocks()
     })
 
     // Skip: These tests have issues with fake-indexeddb's strict add() validation
@@ -252,5 +289,120 @@ describe('Scan2DocDB', () => {
         })
     })
 
+
+
+    describe('New Schema Tables (Phase 1)', () => {
+
+
+
+        afterEach(async () => {
+            await db.pageOCRs.clear()
+            await db.pageMarkdowns.clear()
+            await db.pageHTMLs.clear()
+            await db.pagePDFs.clear()
+            await db.pageDOCXs.clear()
+            await db.pageExtractedImages.clear()
+            vi.clearAllMocks()
+        })
+
+        it('should support CRUD on pageOCRs', async () => {
+            const pageId = 'page_ocr_test'
+            const data: import('./index').PageOCR = {
+                pageId,
+                data: {
+                    success: true,
+                    text: 'test text',
+                    raw_text: 'raw text',
+                    boxes: [],
+                    image_dims: { w: 100, h: 100 },
+                    prompt_type: 'text'
+                },
+                createdAt: new Date()
+            }
+
+            await db.savePageOCR(data)
+            const stored = await db.getPageOCR(pageId)
+            expect(stored).toBeDefined()
+            expect(stored?.data.text).toBe('test text')
+            // confidence check removed as per user request
+        })
+
+        it('should support CRUD on pageMarkdowns', async () => {
+            const pageId = 'page_md_test'
+            const data: import('./index').PageMarkdown = {
+                pageId,
+                content: '# Heading'
+            }
+
+            await db.savePageMarkdown(data)
+            const stored = await db.getPageMarkdown(pageId)
+            expect(stored).toBeDefined()
+            expect(stored?.content).toBe('# Heading')
+        })
+
+        it('should support CRUD on pageHTMLs', async () => {
+            const pageId = 'page_html_test'
+            const data: import('./index').PageHTML = {
+                pageId,
+                content: '<h1>Heading</h1>'
+            }
+
+            await db.savePageHTML(data)
+            const stored = await db.getPageHTML(pageId)
+            expect(stored).toBeDefined()
+            expect(stored?.content).toBe('<h1>Heading</h1>')
+        })
+
+        it('should support CRUD on pagePDFs', async () => {
+            const pageId = 'page_pdf_test'
+            const blob = new Blob(['pdf content'], { type: 'application/pdf' })
+
+            await db.savePagePDF(pageId, blob)
+            const storedBlob = await db.getPagePDF(pageId)
+            expect(storedBlob).toBeDefined()
+
+            // Should be returned as Blob due to repo logic
+            expect(storedBlob instanceof Blob).toBe(true)
+            expect(storedBlob?.size).toBe(blob.size)
+            expect(storedBlob?.type).toBe(blob.type)
+        })
+
+        it('should support CRUD on pageDOCXs', async () => {
+            const pageId = 'page_docx_test'
+            const blob = new Blob(['docx content'], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+
+            await db.savePageDOCX(pageId, blob)
+            const storedBlob = await db.getPageDOCX(pageId)
+            expect(storedBlob).toBeDefined()
+            expect(storedBlob instanceof Blob).toBe(true)
+            expect(storedBlob?.size).toBe(blob.size)
+            expect(storedBlob?.type).toBe(blob.type)
+        })
+
+        it('should support CRUD on pageExtractedImages', async () => {
+            const id = 'img_1'
+            const pageId = 'page_img_test'
+            const data: import('./index').PageExtractedImage = {
+                id,
+                pageId,
+                blob: new Blob(['image content'], { type: 'image/png' }),
+                box: [0, 0, 100, 100]
+            }
+
+            await db.savePageExtractedImage(data)
+            const stored = await db.getPageExtractedImage(id)
+            expect(stored).toBeDefined()
+            expect(stored?.box).toEqual([0, 0, 100, 100])
+            expect(stored?.blob).toBeDefined()
+
+            // The repo method returns PageExtractedImage where blob is normalized to Blob
+            const storedBlob = stored?.blob
+            expect(storedBlob instanceof Blob).toBe(true)
+            if (storedBlob instanceof Blob) {
+                expect(storedBlob.size).toBe(data.blob.size)
+                expect(storedBlob.type).toBe('image/png')
+            }
+        })
+    })
 
 })

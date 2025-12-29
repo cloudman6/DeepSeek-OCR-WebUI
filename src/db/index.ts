@@ -51,6 +51,39 @@ export interface PageImage {
   blob: Blob | ArrayBuffer
 }
 
+export interface PageOCR {
+  pageId: string
+  data: import('@/services/ocr').OCRResult
+  createdAt: Date
+}
+
+export interface PageMarkdown {
+  pageId: string
+  content: string
+}
+
+export interface PageHTML {
+  pageId: string
+  content: string
+}
+
+export interface PagePDF {
+  pageId: string
+  content: Blob | ArrayBuffer
+}
+
+export interface PageDOCX {
+  pageId: string
+  content: Blob | ArrayBuffer
+}
+
+export interface PageExtractedImage {
+  id: string
+  pageId: string
+  blob: Blob | ArrayBuffer
+  box: [number, number, number, number]
+}
+
 export class Scan2DocDB extends Dexie {
   files!: EntityTable<DBFile, 'id'>
   pages!: EntityTable<DBPage, 'id'>
@@ -58,17 +91,31 @@ export class Scan2DocDB extends Dexie {
   pageImages!: EntityTable<PageImage, 'pageId'>
   counters!: EntityTable<{ id: string; value: number }, 'id'>
 
+  // New tables for Phase 1
+  pageOCRs!: EntityTable<PageOCR, 'pageId'>
+  pageMarkdowns!: EntityTable<PageMarkdown, 'pageId'>
+  pageHTMLs!: EntityTable<PageHTML, 'pageId'>
+  pagePDFs!: EntityTable<PagePDF, 'pageId'>
+  pageDOCXs!: EntityTable<PageDOCX, 'pageId'>
+  pageExtractedImages!: EntityTable<PageExtractedImage, 'id'>
+
   constructor() {
     super('Scan2Doc_V1')
 
-    // Define the final schema directly as Version 1
-    // No migration history needed for development reset
-    this.version(1).stores({
+    // Define the final schema directly as Version 2
+    this.version(2).stores({
       files: 'id, name, type, createdAt',
       pages: 'id, fileName, fileId, status, order, createdAt',
       processingQueue: 'id, pageId, priority, addedAt',
       pageImages: 'pageId',
-      counters: 'id'
+      counters: 'id',
+      // New tables
+      pageOCRs: 'pageId',
+      pageMarkdowns: 'pageId',
+      pageHTMLs: 'pageId',
+      pagePDFs: 'pageId',
+      pageDOCXs: 'pageId',
+      pageExtractedImages: 'id, pageId'
     })
   }
 
@@ -133,14 +180,109 @@ export class Scan2DocDB extends Dexie {
     try {
       const record = await this.pageImages.get(pageId)
       if (!record) return undefined
-      if (record.blob instanceof ArrayBuffer) {
+
+      const isBuffer = record.blob instanceof ArrayBuffer ||
+        (typeof record.blob === 'object' && record.blob !== null && 'byteLength' in record.blob && !('size' in record.blob))
+
+      if (isBuffer) {
         return new Blob([record.blob], { type: 'image/png' })
       }
-      return record.blob
+      return record.blob as Blob
     } catch (error) {
       console.error(`[DB-ERROR] Failed to get image for page ${pageId}:`, error)
       return undefined
     }
+  }
+
+  // OCR Results methods
+  async savePageOCR(data: PageOCR): Promise<void> {
+    await this.pageOCRs.put(data)
+  }
+
+  async getPageOCR(pageId: string): Promise<PageOCR | undefined> {
+    return await this.pageOCRs.get(pageId)
+  }
+
+  // Generated Documents methods
+  async savePageMarkdown(data: PageMarkdown): Promise<void> {
+    await this.pageMarkdowns.put(data)
+  }
+
+  async getPageMarkdown(pageId: string): Promise<PageMarkdown | undefined> {
+    return await this.pageMarkdowns.get(pageId)
+  }
+
+  async savePageHTML(data: PageHTML): Promise<void> {
+    await this.pageHTMLs.put(data)
+  }
+
+  async getPageHTML(pageId: string): Promise<PageHTML | undefined> {
+    return await this.pageHTMLs.get(pageId)
+  }
+
+  async savePagePDF(pageId: string, content: Blob | ArrayBuffer): Promise<void> {
+    let dataToSave = content
+    if (isWebkit() && content instanceof Blob) {
+      dataToSave = await content.arrayBuffer()
+    }
+    await this.pagePDFs.put({ pageId, content: dataToSave })
+  }
+
+  async getPagePDF(pageId: string): Promise<Blob | undefined> { // Return Blob for ease of use
+    const record = await this.pagePDFs.get(pageId)
+    if (!record) return undefined
+
+    const isBuffer = record.content instanceof ArrayBuffer ||
+      (typeof record.content === 'object' && record.content !== null && 'byteLength' in record.content && !('size' in record.content))
+
+    if (isBuffer) {
+      return new Blob([record.content], { type: 'application/pdf' })
+    }
+    return record.content as Blob
+  }
+
+  async savePageDOCX(pageId: string, content: Blob | ArrayBuffer): Promise<void> {
+    let dataToSave = content
+    if (isWebkit() && content instanceof Blob) {
+      dataToSave = await content.arrayBuffer()
+    }
+    await this.pageDOCXs.put({ pageId, content: dataToSave })
+  }
+
+  async getPageDOCX(pageId: string): Promise<Blob | undefined> {
+    const record = await this.pageDOCXs.get(pageId)
+    if (!record) return undefined
+
+    const isBuffer = record.content instanceof ArrayBuffer ||
+      (typeof record.content === 'object' && record.content !== null && 'byteLength' in record.content && !('size' in record.content))
+
+    if (isBuffer) {
+      return new Blob([record.content], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+    }
+    return record.content as Blob
+  }
+
+  // Extracted Images methods
+  async savePageExtractedImage(data: PageExtractedImage): Promise<void> {
+    let dataToSave = data
+    if (isWebkit() && data.blob instanceof Blob) {
+      const buffer = await data.blob.arrayBuffer()
+      dataToSave = { ...data, blob: buffer }
+    }
+    await this.pageExtractedImages.put(dataToSave)
+  }
+
+  async getPageExtractedImage(id: string): Promise<PageExtractedImage | undefined> {
+    const record = await this.pageExtractedImages.get(id)
+    if (!record) return undefined
+
+    const isBuffer = record.blob instanceof ArrayBuffer ||
+      (typeof record.blob === 'object' && record.blob !== null && 'byteLength' in record.blob && !('size' in record.blob))
+
+    if (isBuffer) {
+      return { ...record, blob: new Blob([record.blob], { type: 'image/png' }) }
+    }
+    return record as unknown as PageExtractedImage
   }
 
   // Page methods
