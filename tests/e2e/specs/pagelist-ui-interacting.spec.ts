@@ -51,20 +51,14 @@ test.describe('Page-List UI Interactions', () => {
         const targetPageItem = page.locator('.page-item').nth(targetIndex);
         const deleteButton = targetPageItem.locator('button[title="Delete page"]');
 
-        // 1. Verify delete button is hidden by default (opacity: 0)
-        const initialOpacity = await deleteButton.evaluate(el =>
-            window.getComputedStyle(el).opacity
-        );
-        expect(initialOpacity).toBe('0');
+        const actionsContainer = targetPageItem.locator('.actions-container');
 
-        // 2. Hover over page-item and verify delete button becomes visible (opacity: 1)
+        // 1. Verify actions container is hidden by default (opacity: 0)
+        await expect(actionsContainer).toHaveCSS('opacity', '0');
+
+        // 2. Hover over page-item and verify actions container becomes visible
         await targetPageItem.hover();
-        await expect(async () => {
-            const opacity = await deleteButton.evaluate(el =>
-                window.getComputedStyle(el).opacity
-            );
-            expect(opacity).toBe('1');
-        }).toPass({ timeout: 2000 });
+        await expect(actionsContainer).toHaveCSS('opacity', '1');
 
         // 3. Hover over delete button and verify icon changes to red
         await deleteButton.hover();
@@ -87,14 +81,9 @@ test.describe('Page-List UI Interactions', () => {
             expect(color).toBe('rgb(102, 102, 102)');
         }).toPass({ timeout: 2000 });
 
-        // 5. Move mouse away from page-item and verify delete button hides (opacity: 0)
-        await page.mouse.move(0, 0); // Move to top-left corner
-        await expect(async () => {
-            const opacity = await deleteButton.evaluate(el =>
-                window.getComputedStyle(el).opacity
-            );
-            expect(opacity).toBe('0');
-        }).toPass({ timeout: 2000 });
+        // 5. Move mouse away and verify actions container hides
+        await page.mouse.move(0, 0);
+        await expect(actionsContainer).toHaveCSS('opacity', '0');
     });
 
     test('should show/hide toolbar delete button on select-all interaction', async ({ page }) => {

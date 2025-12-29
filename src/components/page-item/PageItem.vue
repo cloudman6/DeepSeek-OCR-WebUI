@@ -15,33 +15,58 @@
       @update:checked="handleCheckboxChange"
       @click.stop
     />
-    <NButton
-      text
-      size="tiny"
-      circle
+    
+    <div 
+      class="actions-container"
       :style="{
-        position: 'absolute',
-        top: '50%',
-        right: '12px',
-        transform: isDeleteHovered ? 'translateY(-50%) scale(1.1)' : 'translateY(-50%)',
-        opacity: isPageHovered || isDeleteHovered ? 1 : 0,
-        transition: 'all 0.2s ease',
-        zIndex: 10
+        opacity: isPageHovered || isActionHovered ? 1 : 0,
+        pointerEvents: isPageHovered || isActionHovered ? 'auto' : 'none'
       }"
-      title="Delete page"
-      @click.stop="handleDelete"
-      @mouseenter="isDeleteHovered = true"
-      @mouseleave="isDeleteHovered = false"
     >
-      <template #icon>
-        <n-icon
-          size="18"
-          :color="isDeleteHovered ? '#d03050' : '#666'"
-        >
-          <TrashOutline />
-        </n-icon>
-      </template>
-    </NButton>
+      <NButton
+        text
+        size="tiny"
+        circle
+        class="action-btn"
+        title="Scan to Document"
+        :loading="isScanning"
+        :disabled="isScanning"
+        @click.stop="handleScan"
+        @mouseenter="isScanHovered = true"
+        @mouseleave="isScanHovered = false"
+      >
+        <template #icon>
+          <n-icon
+            size="18"
+            :color="isScanHovered ? '#3b82f6' : '#666'"
+          >
+            <DocumentTextOutline />
+          </n-icon>
+        </template>
+      </NButton>
+
+      <NButton
+        text
+        size="tiny"
+        circle
+        class="action-btn"
+        title="Delete page"
+        :disabled="isScanning"
+        @click.stop="handleDelete"
+        @mouseenter="isDeleteHovered = true"
+        @mouseleave="isDeleteHovered = false"
+      >
+        <template #icon>
+          <n-icon
+            size="18"
+            :color="isDeleteHovered ? '#d03050' : '#666'"
+          >
+            <TrashOutline />
+          </n-icon>
+        </template>
+      </NButton>
+    </div>
+
     <div class="page-thumbnail">
       <transition name="fade">
         <img
@@ -101,10 +126,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { NButton, NTag, NCheckbox, NSpin, NIcon } from 'naive-ui'
-import { TrashOutline } from '@vicons/ionicons5'
+import { NButton, NTag, NCheckbox, NSpin, NIcon, useMessage } from 'naive-ui'
+import { TrashOutline, DocumentTextOutline } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
+import { db } from '@/db'
+import { ocrService } from '@/services/ocr'
 
 interface Props {
   page: Page
@@ -126,8 +153,13 @@ const emit = defineEmits<Emits>()
 
 // Store and reactive state
 const pagesStore = usePagesStore()
+const message = useMessage() // Access Naive UI message
 const isDeleteHovered = ref(false)
+const isScanHovered = ref(false)
 const isPageHovered = ref(false)
+const isScanning = ref(false)
+
+const isActionHovered = computed(() => isDeleteHovered.value || isScanHovered.value)
 
 // Computed property for selection state
 const isSelected = computed(() =>
@@ -140,6 +172,39 @@ function handleClick() {
 
 function handleDelete() {
   emit('delete', props.page)
+}
+
+async function handleScan() {
+  if (isScanning.value) return
+  
+  try {
+    isScanning.value = true
+    const imageBlob = await db.getPageImage(props.page.id)
+    
+    if (!imageBlob) {
+      message.error('Could not retrieve image data')
+      return
+    }
+
+    const result = await ocrService.processImage(imageBlob)
+    
+    console.log('--- OCR Result ---')
+    console.log(JSON.stringify(result, null, 2))
+    console.log('------------------')
+    
+    // Check if result has expected structure
+    if (result.success && result.boxes) {
+        message.success(`OCR Complete: Found ${result.boxes.length} layout elements`)
+    } else {
+        message.warning('OCR completed but returned unexpected format')
+    }
+
+  } catch (error) {
+    console.error('OCR Error:', error)
+    message.error('OCR Failed: ' + (error instanceof Error ? error.message : String(error)))
+  } finally {
+    isScanning.value = false
+  }
 }
 
 function handleCheckboxChange() {
@@ -258,6 +323,31 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
 
 .drag-handle:active {
   cursor: grabbing;
+}
+
+/* Actions Container */
+.actions-container {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+  display: flex;
+  gap: 4px; /* Space between buttons */
+  z-index: 10;
+  transition: opacity 0.2s ease;
+  background: rgba(255, 255, 255, 0.8); /* Slight background to ensure visibility */
+  border-radius: 12px;
+  padding: 2px;
+  backdrop-filter: blur(2px);
+}
+
+.action-btn {
+  transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+  transform: scale(1.1);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* Thumbnail area */

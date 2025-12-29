@@ -1,9 +1,9 @@
 import * as pdfjsLib from 'pdfjs-dist'
-import { CMAP_URL, CMAP_PACKED } from '../services/pdf/config'
+import { CMAP_URL, CMAP_PACKED, STANDARD_FONT_DATA_URL } from '../services/pdf/config'
 import { workerLogger } from '@/utils/logger'
 
-// Configure PDF.js worker
-import workerUrl from 'pdfjs-dist/legacy/build/pdf.worker.mjs?url';
+// Configure worker
+import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 interface PDFRenderMessage {
@@ -160,7 +160,9 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
     data: new Uint8Array(pdfData),
     cMapUrl: CMAP_URL,
     cMapPacked: CMAP_PACKED,
+    standardFontDataUrl: STANDARD_FONT_DATA_URL,
     useSystemFonts: true,
+    disableFontFace: true,
     fontExtraProperties: true,
     // @ts-expect-error - Custom CanvasFactory
     canvasFactory: new OffscreenCanvasFactory() as unknown,

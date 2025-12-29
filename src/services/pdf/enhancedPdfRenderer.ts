@@ -4,7 +4,7 @@
  */
 
 import * as pdfjsLib from 'pdfjs-dist'
-import { CMAP_URL, CMAP_PACKED } from './config'
+import { CMAP_URL, CMAP_PACKED, STANDARD_FONT_DATA_URL } from './config'
 import { fontLoader } from '../font/fontLoader'
 import { pdfLogger } from '@/utils/logger'
 
@@ -70,6 +70,7 @@ export class EnhancedPdfRenderer {
         data: uint8Array,
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
+        standardFontDataUrl: STANDARD_FONT_DATA_URL,
         useSystemFonts: true,
         fontExtraProperties: true,
         verbosity: 0
@@ -152,6 +153,7 @@ export class EnhancedPdfRenderer {
         data: uint8Array,
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
+        standardFontDataUrl: STANDARD_FONT_DATA_URL,
         useSystemFonts: true,
         verbosity: 0
       })

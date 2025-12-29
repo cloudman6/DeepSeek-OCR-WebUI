@@ -1,52 +1,35 @@
 // OCR Service - Placeholder implementation
 // This service will handle text extraction from images using various OCR providers
 
-export interface OCRProvider {
-  name: string
-  process(imageData: string, options?: OCROptions): Promise<OCRResult>
-}
-
-export interface OCROptions {
-  language?: string
-  confidence?: number
-  preprocess?: boolean
+import { DeepSeekOCRProvider } from './providers'
+export interface OCRBox {
+  label: 'title' | 'image' | 'table' | 'text' | string
+  box: [number, number, number, number] // [x1, y1, x2, y2]
 }
 
 export interface OCRResult {
+  success: boolean
   text: string
-  confidence: number
-  words?: OCRWord[]
-  lines?: OCRLine[]
-  processingTime?: number
+  raw_text: string
+  boxes: OCRBox[]
+  image_dims: { w: number; h: number }
+  prompt_type: string
 }
 
-export interface OCRWord {
-  text: string
-  confidence: number
-  boundingBox: BoundingBox
+export interface OCROptions {
+  prompt_type?: string
 }
 
-export interface OCRLine {
-  text: string
-  confidence: number
-  words: OCRWord[]
-  boundingBox: BoundingBox
-}
-
-export interface BoundingBox {
-  x: number
-  y: number
-  width: number
-  height: number
+export interface OCRProvider {
+  name: string
+  process(imageData: Blob | string, options?: OCROptions): Promise<OCRResult>
 }
 
 export class OCRService {
   private providers: Map<string, OCRProvider> = new Map()
 
   constructor() {
-    // Register OCR providers - to be implemented
-    // this.registerProvider('tesseract', new TesseractProvider())
-    // this.registerProvider('vision-ai', new VisionAIProvider())
+    this.registerProvider('deepseek', new DeepSeekOCRProvider())
   }
 
   registerProvider(name: string, provider: OCRProvider) {
@@ -54,8 +37,8 @@ export class OCRService {
   }
 
   async processImage(
-    imageData: string,
-    providerName: string = 'tesseract',
+    imageData: Blob | string,
+    providerName: string = 'deepseek',
     options?: OCROptions
   ): Promise<OCRResult> {
     const provider = this.providers.get(providerName)

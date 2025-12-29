@@ -1,67 +1,71 @@
 <template>
-  <n-layout
-    class="app-container"
-    @drop="handleDrop"
-    @dragover="handleDragOver"
-  >
-    <!-- Header -->
-    <AppHeader 
-      :page-count="pagesStore.pages.length"
-      @add-files="handleFileAdd"
-    />
-
-    <!-- Main Content -->
-    <n-layout
-      has-sider
-      class="app-main"
-    >
-      <div
-        v-if="pagesStore.pages.length === 0"
-        style="width: 100%; height: 100%"
+  <n-message-provider>
+    <n-dialog-provider>
+      <n-layout
+        class="app-container"
+        @drop="handleDrop"
+        @dragover="handleDragOver"
       >
-        <EmptyState @add-files="handleFileAdd" />
-      </div>
+        <!-- Header -->
+        <AppHeader 
+          :page-count="pagesStore.pages.length"
+          @add-files="handleFileAdd"
+        />
+
+        <!-- Main Content -->
+        <n-layout
+          has-sider
+          class="app-main"
+        >
+          <div
+            v-if="pagesStore.pages.length === 0"
+            style="width: 100%; height: 100%"
+          >
+            <EmptyState @add-files="handleFileAdd" />
+          </div>
       
-      <template v-else>
-        <!-- Page List -->
-        <n-layout-sider
-          :width="260"
-          :collapsed-width="0"
-          show-trigger="bar"
-          collapse-mode="width"
-          bordered
-        >
-          <div class="page-list-container">
-            <PageList
-              :pages="pagesStore.pages"
-              :selected-id="selectedPageId"
-              @page-selected="handlePageSelected"
-              @page-deleted="handlePageDeleted"
-              @batch-deleted="handleBatchDeleted"
-            />
-          </div>
-        </n-layout-sider>
+          <template v-else>
+            <!-- Page List -->
+            <n-layout-sider
+              :width="260"
+              :collapsed-width="0"
+              show-trigger="bar"
+              collapse-mode="width"
+              bordered
+            >
+              <div class="page-list-container">
+                <PageList
+                  :pages="pagesStore.pages"
+                  :selected-id="selectedPageId"
+                  @page-selected="handlePageSelected"
+                  @page-deleted="handlePageDeleted"
+                  @batch-deleted="handleBatchDeleted"
+                />
+              </div>
+            </n-layout-sider>
   
-        <!-- Page Viewer (formerly Inspector) -->
-        <n-layout-content class="page-viewer-container">
-          <PageViewer :current-page="currentPage" />
-        </n-layout-content>
+            <!-- Page Viewer (formerly Inspector) -->
+            <n-layout-content class="page-viewer-container">
+              <PageViewer :current-page="currentPage" />
+            </n-layout-content>
   
-        <!-- Preview -->
-        <n-layout-sider
-          :width="320"
-          :collapsed-width="0"
-          show-trigger="bar"
-          collapse-mode="width"
-          bordered
-        >
-          <div class="preview-container">
-            <Preview :current-page="currentPage" />
-          </div>
-        </n-layout-sider>
-      </template>
-    </n-layout>
-  </n-layout>
+            <!-- Preview -->
+            <n-layout-sider
+              :width="320"
+              :collapsed-width="0"
+              show-trigger="bar"
+              collapse-mode="width"
+              bordered
+            >
+              <div class="preview-container">
+                <Preview :current-page="currentPage" />
+              </div>
+            </n-layout-sider>
+          </template>
+        </n-layout>
+      </n-layout>
+    </n-dialog-provider>
+  </n-message-provider>
 </template>
 
 <script setup lang="ts">
@@ -74,7 +78,7 @@ import Preview from './components/preview/Preview.vue'
 import PageViewer from './components/page-viewer/PageViewer.vue'
 import AppHeader from './components/common/AppHeader.vue'
 import EmptyState from './components/common/EmptyState.vue'
-import { NLayout, NLayoutSider, NLayoutContent, createDiscreteApi } from 'naive-ui'
+import { NLayout, NLayoutSider, NLayoutContent, createDiscreteApi, NMessageProvider, NDialogProvider } from 'naive-ui'
 
 const pagesStore = usePagesStore()
 const { message, dialog } = createDiscreteApi(['message', 'dialog'], {

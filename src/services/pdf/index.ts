@@ -10,7 +10,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl
 
 // Initialize enhanced PDF renderer
 import { enhancedPdfRenderer } from './enhancedPdfRenderer'
-import { CMAP_URL, CMAP_PACKED } from './config'
+import { CMAP_URL, CMAP_PACKED, STANDARD_FONT_DATA_URL } from './config'
 
 // Initialize enhanced renderer when module loads
 enhancedPdfRenderer.initialize().catch(err => pdfLogger.error(err))
@@ -103,7 +103,7 @@ export class PDFService {
         data: uint8Array,
         cMapUrl: CMAP_URL,
         cMapPacked: CMAP_PACKED,
-        // Omit standardFontDataUrl (can be removed for Chinese scenarios to reduce dependencies)
+        standardFontDataUrl: STANDARD_FONT_DATA_URL,
         // Enable font fallback for better text rendering
         useSystemFonts: true,
         // Increase font rendering quality

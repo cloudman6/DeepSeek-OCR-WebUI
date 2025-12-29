@@ -1,3 +1,4 @@
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // 1. Mock 'pdfjs-dist' and its worker URL BEFORE importing the worker
@@ -17,6 +18,13 @@ vi.mock('pdfjs-dist/legacy/build/pdf.worker.mjs?url', () => {
     default: 'mock-worker-url',
   };
 });
+
+// Mock config
+vi.mock('@/services/pdf/config', () => ({
+  CMAP_URL: '/cmaps/',
+  CMAP_PACKED: true,
+  STANDARD_FONT_DATA_URL: '/standard_fonts/',
+}));
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({
@@ -183,7 +191,7 @@ describe('pdfRender.worker', () => {
     const loadingTask = {
       promise: Promise.resolve(mockPdfDocument),
     };
-    pdfjsLib.getDocument.mockReturnValue(loadingTask);
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockReturnValue(loadingTask);
 
     const payload = {
       pageId: 'page-123',
@@ -218,7 +226,12 @@ describe('pdfRender.worker', () => {
     });
 
     // Verify PDF loading
-    expect(pdfjsLib.getDocument).toHaveBeenCalled();
+    expect(pdfjsLib.getDocument).toHaveBeenCalledWith(expect.objectContaining({
+      cMapUrl: '/cmaps/',
+      cMapPacked: true,
+      standardFontDataUrl: '/standard_fonts/',
+      useSystemFonts: true,
+    }));
     expect(mockPdfDocument.getPage).toHaveBeenCalledWith(1);
     expect(mockPage.getViewport).toHaveBeenCalledWith({ scale: 2.0 });
 
@@ -238,7 +251,7 @@ describe('pdfRender.worker', () => {
       render: vi.fn().mockReturnValue({ promise: Promise.resolve() }),
       cleanup: vi.fn(),
     };
-    pdfjsLib.getDocument.mockReturnValue({ promise: Promise.resolve({ getPage: () => mockPage, destroy: vi.fn().mockResolvedValue(undefined) }) });
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ promise: Promise.resolve({ getPage: () => mockPage, destroy: vi.fn().mockResolvedValue(undefined) }) });
 
     // Trigger execution
     await messageHandler(createEvent({
@@ -259,8 +272,8 @@ describe('pdfRender.worker', () => {
     );
 
     // Extract factory from getDocument call
-    const params = pdfjsLib.getDocument.mock.calls[0][0];
-    const factory = params.canvasFactory;
+    const params = (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0];
+    const factory = params!.canvasFactory;
 
     expect(factory).toBeDefined();
 
@@ -298,7 +311,7 @@ describe('pdfRender.worker', () => {
       getPage: vi.fn().mockResolvedValue(mockPage),
       destroy: vi.fn().mockRejectedValue(new Error('Destroy error')),
     };
-    pdfjsLib.getDocument.mockReturnValue({ promise: Promise.resolve(mockPdfDocument) });
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ promise: Promise.resolve(mockPdfDocument) });
 
     await messageHandler(createEvent({
       type: 'render',
@@ -320,7 +333,7 @@ describe('pdfRender.worker', () => {
   it('should handle non-Error objects thrown', async () => {
     if (!messageHandler) throw new Error('Message handler not registered');
 
-    pdfjsLib.getDocument.mockImplementation(() => {
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw 'String error';
     });
 
@@ -356,7 +369,7 @@ describe('pdfRender.worker', () => {
       getPage: vi.fn().mockResolvedValue(mockPage),
       destroy: vi.fn().mockResolvedValue(undefined),
     };
-    pdfjsLib.getDocument.mockReturnValue({ promise: Promise.resolve(mockPdfDocument) });
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ promise: Promise.resolve(mockPdfDocument) });
 
     const payload = {
       pageId: 'p1',
@@ -384,7 +397,7 @@ describe('pdfRender.worker', () => {
   it('should handle unexpected errors during processing', async () => {
     if (!messageHandler) throw new Error('Message handler not registered');
 
-    pdfjsLib.getDocument.mockImplementation(() => {
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockImplementation(() => {
       throw new Error('Critical PDF Error');
     });
 
@@ -419,7 +432,7 @@ describe('pdfRender.worker', () => {
       render: vi.fn().mockReturnValue({ promise: Promise.resolve() }),
       cleanup: vi.fn(),
     };
-    pdfjsLib.getDocument.mockReturnValue({ promise: Promise.resolve({ getPage: () => mockPage, destroy: vi.fn().mockResolvedValue(undefined) }) });
+    (pdfjsLib.getDocument as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ promise: Promise.resolve({ getPage: () => mockPage, destroy: vi.fn().mockResolvedValue(undefined) }) });
 
     await messageHandler(createEvent({
       type: 'render',

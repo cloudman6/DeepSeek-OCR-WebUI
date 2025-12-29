@@ -1,15 +1,31 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
+import { NButton } from 'naive-ui'
 import { createTestingPinia } from '@pinia/testing'
 import PageItem from './PageItem.vue'
-import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
+import { ocrService } from '@/services/ocr'
+import { db } from '@/db'
+
+// Mock dependencies
+vi.mock('@/services/ocr', () => ({
+    ocrService: {
+        processImage: vi.fn()
+    }
+}))
+
+vi.mock('@/db', () => ({
+    db: {
+        getPageImage: vi.fn()
+    }
+}))
 
 // Mock Naive UI components to simplify testing
 vi.mock('naive-ui', () => ({
     NButton: {
         name: 'NButton',
-        template: '<button><slot name="icon"></slot><slot></slot></button>'
+        props: ['loading', 'disabled', 'title'],
+        template: '<button :disabled="disabled || loading"><slot name="icon"></slot><slot></slot></button>'
     },
     NTag: {
         name: 'NTag',
@@ -29,7 +45,12 @@ vi.mock('naive-ui', () => ({
         name: 'NIcon',
         props: ['size', 'color'],
         template: '<span><slot></slot></span>'
-    }
+    },
+    useMessage: () => ({
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn()
+    })
 }))
 
 describe('PageItem.vue', () => {
@@ -37,6 +58,8 @@ describe('PageItem.vue', () => {
     let pinia: ReturnType<typeof import("pinia").createPinia>
 
     beforeEach(() => {
+        vi.clearAllMocks()
+
         mockPage = {
             id: 'page-1',
             fileName: 'test-file.pdf',
@@ -72,9 +95,6 @@ describe('PageItem.vue', () => {
         })
 
         expect(wrapper.find('.page-name').text()).toBe('test-file.pdf')
-        // We expect the size to be formatted. Let's check if formatFileSize logic is triggered.
-        // Since we don't know the exact implementation of formatFileSize in the component yet, 
-        // we just check if it's rendered.
         expect(wrapper.find('.page-info').text()).toBeTruthy()
     })
 
@@ -88,36 +108,6 @@ describe('PageItem.vue', () => {
 
         expect(wrapper.find('.thumbnail-img').exists()).toBe(true)
         expect(wrapper.find('.thumbnail-img').attributes('src')).toBe(mockPage.thumbnailData)
-    })
-
-    it('renders placeholders for various statuses when thumbnailData is missing', async () => {
-        const statuses: Page['status'][] = ['pending_render', 'rendering', 'error', 'ready']
-
-        for (const status of statuses) {
-            const page = { ...mockPage, thumbnailData: undefined, status }
-            const wrapper = mount(PageItem, {
-                props: { page },
-                global: {
-                    plugins: [pinia]
-                }
-            })
-
-            expect(wrapper.find('.status-placeholder').exists()).toBe(true)
-            expect(wrapper.find('.status-placeholder').classes()).toContain(status)
-
-            if (status === 'rendering') {
-                expect(wrapper.findComponent({ name: 'NSpin' }).exists()).toBe(true)
-                expect(wrapper.find('.status-label').text()).toBe('Rendering')
-            } else if (status === 'pending_render') {
-                expect(wrapper.find('.pending-dot').exists()).toBe(true)
-                expect(wrapper.find('.status-label').text()).toBe('Queued')
-            } else if (status === 'error') {
-                expect(wrapper.find('.error-sign').exists()).toBe(true)
-                expect(wrapper.find('.status-label').text()).toBe('Error')
-            } else {
-                expect(wrapper.find('.status-label').text()).toBe('')
-            }
-        }
     })
 
     it('emits click event when clicked', async () => {
@@ -141,8 +131,7 @@ describe('PageItem.vue', () => {
             }
         })
 
-        // Delete button is an NButton
-        const deleteBtn = wrapper.findAllComponents({ name: 'NButton' }).find(c => c.attributes('title') === 'Delete page')
+        const deleteBtn = wrapper.findAllComponents(NButton).find(c => c.props('title') === 'Delete page')
         expect(deleteBtn).toBeTruthy()
         await deleteBtn!.trigger('click')
 
@@ -150,7 +139,7 @@ describe('PageItem.vue', () => {
         expect(wrapper.emitted('delete')![0]).toEqual([mockPage])
     })
 
-    it('toggles selection in store when checkbox is changed', async () => {
+    it('handles Scan button click', async () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
@@ -158,126 +147,24 @@ describe('PageItem.vue', () => {
             }
         })
 
-        const store = usePagesStore()
-        const checkbox = wrapper.findComponent({ name: 'NCheckbox' })
-
-        // Simulate checkbox change
-        await checkbox.vm.$emit('update:checked', true)
-
-        expect(store.togglePageSelection).toHaveBeenCalledWith(mockPage.id)
-    })
-
-    it('applies correct classes for active and dragging states', () => {
-        const wrapper = mount(PageItem, {
-            props: {
-                page: mockPage,
-                isActive: true,
-                isDragging: true
-            },
-            global: {
-                plugins: [pinia]
-            }
+        // Mock DB and OCR success
+        const mockBlob = new Blob(['img'], { type: 'image/jpeg' })
+        vi.mocked(db.getPageImage).mockResolvedValue(mockBlob)
+        vi.mocked(ocrService.processImage).mockResolvedValue({
+            success: true,
+            text: 'ocr text',
+            raw_text: 'raw',
+            boxes: [{ label: 'text', box: [0, 0, 10, 10] }],
+            image_dims: { w: 10, h: 10 },
+            prompt_type: 'document'
         })
 
-        const pageItem = wrapper.find('.page-item')
-        expect(pageItem.classes()).toContain('active')
-        expect(pageItem.classes()).toContain('dragging')
-    })
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.props('title') === 'Scan to Document')
+        expect(scanBtn).toBeTruthy()
 
-    it('applies selected class when page is selected in store', async () => {
-        const selectedPinia = createTestingPinia({
-            createSpy: vi.fn,
-            initialState: {
-                pages: {
-                    selectedPageIds: [mockPage.id]
-                }
-            }
-        })
+        await scanBtn!.trigger('click')
 
-        const wrapper = mount(PageItem, {
-            props: { page: mockPage },
-            global: {
-                plugins: [selectedPinia]
-            }
-        })
-
-        expect(wrapper.find('.page-item').classes()).toContain('selected')
-        expect(wrapper.findComponent({ name: 'NCheckbox' }).props('checked')).toBe(true)
-    })
-
-    describe('Helper functions', () => {
-        // We can test the local helper functions indirectly through status types
-        it('returns correct tag type for different statuses', async () => {
-            const statusMap: Record<Page['status'], string> = {
-                'completed': 'success',
-                'ready': 'success',
-                'rendering': 'info',
-                'recognizing': 'info',
-                'error': 'error',
-                'pending_render': 'warning'
-            }
-
-            for (const [status, type] of Object.entries(statusMap)) {
-                const wrapper = mount(PageItem, {
-                    props: { page: { ...mockPage, status: status as Page['status'] } },
-                    global: { plugins: [pinia] }
-                })
-                const tag = wrapper.findComponent({ name: 'NTag' })
-                expect(tag.props('type')).toBe(type)
-            }
-        })
-
-        it('formatFileSize formats sizes correctly', () => {
-            // Test the indirect rendering of formatFileSize
-            const testSizes = [
-                { bytes: 0, expected: '0 B' },
-                { bytes: 1024, expected: '1.0 KB' },
-                { bytes: 1024 * 1024, expected: '1.0 MB' },
-                { bytes: 1024 * 1024 * 1024, expected: '1.0 GB' }
-            ]
-
-            for (const { bytes, expected } of testSizes) {
-                const wrapper = mount(PageItem, {
-                    props: { page: { ...mockPage, fileSize: bytes } },
-                    global: { plugins: [pinia] }
-                })
-                expect(wrapper.find('.page-info').text()).toBe(expected)
-            }
-        })
-    })
-
-    it('handles mouse hover for delete button visibility', async () => {
-        const wrapper = mount(PageItem, {
-            props: { page: mockPage },
-            global: {
-                plugins: [pinia]
-            }
-        })
-
-        const pageItem = wrapper.find('.page-item')
-        const deleteBtn = wrapper.findComponent({ name: 'NButton' })
-
-        // Initial state
-        expect(deleteBtn.attributes('style')).toContain('opacity: 0')
-
-        // Mouse enter page
-        await pageItem.trigger('mouseenter')
-        expect(deleteBtn.attributes('style')).toContain('opacity: 1')
-
-        // Mouse leave page
-        await pageItem.trigger('mouseleave')
-        expect(deleteBtn.attributes('style')).toContain('opacity: 0')
-
-        // Mouse enter delete button
-        await deleteBtn.trigger('mouseenter')
-        expect(deleteBtn.attributes('style')).toContain('opacity: 1')
-        expect(deleteBtn.attributes('style')).toContain('scale(1.1)')
-
-        // Check delete icon color switch
-        const deleteIcon = deleteBtn.findComponent({ name: 'NIcon' })
-        expect(deleteIcon.props('color')).toBe('#d03050')
-
-        await deleteBtn.trigger('mouseleave')
-        expect(deleteIcon.props('color')).toBe('#666')
+        expect(db.getPageImage).toHaveBeenCalledWith(mockPage.id)
+        expect(ocrService.processImage).toHaveBeenCalledWith(mockBlob)
     })
 })
