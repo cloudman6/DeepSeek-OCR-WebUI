@@ -23,7 +23,8 @@ export class DeepSeekOCRProvider implements OCRProvider {
         try {
             const response = await fetch(config.ocrApiEndpoint, {
                 method: 'POST',
-                body: formData
+                body: formData,
+                signal: options?.signal
             })
 
             if (!response.ok) {

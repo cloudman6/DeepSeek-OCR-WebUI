@@ -29,7 +29,6 @@
         circle
         class="action-btn"
         title="Scan to Document"
-        :loading="isScanning"
         :disabled="isScanning"
         @click.stop="handleScan"
         @mouseenter="isScanHovered = true"
@@ -95,6 +94,19 @@
                 v-else-if="page.status === 'pending_render'"
                 class="pending-dot"
               >...</span>
+              <n-spin
+                v-else-if="page.status === 'pending_ocr'"
+                size="small"
+              >
+                <template #icon>
+                  <!-- Custom Icon or Spinner for queue waiting -->
+                  <!-- Default spin is fine, or maybe a clock icon -->
+                </template>
+              </n-spin>
+              <n-spin
+                v-else-if="page.status === 'recognizing'"
+                size="small"
+              />
               <span
                 v-else-if="page.status === 'error'"
                 class="error-sign"
@@ -157,7 +169,8 @@ const message = useMessage() // Access Naive UI message
 const isDeleteHovered = ref(false)
 const isScanHovered = ref(false)
 const isPageHovered = ref(false)
-const isScanning = ref(false)
+
+const isScanning = computed(() => props.page.status === 'recognizing' || props.page.status === 'pending_ocr')
 
 const isActionHovered = computed(() => isDeleteHovered.value || isScanHovered.value)
 
@@ -175,10 +188,9 @@ function handleDelete() {
 }
 
 async function handleScan() {
-  if (isScanning.value) return
+  if (props.page.status === 'recognizing' || props.page.status === 'pending_ocr') return
   
   try {
-    isScanning.value = true
     const imageBlob = await db.getPageImage(props.page.id)
     
     if (!imageBlob) {
@@ -186,24 +198,12 @@ async function handleScan() {
       return
     }
 
-    const result = await ocrService.processImage(imageBlob)
-    
-    console.log('--- OCR Result ---')
-    console.log(JSON.stringify(result, null, 2))
-    console.log('------------------')
-    
-    // Check if result has expected structure
-    if (result.success && result.boxes) {
-        message.success(`OCR Complete: Found ${result.boxes.length} layout elements`)
-    } else {
-        message.warning('OCR completed but returned unexpected format')
-    }
+    message.info('Added to OCR Queue')
+    await ocrService.queueOCR(props.page.id, imageBlob)
 
   } catch (error) {
     console.error('OCR Error:', error)
     message.error('OCR Failed: ' + (error instanceof Error ? error.message : String(error)))
-  } finally {
-    isScanning.value = false
   }
 }
 
@@ -215,6 +215,9 @@ function getShortStatusText(status: Page['status']): string {
   switch (status) {
     case 'pending_render': return 'Queued'
     case 'rendering': return 'Rendering'
+    case 'pending_ocr': return 'Queued'
+    case 'recognizing': return 'Scanning'
+    case 'ocr_success': return 'OCR Done'
     case 'error': return 'Error'
     default: return ''
   }
@@ -234,8 +237,11 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
   switch (status) {
     case 'completed':
     case 'ready':
+    case 'ocr_success':
       return 'success'
     case 'rendering':
+      return 'info'
+    case 'pending_ocr':
     case 'recognizing':
       return 'info'
     case 'error':

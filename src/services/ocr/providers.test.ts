@@ -90,4 +90,20 @@ describe('DeepSeekOCRProvider', () => {
 
         await expect(provider.process(blob)).rejects.toThrow('Network Failure')
     })
+    it('should pass AbortSignal to fetch', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => mockResponse
+        })
+
+        const provider = new DeepSeekOCRProvider()
+        const blob = new Blob([''], { type: 'image/jpeg' })
+        const controller = new AbortController()
+
+        await provider.process(blob, { signal: controller.signal })
+
+        expect(fetchMock).toHaveBeenCalledTimes(1)
+        const [, options] = fetchMock.mock.calls[0]
+        expect(options.signal).toBe(controller.signal)
+    })
 })

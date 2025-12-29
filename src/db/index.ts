@@ -19,7 +19,7 @@ export interface DBPage {
   fileSize: number
   fileType: string
   origin: 'upload' | 'pdf_generated' | 'scanner'
-  status: 'pending_render' | 'rendering' | 'ready' | 'recognizing' | 'completed' | 'error'
+  status: 'pending_render' | 'rendering' | 'ready' | 'pending_ocr' | 'recognizing' | 'ocr_success' | 'completed' | 'error'
   progress: number
   order: number  // Sort order for drag and drop
   imageData?: string  // base64 image data

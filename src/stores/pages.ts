@@ -4,6 +4,7 @@ import { db, generatePageId } from '@/db/index'
 import type { DBPage } from '@/db/index'
 import fileAddService from '@/services/add'
 import { pdfEvents } from '@/services/pdf/events'
+import { ocrEvents } from '@/services/ocr/events'
 import { storeLogger } from '@/utils/logger'
 
 export interface PageProcessingLog {
@@ -20,7 +21,7 @@ export interface PageOutput {
   confidence?: number
 }
 
-export type PageStatus = 'pending_render' | 'rendering' | 'recognizing' | 'ready' | 'completed' | 'error'
+export type PageStatus = 'pending_render' | 'rendering' | 'pending_ocr' | 'recognizing' | 'ocr_success' | 'ready' | 'completed' | 'error'
 
 export interface Page {
   id: string
@@ -87,12 +88,13 @@ export const usePagesStore = defineStore('pages', () => {
     return pages.value.filter(page =>
       page.status === 'pending_render' ||
       page.status === 'rendering' ||
-      page.status === 'recognizing'
+      page.status === 'recognizing' ||
+      page.status === 'pending_ocr'
     )
   })
 
   const completedPages = computed(() =>
-    pages.value.filter(page => page.status === 'completed' || page.status === 'ready')
+    pages.value.filter(page => page.status === 'completed' || page.status === 'ready' || page.status === 'ocr_success')
   )
 
   const totalPages = computed(() => pages.value.length)
@@ -486,7 +488,49 @@ export const usePagesStore = defineStore('pages', () => {
     })
   }
 
+  function setupOCREventListeners() {
+    ocrEvents.on('ocr:queued', ({ pageId }) => {
+      updatePageStatus(pageId, 'pending_ocr')
+      addPageLog(pageId, {
+        level: 'info',
+        message: 'OCR task queued'
+      })
+    })
+
+    ocrEvents.on('ocr:start', ({ pageId }) => {
+      updatePageStatus(pageId, 'recognizing')
+      addPageLog(pageId, {
+        level: 'info',
+        message: 'OCR processing started'
+      })
+    })
+
+    ocrEvents.on('ocr:success', ({ pageId, result }) => {
+      updatePage(pageId, {
+        status: 'ocr_success',
+        ocrText: result.text,
+        ocrConfidence: 1.0
+      })
+
+      addPageLog(pageId, {
+        level: 'success',
+        message: 'OCR completed successfully'
+      })
+    })
+
+    ocrEvents.on('ocr:error', ({ pageId, error }) => {
+      // Revert to ready so user can try again, or error state?
+      // Error state usually shows a red flag.
+      updatePageStatus(pageId, 'error')
+      addPageLog(pageId, {
+        level: 'error',
+        message: `OCR failed: ${error.message}`
+      })
+    })
+  }
+
   setupPDFEventListeners()
+  setupOCREventListeners()
 
   return {
     pages,

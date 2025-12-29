@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { NButton } from 'naive-ui'
 import { createTestingPinia } from '@pinia/testing'
 import PageItem from './PageItem.vue'
@@ -10,7 +10,8 @@ import { db } from '@/db'
 // Mock dependencies
 vi.mock('@/services/ocr', () => ({
     ocrService: {
-        processImage: vi.fn()
+        processImage: vi.fn(),
+        queueOCR: vi.fn()
     }
 }))
 
@@ -24,7 +25,7 @@ vi.mock('@/db', () => ({
 vi.mock('naive-ui', () => ({
     NButton: {
         name: 'NButton',
-        props: ['loading', 'disabled', 'title'],
+        props: ['loading', 'disabled'],
         template: '<button :disabled="disabled || loading"><slot name="icon"></slot><slot></slot></button>'
     },
     NTag: {
@@ -49,7 +50,8 @@ vi.mock('naive-ui', () => ({
     useMessage: () => ({
         success: vi.fn(),
         error: vi.fn(),
-        warning: vi.fn()
+        warning: vi.fn(),
+        info: vi.fn()
     })
 }))
 
@@ -131,7 +133,7 @@ describe('PageItem.vue', () => {
             }
         })
 
-        const deleteBtn = wrapper.findAllComponents(NButton).find(c => c.props('title') === 'Delete page')
+        const deleteBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Delete page')
         expect(deleteBtn).toBeTruthy()
         await deleteBtn!.trigger('click')
 
@@ -150,21 +152,16 @@ describe('PageItem.vue', () => {
         // Mock DB and OCR success
         const mockBlob = new Blob(['img'], { type: 'image/jpeg' })
         vi.mocked(db.getPageImage).mockResolvedValue(mockBlob)
-        vi.mocked(ocrService.processImage).mockResolvedValue({
-            success: true,
-            text: 'ocr text',
-            raw_text: 'raw',
-            boxes: [{ label: 'text', box: [0, 0, 10, 10] }],
-            image_dims: { w: 10, h: 10 },
-            prompt_type: 'document'
-        })
+        vi.mocked(ocrService.queueOCR).mockResolvedValue()
 
-        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.props('title') === 'Scan to Document')
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
         expect(scanBtn).toBeTruthy()
 
         await scanBtn!.trigger('click')
+        await flushPromises()
 
         expect(db.getPageImage).toHaveBeenCalledWith(mockPage.id)
-        expect(ocrService.processImage).toHaveBeenCalledWith(mockBlob)
+
+        expect(ocrService.queueOCR).toHaveBeenCalledWith(mockPage.id, mockBlob)
     })
 })
