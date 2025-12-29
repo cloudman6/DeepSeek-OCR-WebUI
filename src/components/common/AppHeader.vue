@@ -71,7 +71,7 @@ const pageCountText = computed(() => {
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background-color: white;
+  background-color: #f6f7f8;
 }
 
 .header-brand {

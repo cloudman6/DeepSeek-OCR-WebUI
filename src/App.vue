@@ -259,8 +259,17 @@ onMounted(async () => {
 body {
   margin: 0;
   font-family: Inter, system-ui, sans-serif;
-  background: #f6f7fb;
+  background: #f6f7f8;
   color: #111;
+}
+
+
+/* ====== Naive UI Overrides ====== */
+.n-layout,
+.n-layout-header,
+.n-layout-sider,
+.n-layout-content {
+  background-color: #f6f7f8 !important;
 }
 
 /* ====== Layout ====== */
