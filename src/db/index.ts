@@ -433,6 +433,10 @@ export class Scan2DocDB extends Dexie {
     })
   }
 
+  async updatePage(id: string, updates: Partial<DBPage>): Promise<number> {
+    return await this.pages.update(id, { ...updates, updatedAt: new Date() })
+  }
+
   async getStorageSize(): Promise<number> {
     if ('storage' in navigator && 'estimate' in navigator.storage) {
       const estimate = await navigator.storage.estimate()

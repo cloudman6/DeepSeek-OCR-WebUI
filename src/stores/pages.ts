@@ -493,6 +493,9 @@ export const usePagesStore = defineStore('pages', () => {
         level: 'info',
         message: 'OCR task queued'
       })
+      db.updatePage(pageId, { status: 'pending_ocr' }).catch(err => {
+        storeLogger.error(`[Pages Store] Failed to update OCR status (queued) for ${pageId}:`, err)
+      })
     })
 
     ocrEvents.on('ocr:start', ({ pageId }) => {
@@ -500,6 +503,9 @@ export const usePagesStore = defineStore('pages', () => {
       addPageLog(pageId, {
         level: 'info',
         message: 'OCR processing started'
+      })
+      db.updatePage(pageId, { status: 'recognizing' }).catch(err => {
+        storeLogger.error(`[Pages Store] Failed to update OCR status (start) for ${pageId}:`, err)
       })
     })
 
@@ -513,15 +519,25 @@ export const usePagesStore = defineStore('pages', () => {
         level: 'success',
         message: 'OCR completed successfully'
       })
+
+      db.updatePage(pageId, {
+        status: 'ocr_success',
+        ocrText: result.text,
+        processedAt: new Date(),
+        progress: 100
+      }).catch(err => {
+        storeLogger.error(`[Pages Store] Failed to update OCR status (success) for ${pageId}:`, err)
+      })
     })
 
     ocrEvents.on('ocr:error', ({ pageId, error }) => {
-      // Revert to ready so user can try again, or error state?
-      // Error state usually shows a red flag.
       updatePageStatus(pageId, 'error')
       addPageLog(pageId, {
         level: 'error',
         message: `OCR failed: ${error.message}`
+      })
+      db.updatePage(pageId, { status: 'error' }).catch(err => {
+        storeLogger.error(`[Pages Store] Failed to update OCR status (error) for ${pageId}:`, err)
       })
     })
   }
@@ -564,6 +580,7 @@ export const usePagesStore = defineStore('pages', () => {
     deletePagesFromDB,
     reorderPages,
     addFiles,
-    setupPDFEventListeners
+    setupPDFEventListeners,
+    setupOCREventListeners
   }
 })

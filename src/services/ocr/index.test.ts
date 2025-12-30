@@ -1,5 +1,27 @@
 import { describe, it, expect, vi } from 'vitest'
 import { OCRService, type OCRProvider, type OCRResult } from './index'
+import { db } from '@/db'
+import { ocrEvents } from './events'
+import { queueManager } from '@/services/queue'
+
+vi.mock('@/db', () => ({
+  db: {
+    savePageOCR: vi.fn()
+  }
+}))
+
+vi.mock('./events', () => ({
+  ocrEvents: {
+    emit: vi.fn(),
+    on: vi.fn()
+  }
+}))
+
+vi.mock('@/services/queue', () => ({
+  queueManager: {
+    addOCRTask: vi.fn()
+  }
+}))
 
 describe('OCRService', () => {
   const mockResult: OCRResult = {
@@ -49,5 +71,112 @@ describe('OCRService', () => {
     await service.processImage('data...', 'test', options)
 
     expect(mockProvider.process).toHaveBeenCalledWith('data...', options)
+  })
+
+  describe('queueOCR', () => {
+    it('should queue task and emit events', async () => {
+      const service = new OCRService()
+      service.registerProvider('deepseek', mockProvider)
+
+      const pageId = 'test-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      let taskPromise: Promise<void> | undefined;
+
+      // Spy on queueManager
+      const addOCRTaskSpy = vi.spyOn(queueManager, 'addOCRTask').mockImplementation((_id: string, task: (signal: AbortSignal) => Promise<void>) => {
+        // Execute task immediately for testing and capture promise
+        const signal = new AbortController().signal
+        taskPromise = task(signal)
+        return Promise.resolve()
+      })
+
+      // Spy on ocrEvents
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      // Spy on db
+      const savePageOCRSpy = vi.spyOn(db, 'savePageOCR').mockResolvedValue(1)
+
+      await service.queueOCR(pageId, blob)
+
+      // Wait for task to complete
+      if (taskPromise) await taskPromise
+
+      expect(emitSpy).toHaveBeenCalledWith('ocr:queued', { pageId })
+      expect(addOCRTaskSpy).toHaveBeenCalledWith(pageId, expect.any(Function))
+      expect(emitSpy).toHaveBeenCalledWith('ocr:start', { pageId })
+      expect(mockProvider.process).toHaveBeenCalled()
+      expect(savePageOCRSpy).toHaveBeenCalledWith(expect.objectContaining({
+        pageId,
+        data: mockResult
+      }))
+      expect(emitSpy).toHaveBeenCalledWith('ocr:success', { pageId, result: mockResult })
+    })
+
+    it('should handle errors in queued task', async () => {
+      const service = new OCRService()
+      const error = new Error('OCR Failed')
+      mockProvider.process = vi.fn().mockRejectedValue(error)
+      service.registerProvider('deepseek', mockProvider)
+
+      const pageId = 'error-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      let taskPromise: Promise<void> | undefined;
+
+      vi.spyOn(queueManager, 'addOCRTask').mockImplementation((_id: string, task: (signal: AbortSignal) => Promise<void>) => {
+        const signal = new AbortController().signal
+        taskPromise = task(signal)
+        return Promise.resolve()
+      })
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      try {
+        await service.queueOCR(pageId, blob)
+      } catch {
+        // Task throws
+      }
+
+      // Wait for task completion (it will throw)
+      if (taskPromise) {
+        try {
+          await taskPromise
+        } catch {
+          // Expected
+        }
+      }
+
+      expect(emitSpy).toHaveBeenCalledWith('ocr:error', { pageId, error })
+    })
+
+    it('should handle abort signal', async () => {
+      const service = new OCRService()
+      service.registerProvider('deepseek', mockProvider)
+      const pageId = 'abort-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      let taskPromise: Promise<void> | undefined;
+
+      vi.spyOn(queueManager, 'addOCRTask').mockImplementation((_id: string, task: (signal: AbortSignal) => Promise<void>) => {
+        const controller = new AbortController()
+        controller.abort() // Abort immediately
+        taskPromise = task(controller.signal)
+        return Promise.resolve()
+      })
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+      const saveSpy = vi.spyOn(db, 'savePageOCR')
+
+      await service.queueOCR(pageId, blob)
+
+      if (taskPromise) await taskPromise
+
+      // Should emit queued
+      expect(emitSpy).toHaveBeenCalledWith('ocr:queued', { pageId })
+      // Should NOT emit start if aborted before start (depends on check)
+      // In implementation: simple check at start.
+      // If aborted at start, it returns.
+      expect(emitSpy).not.toHaveBeenCalledWith('ocr:start', expect.anything())
+      expect(saveSpy).not.toHaveBeenCalled()
+    })
   })
 })

@@ -4,6 +4,7 @@ import { usePagesStore } from '@/stores/pages'
 import { db } from '@/db/index'
 import { fileAddService } from '@/services/add'
 import { pdfEvents } from '@/services/pdf/events'
+import { ocrEvents } from '@/services/ocr/events'
 
 // Mock dependencies
 vi.mock('@/db/index', () => ({
@@ -16,7 +17,8 @@ vi.mock('@/db/index', () => ({
         }),
         updatePagesOrder: vi.fn(),
         getAllPagesForDisplay: vi.fn(),
-        getPage: vi.fn()
+        getPage: vi.fn(),
+        updatePage: vi.fn(),
     },
     generatePageId: vi.fn(() => 'mock-id')
 }))
@@ -40,11 +42,28 @@ vi.mock('@/services/pdf/events', () => ({
     }
 }))
 
+vi.mock('@/services/ocr/events', () => ({
+    ocrEvents: {
+        on: vi.fn(),
+        emit: vi.fn(),
+        off: vi.fn()
+    }
+}))
+
+const simulateOCREvent = (eventName: string, payload: any) => {
+    const handler = vi.mocked(ocrEvents.on).mock.calls.find((call: unknown[]) => call[0] === eventName)?.[1]
+    if (handler) {
+        (handler as (arg: any) => void)(payload)
+    }
+    return handler
+}
+
 describe('Pages Store', () => {
     beforeEach(() => {
         setActivePinia(createPinia())
         vi.resetAllMocks()
         vi.mocked(db.getNextOrder).mockResolvedValue(1)
+        vi.mocked(db.updatePage).mockResolvedValue(1)
     })
 
     describe('Initial State', () => {
@@ -722,6 +741,36 @@ describe('Pages Store', () => {
                 (logHandler as unknown)({ pageId: 'p1', message: 'msg' }) // missing level
                 expect(store.pages[0]!.logs.some(l => l.message === 'msg' && l.level === 'info')).toBe(true)
             }
+        })
+        describe('OCR Persistence', () => {
+            it('should persist OCR status and result to DB', async () => {
+                const store = usePagesStore()
+                store.setupOCREventListeners()
+
+                // 1. Initial State
+                await store.addPage({ id: 'ocr-p1', fileName: 'f1', fileSize: 0, fileType: '', origin: 'upload', status: 'ready', progress: 0, outputs: [], logs: [] })
+
+                // 2. Simulate ocr:queued
+                simulateOCREvent('ocr:queued', { pageId: 'ocr-p1' })
+                expect(db.updatePage).toHaveBeenCalledWith('ocr-p1', expect.objectContaining({ status: 'pending_ocr' }))
+
+                // 3. Simulate ocr:start
+                simulateOCREvent('ocr:start', { pageId: 'ocr-p1' })
+                expect(db.updatePage).toHaveBeenCalledWith('ocr-p1', expect.objectContaining({ status: 'recognizing' }))
+
+                // 4. Simulate ocr:success
+                simulateOCREvent('ocr:success', { pageId: 'ocr-p1', result: { text: 'extracted text' } })
+                expect(db.updatePage).toHaveBeenCalledWith('ocr-p1', expect.objectContaining({
+                    status: 'ocr_success',
+                    ocrText: 'extracted text'
+                }))
+
+                // 5. Simulate ocr:error
+                simulateOCREvent('ocr:error', { pageId: 'ocr-p1', error: new Error('fail') })
+                expect(db.updatePage).toHaveBeenCalledWith('ocr-p1', expect.objectContaining({
+                    status: 'error'
+                }))
+            })
         })
     })
 })

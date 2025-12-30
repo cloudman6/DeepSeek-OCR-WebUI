@@ -27,7 +27,7 @@ describe('QueueManager', () => {
 
     it('should support concurrency limit', async () => {
         // OCR queue has concurrency 2
-        const slowTask = async () => new Promise(resolve => setTimeout(resolve, 100))
+        const slowTask = async () => new Promise<void>(resolve => setTimeout(resolve, 100))
 
         const p1 = queueManager.addOCRTask('p1', slowTask)
         const p2 = queueManager.addOCRTask('p2', slowTask)
@@ -108,5 +108,54 @@ describe('QueueManager', () => {
         expect(abortFn).toHaveBeenCalled()
 
         await Promise.all([p1, p2])
+    })
+
+    it('should process Generation tasks', async () => {
+        const taskFn = vi.fn().mockImplementation(async () => {
+            await new Promise(resolve => setTimeout(resolve, 50))
+        })
+
+        const promise = queueManager.addGenerationTask('gen1', taskFn)
+
+        // Wait start
+        await new Promise(r => setTimeout(r, 10))
+
+        expect(queueManager.getStats().generation.pending).toBe(1)
+        expect(queueManager.getStats().generation.size).toBe(1)
+
+        await promise
+
+        expect(taskFn).toHaveBeenCalled()
+        expect(queueManager.getStats().generation.pending).toBe(0)
+    })
+
+    it('should cancel generation task', async () => {
+        const genFn = vi.fn()
+
+        // Block queue
+        const p1 = queueManager.addGenerationTask('g1', async () => new Promise(r => setTimeout(r, 50)))
+
+        const p2 = queueManager.addGenerationTask('g2', genFn)
+
+        queueManager.cancel('g2')
+
+        await p1
+        await p2
+
+        expect(genFn).not.toHaveBeenCalled()
+    })
+
+    it('should handle errors in generation task', async () => {
+        const error = new Error('Gen Fail')
+        // Mock console.error to avoid polluting output
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+        const p = queueManager.addGenerationTask('g-err', async () => {
+            throw error
+        })
+
+        await expect(p).resolves.not.toThrow()
+
+        consoleSpy.mockRestore()
     })
 })
