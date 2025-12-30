@@ -4,6 +4,7 @@ import { db } from '@/db'
 import { imageProcessor } from './image-processor'
 import { markdownAssembler } from './markdown'
 import { docxGenerator } from './docx'
+import { sandwichPDFBuilder } from './pdf'
 import type { OCRResult } from '@/services/ocr'
 
 export class DocumentService {
@@ -20,13 +21,16 @@ export class DocumentService {
             // Add to generation queue
             await queueManager.addGenerationTask(pageId, async (signal) => {
                 if (signal.aborted) return
-                await this.generateMarkdown(pageId, result, signal)
+                await this.generateAll(pageId, result, signal)
             })
         })
     }
 
-    async generateMarkdown(pageId: string, ocrResult: OCRResult, signal?: AbortSignal) {
-        ocrEvents.emit('doc:gen:start', { pageId, type: 'markdown' })
+    /**
+     * Orchestrates the generation of all document formats (Markdown, DOCX, PDF)
+     */
+    async generateAll(pageId: string, ocrResult: OCRResult, signal?: AbortSignal) {
+        ocrEvents.emit('doc:gen:start', { pageId, type: 'all' })
 
         try {
             if (signal?.aborted) return
@@ -39,36 +43,69 @@ export class DocumentService {
 
             if (signal?.aborted) return
 
-            // 2. Slice images
-            // imageProcessor handles db saving of extracted images
+            // 2. Generate Markdown (Includes slicing images)
+            // Ensure imageBlob is Blob for sliceImages
+            const blobForSlicing = imageBlob instanceof Blob
+                ? imageBlob
+                : new Blob([imageBlob]) // Should act as blob if it's ArrayBuffer
+
+            const markdown = await this.generateMarkdownOnly(pageId, blobForSlicing, ocrResult, signal)
+
+            if (signal?.aborted) return
+
+            // 3. Generate DOCX
+            await this.generateDocx(pageId, markdown, signal)
+
+            if (signal?.aborted) return
+
+            // 4. Generate Searchable PDF
+            await this.generatePDF(pageId, imageBlob, ocrResult, signal)
+
+            if (signal?.aborted) return
+
+            // All done
+            ocrEvents.emit('doc:gen:success', { pageId, type: 'all', url: '' })
+
+        } catch (error) {
+            if (signal?.aborted) return
+
+            console.error(`[DocumentService] Error generating documents for ${pageId}`, error)
+            const err = error instanceof Error ? error : new Error(String(error))
+            ocrEvents.emit('doc:gen:error', { pageId, type: 'all', error: err })
+            throw err
+        }
+    }
+
+    private async generateMarkdownOnly(pageId: string, imageBlob: Blob, ocrResult: OCRResult, signal?: AbortSignal): Promise<string> {
+        ocrEvents.emit('doc:gen:start', { pageId, type: 'markdown' })
+        try {
+            // Slice images
             const imageMap = await imageProcessor.sliceImages(pageId, imageBlob, ocrResult.boxes)
 
-            if (signal?.aborted) return
+            if (signal?.aborted) throw new Error('Aborted')
 
-            // 3. Assemble Markdown
+            // Assemble Markdown
             const markdown = markdownAssembler.assemble(ocrResult, imageMap)
 
-            if (signal?.aborted) return
-
-            // 4. Save Markdown
+            // Save Markdown
             await db.savePageMarkdown({
                 pageId,
                 content: markdown
             })
 
-            ocrEvents.emit('doc:gen:success', { pageId, type: 'markdown' })
-
-            // 5. Trigger DOCX generation automatically
-            await this.generateDocx(pageId, markdown, signal)
-
+            ocrEvents.emit('doc:gen:success', { pageId, type: 'markdown', url: '' })
+            return markdown
         } catch (error) {
-            if (signal?.aborted) return
-
-            console.error(`[DocumentService] Error generating markdown for ${pageId}`, error)
             const err = error instanceof Error ? error : new Error(String(error))
             ocrEvents.emit('doc:gen:error', { pageId, type: 'markdown', error: err })
-            throw err
+            throw error
         }
+    }
+
+    // Kept for backward compatibility if called directly, but now delegates or throws? 
+    // Ideally we replace usages. Assuming generateMarkdown was only called internally or via init.
+    async generateMarkdown(pageId: string, ocrResult: OCRResult, signal?: AbortSignal) {
+        return this.generateAll(pageId, ocrResult, signal)
     }
 
     async generateDocx(pageId: string, markdown: string, signal?: AbortSignal) {
@@ -77,15 +114,13 @@ export class DocumentService {
         try {
             if (signal?.aborted) return
 
-            // 1. Generate DOCX Blob
             const docxBlob = await docxGenerator.generate(markdown)
 
             if (signal?.aborted) return
 
-            // 2. Save DOCX
             await db.savePageDOCX(pageId, docxBlob)
 
-            ocrEvents.emit('doc:gen:success', { pageId, type: 'docx' })
+            ocrEvents.emit('doc:gen:success', { pageId, type: 'docx', url: '' })
 
         } catch (error) {
             if (signal?.aborted) return
@@ -93,8 +128,32 @@ export class DocumentService {
             console.error(`[DocumentService] Error generating docx for ${pageId}`, error)
             const err = error instanceof Error ? error : new Error(String(error))
             ocrEvents.emit('doc:gen:error', { pageId, type: 'docx', error: err })
-            // Don't re-throw as DOCX is secondary to Markdown? 
-            // Or re-throw if we want it recorded in queue.
+            // Don't throw to avoid stopping the chain if one fails? 
+            // But generateAll catches it. Let's throw.
+            throw err
+        }
+    }
+
+    async generatePDF(pageId: string, imageBlob: Blob | ArrayBuffer, ocrResult: OCRResult, signal?: AbortSignal) {
+        ocrEvents.emit('doc:gen:start', { pageId, type: 'pdf' })
+
+        try {
+            if (signal?.aborted) return
+
+            const pdfBlob = await sandwichPDFBuilder.generate(imageBlob, ocrResult)
+
+            if (signal?.aborted) return
+
+            await db.savePagePDF(pageId, pdfBlob)
+
+            ocrEvents.emit('doc:gen:success', { pageId, type: 'pdf', url: '' })
+
+        } catch (error) {
+            if (signal?.aborted) return
+
+            console.error(`[DocumentService] Error generating PDF for ${pageId}`, error)
+            const err = error instanceof Error ? error : new Error(String(error))
+            ocrEvents.emit('doc:gen:error', { pageId, type: 'pdf', error: err })
             throw err
         }
     }

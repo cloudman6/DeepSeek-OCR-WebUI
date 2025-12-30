@@ -69,10 +69,18 @@
         <div v-else-if="currentView === 'pdf'" class="binary-preview">
             <n-spin v-if="isBinaryLoading" description="Checking PDF status..." />
             <n-empty v-else-if="!hasBinary" description="Sandwich PDF not generated yet" />
-            <div v-else class="download-info">
-                <div class="file-icon">📄</div>
-                <div class="file-name">{{ props.currentPage?.fileName.replace(/\.[^/.]+$/, "") }}.pdf</div>
-                <n-button type="primary" @click="downloadBinary('pdf')">Download Searchable PDF</n-button>
+            <div v-else class="pdf-container">
+                <iframe 
+                    v-if="pdfPreviewUrl" 
+                    :src="pdfPreviewUrl" 
+                    type="application/pdf"
+                    width="100%" 
+                    height="100%" 
+                    title="PDF Preview"
+                ></iframe>
+                <div class="pdf-footer">
+                     <n-button type="primary" size="small" @click="downloadBinary('pdf')">Download Searchable PDF</n-button>
+                </div>
             </div>
         </div>
     </div>
@@ -162,6 +170,8 @@ const views = [
   { key: 'pdf' as const, label: 'PDF' }
 ]
 
+const pdfPreviewUrl = ref<string>('')
+
 // Watch for page change or status change or view change
 watch(
   [() => props.currentPage?.id, () => props.currentPage?.status, currentView],
@@ -169,6 +179,10 @@ watch(
     if (!newPageId) {
        mdContent.value = ''
        hasBinary.value = false
+       if (pdfPreviewUrl.value) {
+           URL.revokeObjectURL(pdfPreviewUrl.value)
+           pdfPreviewUrl.value = ''
+       }
        return
     }
 
@@ -188,6 +202,13 @@ watch(
 async function checkBinaryStatus(pageId: string, type: 'docx' | 'pdf') {
     isBinaryLoading.value = true
     docxBlob.value = null
+    
+    // Cleanup previous PDF URL if switching away or reloading
+    if (pdfPreviewUrl.value) {
+        URL.revokeObjectURL(pdfPreviewUrl.value)
+        pdfPreviewUrl.value = ''
+    }
+
     try {
         const blob = type === 'docx' 
             ? await db.getPageDOCX(pageId) 
@@ -195,12 +216,16 @@ async function checkBinaryStatus(pageId: string, type: 'docx' | 'pdf') {
         
         hasBinary.value = !!blob
         
-        if (type === 'docx' && blob) {
-            docxBlob.value = blob
-            // Using a small delay to ensure DOM is ready and initialized
-            setTimeout(async () => {
-                await renderDocx()
-            }, 100)
+        if (blob) {
+            if (type === 'docx') {
+                docxBlob.value = blob
+                // Using a small delay to ensure DOM is ready and initialized
+                setTimeout(async () => {
+                    await renderDocx()
+                }, 100)
+            } else if (type === 'pdf') {
+                pdfPreviewUrl.value = URL.createObjectURL(blob)
+            }
         }
     } catch (error) {
         uiLogger.error(`Failed to check binary status for ${type}`, error)
@@ -305,6 +330,11 @@ onUnmounted(() => {
   // Cleanup MD preview images
   previewObjectUrls.forEach(url => URL.revokeObjectURL(url))
   previewObjectUrls.length = 0
+  
+  if (pdfPreviewUrl.value) {
+      URL.revokeObjectURL(pdfPreviewUrl.value)
+      pdfPreviewUrl.value = ''
+  }
 })
 </script>
 
@@ -467,5 +497,26 @@ onUnmounted(() => {
 .markdown-render-area :deep(ul), .markdown-render-area :deep(ol) {
     padding-left: 2em;
     margin-bottom: 16px;
+}
+
+.pdf-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.pdf-container iframe {
+    flex: 1;
+    border: none;
+    background: #525659; /* Standard PDF viewer background color */
+}
+
+.pdf-footer {
+    padding: 8px;
+    background: #fff;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: flex-end;
 }
 </style>
