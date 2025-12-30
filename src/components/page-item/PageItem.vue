@@ -216,23 +216,25 @@ function handleCheckboxChange() {
   pagesStore.togglePageSelection(props.page.id)
 }
 
+const STATUS_TEXT_MAP: Record<Page['status'], string> = {
+  'pending_render': 'Queued',
+  'rendering': 'Rendering',
+  'pending_ocr': 'Queued',
+  'recognizing': 'Scanning',
+  'ocr_success': 'OCR Done',
+  'pending_gen': 'Waiting',
+  'generating_markdown': 'Gen MD...',
+  'markdown_success': 'MD Ready',
+  'generating_pdf': 'Gen PDF...',
+  'pdf_success': 'PDF Ready',
+  'generating_docx': 'Gen DOCX...',
+  'completed': 'Done',
+  'error': 'Error',
+  'ready': 'Ready' // Added missing status
+}
+
 function getShortStatusText(status: Page['status']): string {
-  switch (status) {
-    case 'pending_render': return 'Queued'
-    case 'rendering': return 'Rendering'
-    case 'pending_ocr': return 'Queued'
-    case 'recognizing': return 'Scanning'
-    case 'ocr_success': return 'OCR Done'
-    case 'pending_gen': return 'Waiting'
-    case 'generating_markdown': return 'Gen MD...'
-    case 'markdown_success': return 'MD Ready'
-    case 'generating_pdf': return 'Gen PDF...'
-    case 'pdf_success': return 'PDF Ready'
-    case 'generating_docx': return 'Gen DOCX...'
-    case 'completed': return 'Done'
-    case 'error': return 'Error'
-    default: return ''
-  }
+  return STATUS_TEXT_MAP[status] || ''
 }
 
 function formatFileSize(bytes: number): string {
@@ -243,29 +245,25 @@ function formatFileSize(bytes: number): string {
   return (bytes / Math.pow(k, i)).toFixed(1) + ' ' + sizes[i]
 }
 
-
+const STATUS_TYPE_MAP: Record<Page['status'], 'success' | 'info' | 'warning' | 'error' | 'default'> = {
+  'completed': 'success',
+  'ready': 'success',
+  'ocr_success': 'success',
+  'markdown_success': 'success',
+  'pdf_success': 'success',
+  'rendering': 'info',
+  'pending_ocr': 'info',
+  'recognizing': 'info',
+  'pending_gen': 'info',
+  'generating_markdown': 'info',
+  'generating_pdf': 'info',
+  'generating_docx': 'info',
+  'error': 'error',
+  'pending_render': 'warning'
+}
 
 function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' | 'error' | 'default' {
-  switch (status) {
-    case 'completed':
-    case 'ready':
-    case 'ocr_success':
-    case 'markdown_success':
-    case 'pdf_success':
-      return 'success'
-    case 'rendering':
-    case 'pending_ocr':
-    case 'recognizing':
-    case 'pending_gen':
-    case 'generating_markdown':
-    case 'generating_pdf':
-    case 'generating_docx':
-      return 'info'
-    case 'error':
-      return 'error'
-    default:
-      return 'warning'
-  }
+  return STATUS_TYPE_MAP[status] || 'warning'
 }
 </script>
 

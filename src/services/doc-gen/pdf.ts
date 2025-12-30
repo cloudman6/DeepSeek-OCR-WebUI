@@ -1,4 +1,4 @@
-import { PDFDocument, rgb } from 'pdf-lib'
+import { PDFDocument, PDFPage, rgb } from 'pdf-lib'
 import type { OCRResult } from '@/services/ocr'
 
 interface RawTextItem {
@@ -14,18 +14,7 @@ export class SandwichPDFBuilder {
         const arrayBuffer = imageBlob instanceof Blob ? await imageBlob.arrayBuffer() : imageBlob
 
         const pdfDoc = await PDFDocument.create()
-        let image
-
-        // Try to embed as JPG, then PNG
-        try {
-            image = await pdfDoc.embedJpg(arrayBuffer)
-        } catch {
-            try {
-                image = await pdfDoc.embedPng(arrayBuffer)
-            } catch {
-                throw new Error('Unsupported image format. Only JPG and PNG are supported.')
-            }
-        }
+        const image = await this.embedImage(pdfDoc, arrayBuffer)
 
         const page = pdfDoc.addPage([image.width, image.height])
         page.drawImage(image, {
@@ -37,44 +26,51 @@ export class SandwichPDFBuilder {
 
         // Overlay text
         if (ocrResult.raw_text) {
-            try {
-                const rawItems: RawTextItem[] = JSON.parse(ocrResult.raw_text)
-
-                if (Array.isArray(rawItems)) {
-                    for (const item of rawItems) {
-                        const { text, box } = item
-                        if (!text || !box || box.length !== 4) continue
-
-                        const [x1, y1, , y2] = box
-                        const height = y2 - y1
-
-                        // PDF coordinate system starts at bottom-left
-                        // OCR coordinates typically start at top-left
-                        // So flip Y
-                        const pdfY = image.height - y2
-
-                        // Simple heuristic for font size: height of the box
-                        // Can be improved but sufficient for "selectable text"
-
-                        page.drawText(text, {
-                            x: x1,
-                            y: pdfY,
-                            size: height > 0 ? height : 12,
-                            color: rgb(0, 0, 0),
-                            opacity: 0, // Invisible
-                        })
-                    }
-                }
-            } catch (e) {
-                console.warn('[SandwichPDFBuilder] Failed to parse raw_text, generating image-only PDF.', e)
-                // Fallback: Embed full text as a hidden layer at 0,0?
-                // For now, adhere to "Sandwich PDF" usually meaning alignment.
-                // If we can't align, maybe better not to put garbage text layout.
-            }
+            this.overlayOcrText(page, ocrResult.raw_text, image.height)
         }
 
         const pdfBytes = await pdfDoc.save()
-        return new Blob([pdfBytes as unknown as BlobPart], { type: 'application/pdf' })
+        // Use Uint8Array which is a valid BlobPart
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new Blob([pdfBytes as any], { type: 'application/pdf' })
+    }
+
+    private async embedImage(pdfDoc: PDFDocument, arrayBuffer: ArrayBuffer) {
+        try {
+            return await pdfDoc.embedJpg(arrayBuffer)
+        } catch {
+            try {
+                return await pdfDoc.embedPng(arrayBuffer)
+            } catch {
+                throw new Error('Unsupported image format. Only JPG and PNG are supported.')
+            }
+        }
+    }
+
+    private overlayOcrText(page: PDFPage, rawTextJson: string, imageHeight: number) {
+        try {
+            const rawItems: RawTextItem[] = JSON.parse(rawTextJson)
+            if (!Array.isArray(rawItems)) return
+
+            for (const item of rawItems) {
+                const { text, box } = item
+                if (!text || !box || box.length !== 4) continue
+
+                const [x1, y1, , y2] = box
+                const height = y2 - y1
+                const pdfY = imageHeight - y2
+
+                page.drawText(text, {
+                    x: x1,
+                    y: pdfY,
+                    size: height > 0 ? height : 12,
+                    color: rgb(0, 0, 0),
+                    opacity: 0, // Invisible
+                })
+            }
+        } catch (e) {
+            console.warn('[SandwichPDFBuilder] Failed to parse raw_text, generating image-only PDF.', e)
+        }
     }
 }
 

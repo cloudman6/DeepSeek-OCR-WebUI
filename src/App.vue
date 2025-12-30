@@ -25,14 +25,30 @@
           </div>
       
           <template v-else>
-            <!-- Page List -->
+            <!-- Page List with custom collapse trigger -->
             <n-layout-sider
               :width="260"
               :collapsed-width="0"
-              show-trigger="bar"
               collapse-mode="width"
               bordered
+              :show-trigger="false"
             >
+              <template #trigger="{ collapsed }">
+                <div class="custom-sider-trigger">
+                  <n-button
+                    size="small"
+                    circle
+                    quaternary
+                  >
+                    <template #icon>
+                      <n-icon>
+                        <ChevronBackOutline v-if="!collapsed" />
+                        <ChevronForwardOutline v-else />
+                      </n-icon>
+                    </template>
+                  </n-button>
+                </div>
+              </template>
               <div class="page-list-container">
                 <PageList
                   :pages="pagesStore.pages"
@@ -44,23 +60,122 @@
               </div>
             </n-layout-sider>
   
-            <!-- Page Viewer (formerly Inspector) -->
-            <n-layout-content class="page-viewer-container">
-              <PageViewer :current-page="currentPage" />
-            </n-layout-content>
-  
-            <!-- Preview -->
-            <n-layout-sider
-              :width="320"
-              :collapsed-width="0"
-              show-trigger="bar"
-              collapse-mode="width"
-              bordered
-            >
-              <div class="preview-container">
-                <Preview :current-page="currentPage" />
+            <!-- Middle: Content area with PageViewer, Divider, and Preview -->
+            <div class="content-area">
+              <!-- PageViewer -->
+              <div
+                v-if="!pageViewerCollapsed"
+                class="panel page-viewer-panel"
+                :style="{ width: pageViewerWidth }"
+              >
+                <div class="page-viewer-container">
+                  <PageViewer
+                    :current-page="currentPage"
+                  />
+                </div>
               </div>
-            </n-layout-sider>
+
+              <!-- Panel Divider (only show when both panels are visible or PageViewer collapsed) -->
+              <div
+                v-if="!previewCollapsed"
+                class="panel-divider"
+              >
+                <!-- PageViewer collapse: show when both expanded -->
+                <n-tooltip
+                  v-if="!pageViewerCollapsed"
+                  placement="right"
+                >
+                  <template #trigger>
+                    <n-button
+                      size="small"
+                      circle
+                      quaternary
+                      @click="pageViewerCollapsed = true"
+                    >
+                      <template #icon>
+                        <n-icon><ChevronBackOutline /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  Collapse Viewer
+                </n-tooltip>
+
+                <!-- PageViewer expand: show when PV collapsed -->
+                <n-tooltip
+                  v-if="pageViewerCollapsed"
+                  placement="right"
+                >
+                  <template #trigger>
+                    <n-button
+                      size="small"
+                      circle
+                      quaternary
+                      @click="pageViewerCollapsed = false"
+                    >
+                      <template #icon>
+                        <n-icon><ChevronForwardOutline /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  Expand Viewer
+                </n-tooltip>
+
+                <!-- Preview collapse: show when both expanded -->
+                <n-tooltip
+                  v-if="!pageViewerCollapsed"
+                  placement="left"
+                >
+                  <template #trigger>
+                    <n-button
+                      size="small"
+                      circle
+                      quaternary
+                      @click="previewCollapsed = true"
+                    >
+                      <template #icon>
+                        <n-icon><ChevronForwardOutline /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  Collapse Preview
+                </n-tooltip>
+              </div>
+
+              <!-- Preview -->
+              <div
+                v-if="!previewCollapsed"
+                class="panel preview-panel"
+                :style="{ width: previewWidth }"
+              >
+                <div class="preview-container">
+                  <Preview
+                    :current-page="currentPage"
+                  />
+                </div>
+              </div>
+
+              <!-- Preview expand trigger (fixed to right edge when collapsed) -->
+              <div
+                v-if="previewCollapsed"
+                class="right-edge-trigger"
+              >
+                <n-tooltip placement="left">
+                  <template #trigger>
+                    <n-button
+                      size="small"
+                      circle
+                      quaternary
+                      @click="previewCollapsed = false"
+                    >
+                      <template #icon>
+                        <n-icon><ChevronBackOutline /></n-icon>
+                      </template>
+                    </n-button>
+                  </template>
+                  Expand Preview
+                </n-tooltip>
+              </div>
+            </div>
           </template>
         </n-layout>
       </n-layout>
@@ -78,7 +193,8 @@ import Preview from './components/preview/Preview.vue'
 import PageViewer from './components/page-viewer/PageViewer.vue'
 import AppHeader from './components/common/AppHeader.vue'
 import EmptyState from './components/common/EmptyState.vue'
-import { NLayout, NLayoutSider, NLayoutContent, createDiscreteApi, NMessageProvider, NDialogProvider } from 'naive-ui'
+import { NLayout, NLayoutSider, NButton, NIcon, NTooltip, createDiscreteApi, NMessageProvider, NDialogProvider } from 'naive-ui'
+import { ChevronForwardOutline, ChevronBackOutline } from '@vicons/ionicons5'
 
 const pagesStore = usePagesStore()
 const { message, dialog } = createDiscreteApi(['message', 'dialog'], {
@@ -88,8 +204,22 @@ const { message, dialog } = createDiscreteApi(['message', 'dialog'], {
   }
 })
 
+// Collapse state management
+const pageViewerCollapsed = ref(false)
+const previewCollapsed = ref(false)
 
+// Computed widths for proper space distribution
+const pageViewerWidth = computed(() => {
+  if (pageViewerCollapsed.value) return '0'
+  if (previewCollapsed.value) return '100%'
+  return '50%'
+})
 
+const previewWidth = computed(() => {
+  if (previewCollapsed.value) return '0'
+  if (pageViewerCollapsed.value) return '100%'
+  return '50%'
+})
 
 const selectedPageId = ref<string | null>(null)
 const currentPage = computed(() => 
@@ -260,11 +390,14 @@ onMounted(async () => {
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
   font-family: Inter, system-ui, sans-serif;
   background: #f6f7f8;
   color: #111;
+  height: 100%;
+  overflow: hidden;
 }
 
 
@@ -276,13 +409,43 @@ body {
   background-color: #f6f7f8 !important;
 }
 
+/* Custom Sider Trigger to match other buttons */
+.custom-sider-trigger {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.custom-sider-trigger .n-button {
+  background: white !important;
+  border: 1px solid #d0d0d0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  width: 28px !important;
+  height: 28px !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.custom-sider-trigger .n-button:hover {
+  border-color: #18a058 !important;
+  box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
+}
+
+.custom-sider-trigger .n-button .n-icon {
+  font-size: 18px !important;
+}
+
 /* ====== Layout ====== */
 .app-container {
   height: 100vh;
 }
 
 .app-header {
-  height: 56px;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -290,7 +453,7 @@ body {
 }
 
 .app-main {
-  height: calc(100vh - 56px);
+  height: calc(100vh - 64px);
 }
 
 .page-list-container {
@@ -305,8 +468,94 @@ body {
 
 .page-viewer-container {
   height: 100%;
+}
+
+/* Content area with panels */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: row; /* Key: horizontal layout */
+  height: 100%;
+  overflow: hidden;
+  position: relative; /* For absolute positioned expand triggers */
+}
+
+.panel {
+  height: 100%;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
+  flex-shrink: 0; /* Prevent shrinking below specified width */
+}
+
+.page-viewer-panel {
+  border-right: 1px solid #e0e0e0;
+  border-left: 1px solid #e0e0e0;
+}
+
+.preview-panel {
+  border-left: 1px solid #e0e0e0;
+}
+
+/* Panel divider with collapse/expand controls */
+.panel-divider {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  min-width: 32px;
+  height: 100%;
+  background: #f0f0f0;
+  border-left: 1px solid #e0e0e0;
+  border-right: 1px solid #e0e0e0;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.panel-divider .n-button {
+  background: white !important;
+  border: 1px solid #d0d0d0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  opacity: 0.8;
+  transition: all 0.2s;
+}
+
+.panel-divider .n-button:hover {
+  opacity: 1;
+  border-color: #18a058 !important;
+  box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
+}
+
+/* Right edge trigger for Preview expand */
+.right-edge-trigger {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 32px;
+  background: #f0f0f0;
+  border-left: 1px solid #e0e0e0;
+  z-index: 10;
+}
+
+.right-edge-trigger .n-button {
+  background: white !important;
+  border: 1px solid #d0d0d0 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  opacity: 0.8;
+  transition: all 0.2s;
+}
+
+.right-edge-trigger .n-button:hover {
+  opacity: 1;
+  border-color: #18a058 !important;
+  box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
 }
 </style>
 

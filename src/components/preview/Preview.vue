@@ -1,7 +1,7 @@
 <template>
   <div class="preview">
     <div class="preview-header">
-       <n-tabs
+      <n-tabs
         v-model:value="currentView"
         type="segment"
         animated
@@ -14,75 +14,141 @@
           :tab="view.label"
         />
       </n-tabs>
-      <div v-if="currentView !== 'md'" class="header-actions">
-           <!-- Generic download button for binary outputs -->
-           <n-button 
-             size="small" 
-             secondary 
-             type="primary" 
-             @click="downloadBinary(currentView)"
-             :disabled="isBinaryLoading"
-           >
-             Download {{ currentView.toUpperCase() }}
-           </n-button>
+      <div
+        v-if="currentView !== 'md'"
+        class="header-actions"
+      >
+        <!-- Generic download button for binary outputs -->
+        <n-button 
+          size="small" 
+          secondary 
+          type="primary" 
+          :disabled="isBinaryLoading"
+          @click="downloadBinary(currentView)"
+        >
+          Download {{ currentView.toUpperCase() }}
+        </n-button>
       </div>
-      <div v-if="currentView === 'md'" class="header-actions">
-           <n-switch v-model:value="mdViewMode" size="small" :round="false">
-              <template #checked>Preview</template>
-              <template #unchecked>Source</template>
-           </n-switch>
-           <n-button 
-             size="small" 
-             secondary 
-             type="primary" 
-             @click="handleDownloadMarkdown"
-             :disabled="!mdContent || isLoadingMd"
-           >
-             Download MD
-           </n-button>
+      <div
+        v-if="currentView === 'md'"
+        class="header-actions"
+      >
+        <n-switch
+          v-model:value="mdViewMode"
+          size="small"
+          :round="false"
+        >
+          <template #checked>
+            Preview
+          </template>
+          <template #unchecked>
+            Source
+          </template>
+        </n-switch>
+        <n-button 
+          size="small" 
+          secondary 
+          type="primary" 
+          :disabled="!mdContent || isLoadingMd"
+          @click="handleDownloadMarkdown"
+        >
+          Download MD
+        </n-button>
       </div>
     </div>
 
     <div class="preview-content">
-        <!-- Markdown View -->
-        <div v-if="currentView === 'md'" class="markdown-wrapper">
-             <n-spin v-if="isLoadingMd" description="Loading markdown..." />
-             <template v-else>
-               <div v-if="mdViewMode" class="markdown-render-area markdown-body" v-html="renderedMd"></div>
-               <pre v-else class="markdown-preview">{{ mdContent || 'No markdown content available' }}</pre>
-             </template>
-        </div>
+      <!-- Markdown View -->
+      <div
+        v-if="currentView === 'md'"
+        class="markdown-wrapper"
+      >
+        <n-spin
+          v-if="isLoadingMd"
+          description="Loading markdown..."
+        />
+        <template v-else>
+          <div
+            v-if="mdViewMode"
+            class="markdown-render-area markdown-body"
+            v-html="renderedMd"
+          />
+          <pre
+            v-else
+            class="markdown-preview"
+          >{{ mdContent || 'No markdown content available' }}</pre>
+        </template>
+      </div>
 
-        <!-- Word (DOCX) View -->
-        <div v-else-if="currentView === 'docx'" class="docx-wrapper">
-            <n-spin v-if="isBinaryLoading" description="Loading DOCX..." />
-            <n-empty v-else-if="!hasBinary" description="DOCX not generated yet" />
-            <div v-else class="docx-render-area">
-                <div ref="wordPreviewContainer" class="word-container"></div>
-                <div class="docx-footer">
-                  <n-button type="primary" ghost @click="downloadBinary('docx')">Download DOCX</n-button>
-                </div>
-            </div>
+      <!-- Word (DOCX) View -->
+      <div
+        v-else-if="currentView === 'docx'"
+        class="docx-wrapper"
+      >
+        <n-spin
+          v-if="isBinaryLoading"
+          description="Loading DOCX..."
+        />
+        <n-empty
+          v-else-if="!hasBinary"
+          description="DOCX not generated yet"
+        />
+        <div
+          v-else
+          class="docx-render-area"
+        >
+          <div
+            ref="wordPreviewContainer"
+            class="word-container"
+          />
+          <div class="docx-footer">
+            <n-button
+              type="primary"
+              ghost
+              @click="downloadBinary('docx')"
+            >
+              Download DOCX
+            </n-button>
+          </div>
         </div>
+      </div>
 
-        <!-- PDF View -->
-        <div v-else-if="currentView === 'pdf'" class="binary-preview">
-            <n-spin v-if="isBinaryLoading" description="Checking PDF status..." />
-            <n-empty v-else-if="!hasBinary" description="Sandwich PDF not generated yet" />
-            <div v-else class="pdf-container">
-                <iframe 
-                    v-if="pdfPreviewUrl" 
-                    :src="pdfPreviewUrl" 
-                    type="application/pdf"
-                    width="100%" 
-                    height="100%" 
-                    title="PDF Preview"
-                ></iframe>
-                <div class="pdf-footer">
-                     <n-button type="primary" size="small" @click="downloadBinary('pdf')">Download Searchable PDF</n-button>
-                </div>
-            </div>
+      <!-- PDF View -->
+      <div
+        v-else-if="currentView === 'pdf'"
+        class="binary-preview"
+      >
+        <n-spin
+          v-if="isBinaryLoading"
+          description="Checking PDF status..."
+        />
+        <n-empty
+          v-else-if="!hasBinary"
+          description="Sandwich PDF not generated yet"
+        />
+        <div
+          v-else
+          class="pdf-container"
+        >
+          <iframe 
+            v-if="pdfPreviewUrl" 
+            :src="pdfPreviewUrl" 
+            type="application/pdf"
+            width="100%" 
+            height="100%" 
+            title="PDF Preview"
+          />
+          <div class="pdf-footer">
+            <n-button
+              type="primary"
+              size="small"
+              @click="downloadBinary('pdf')"
+            >
+              Download Searchable PDF
+            </n-button>
+          </div>
         </div>
+      </div>
     </div>
   </div>
 </template>
@@ -100,6 +166,8 @@ import type { Page } from '@/stores/pages'
 const props = defineProps<{
   currentPage?: Page | null
 }>()
+
+
 
 const currentView = ref<'md' | 'docx' | 'pdf'>('md')
 const mdContent = ref<string>('')
@@ -176,28 +244,57 @@ const pdfPreviewUrl = ref<string>('')
 watch(
   [() => props.currentPage?.id, () => props.currentPage?.status, currentView],
   async ([newPageId, newStatus, newView], [oldPageId, oldStatus, oldView]) => {
-    if (!newPageId) {
-       mdContent.value = ''
-       hasBinary.value = false
-       if (pdfPreviewUrl.value) {
-           URL.revokeObjectURL(pdfPreviewUrl.value)
-           pdfPreviewUrl.value = ''
-       }
-       return
-    }
-
-    if (newView === 'md') {
-        if (newPageId !== oldPageId || newStatus !== oldStatus || oldView !== 'md') {
-            await loadMarkdown(newPageId)
-        }
-    } else if (newView === 'docx' || newView === 'pdf') {
-        if (newPageId !== oldPageId || newStatus !== oldStatus || oldView !== newView) {
-            await checkBinaryStatus(newPageId, newView)
-        }
-    }
+    await handlePreviewUpdate(newPageId, newStatus, newView, oldPageId, oldStatus, oldView)
   },
   { immediate: true }
 )
+
+async function handlePreviewUpdate(
+    newPageId: string | undefined, 
+    newStatus: string | undefined, 
+    newView: string,
+    oldPageId: string | undefined,
+    oldStatus: string | undefined,
+    oldView: string | undefined
+) {
+    if (!newPageId) {
+       resetPreviewState()
+       return
+    }
+
+    const isChanged = newPageId !== oldPageId || newStatus !== oldStatus
+    await performViewUpdate(newPageId, newView, oldView, isChanged)
+}
+
+async function performViewUpdate(
+    pageId: string, 
+    newView: string, 
+    oldView: string | undefined, 
+    isChanged: boolean
+) {
+    if (newView === 'md') {
+        if (isChanged || oldView !== 'md') {
+            await loadMarkdown(pageId)
+        }
+    } else if (newView === 'docx' || newView === 'pdf') {
+        if (isChanged || oldView !== newView) {
+            await checkBinaryStatus(pageId, newView)
+        }
+    }
+}
+
+function resetPreviewState() {
+    mdContent.value = ''
+    hasBinary.value = false
+    cleanupPdfUrl()
+}
+
+function cleanupPdfUrl() {
+    if (pdfPreviewUrl.value) {
+        URL.revokeObjectURL(pdfPreviewUrl.value)
+        pdfPreviewUrl.value = ''
+    }
+}
 
 async function checkBinaryStatus(pageId: string, type: 'docx' | 'pdf') {
     isBinaryLoading.value = true
@@ -241,8 +338,8 @@ async function renderDocx() {
     // Clear previous content
     wordPreviewContainer.value.innerHTML = ''
     
-    // Some libraries behave better with ArrayBuffer than Blob
-    const arrayBuffer = await docxBlob.value.arrayBuffer()
+    // Some environments (like JSDOM in tests) might not have Blob.arrayBuffer()
+    const arrayBuffer = await new Response(docxBlob.value).arrayBuffer()
     
     await renderAsync(arrayBuffer, wordPreviewContainer.value, undefined, {
         className: 'docx-preview-output',

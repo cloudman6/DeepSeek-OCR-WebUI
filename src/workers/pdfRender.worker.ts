@@ -166,8 +166,10 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
     useSystemFonts: true,
     disableFontFace: true,
     fontExtraProperties: true,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     canvasFactory: new OffscreenCanvasFactory() as any,
     verbosity: 0
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any)
 
   const pdfDocument = await loadingTask.promise
@@ -183,6 +185,7 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
     const renderContext = createRenderContext(context, viewport)
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       await (page.render(renderContext as any).promise)
     } catch (renderError) {
       workerLogger.warn('Enhanced rendering failed, falling back to standard rendering:', renderError)
@@ -190,7 +193,10 @@ async function renderPage(payload: PDFRenderMessage['payload']): Promise<PDFRend
         canvasContext: context as unknown as CanvasRenderingContext2D,
         viewport: viewport,
         intent: 'print',
+         
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         canvasFactory: new OffscreenCanvasFactory() as any
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any).promise)
     }
 

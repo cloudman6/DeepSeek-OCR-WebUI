@@ -16,7 +16,6 @@ export interface FontConfig {
 export class FontLoaderService {
   private static instance: FontLoaderService
   private loadedFonts = new Set<string>()
-  private fontCache = new Map<string, ArrayBuffer>()
 
   static getInstance(): FontLoaderService {
     if (!FontLoaderService.instance) {

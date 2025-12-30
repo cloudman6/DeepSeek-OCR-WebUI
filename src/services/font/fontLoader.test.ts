@@ -2,16 +2,6 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { FontLoaderService, type FontConfig } from '@/services/font/fontLoader'
 import { pdfLogger } from '@/utils/logger'
 
-// Type definition for FontFace descriptors
-interface FontFaceDescriptors {
-  style?: string
-  weight?: string
-  stretch?: string
-  unicodeRange?: string
-  variant?: string
-  featureSettings?: string
-}
-
 // Mock logger
 vi.mock('@/utils/logger', () => ({
   pdfLogger: {
@@ -42,7 +32,7 @@ describe('FontLoaderService', () => {
     // Since it's a singleton, we can't easily destroy it, but we can clear its internal state if we exposed methods
     // Or we can just use the exported `fontLoader` but we must be careful about state carry-over.
     // Better: Reset the private static instance by casting to any
-    (FontLoaderService as unknown).instance = undefined
+    (FontLoaderService as any).instance = undefined
 
     addedFontsToDocument = new Set()
 
@@ -50,10 +40,10 @@ describe('FontLoaderService', () => {
     globalThis.FontFace = class MockFontFace {
       family: string
       source: string
-      descriptors: FontFaceDescriptors
+      descriptors: any
       status: string = 'unloaded'
 
-      constructor(family: string, source: string, descriptors?: FontFaceDescriptors) {
+      constructor(family: string, source: string, descriptors?: any) {
         this.family = family
         this.source = source
         this.descriptors = descriptors
@@ -72,7 +62,7 @@ describe('FontLoaderService', () => {
     // Mock document.fonts
     Object.defineProperty(document, 'fonts', {
       value: {
-        add: vi.fn((font: unknown) => {
+        add: vi.fn((font: any) => {
           addedFontsToDocument.add(font.family)
         }),
         check: vi.fn(() => true),
@@ -184,18 +174,16 @@ describe('FontLoaderService', () => {
       mockContext = {
         font: '',
         measureText: vi.fn((_) => {
-          // If it's monospace, return 10
-          if (mockContext.font.includes('monospace')) {
-            return { width: 10 }
+          const fontStr = mockContext.font || ''
+          if (fontStr.includes('monospace')) {
+            return { width: 10 } as any
           }
-          // If it includes an available font, return 20 (different from monospace)
           for (const font of availableFonts) {
-            if (mockContext.font.includes(font)) {
-              return { width: 20 }
+            if (fontStr.includes(font)) {
+              return { width: 20 } as any
             }
           }
-          // Otherwise simulate fallback (same as monospace)
-          return { width: 10 }
+          return { width: 10 } as any
         })
       }
     })
@@ -206,8 +194,8 @@ describe('FontLoaderService', () => {
       // Mock OffscreenCanvas
       globalThis.OffscreenCanvas = class MockOffscreenCanvas {
         constructor(_w: number, _h: number) { }
-        getContext() { return mockContext }
-      } as unknown as typeof FontFace
+        getContext() { return mockContext as any }
+      } as any
 
       const isAvailable = service.isFontAvailable('AvailableFont')
       expect(isAvailable).toBe(true)
@@ -221,14 +209,14 @@ describe('FontLoaderService', () => {
 
       // Remove OffscreenCanvas
       const originalOffscreen = globalThis.OffscreenCanvas
-      delete (globalThis as unknown).OffscreenCanvas
+      delete (globalThis as any).OffscreenCanvas
 
       // Spy on createElement
-      const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName) => {
+      const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
         if (tagName === 'canvas') {
-          return createMockCanvas(mockContext) as unknown
+          return createMockCanvas(mockContext) as any
         }
-        return document.createElement(tagName)
+        return { tagName: tagName.toUpperCase(), style: {} } as any
       })
 
       const isAvailable = service.isFontAvailable('AvailableFont')
@@ -245,7 +233,7 @@ describe('FontLoaderService', () => {
       // Force an error
       globalThis.OffscreenCanvas = class MockOffscreenCanvas {
         getContext() { throw new Error('Canvas error') }
-      } as unknown as typeof FontFace
+      } as any
 
       const result = service.isFontAvailable('Arial')
       expect(result).toBe(false)
@@ -262,18 +250,19 @@ describe('FontLoaderService', () => {
       mockContext = {
         font: '',
         measureText: vi.fn((_) => {
-          if (mockContext.font.includes('monospace')) return { width: 10 }
+          const fontStr = mockContext.font || ''
+          if (fontStr.includes('monospace')) return { width: 10 } as any
           for (const font of availableFonts) {
-            if (mockContext.font.includes(font)) return { width: 20 }
+            if (fontStr.includes(font)) return { width: 20 } as any
           }
-          return { width: 10 }
+          return { width: 10 } as any
         })
       }
 
       globalThis.OffscreenCanvas = class MockOffscreenCanvas {
         constructor(_w: number, _h: number) { }
-        getContext() { return mockContext }
-      } as unknown as typeof FontFace
+        getContext() { return mockContext as any }
+      } as any
     })
 
     it('should return a CJK font for CJK text', () => {

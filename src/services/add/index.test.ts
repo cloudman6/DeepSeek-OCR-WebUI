@@ -20,16 +20,16 @@ vi.mock('@/db/index', () => ({
     generatePageId: vi.fn(() => 'mock-page-id')
 }))
 
-function MockFileReader() {
-    this.readAsDataURL = function () {
+class MockFileReader {
+    onload: ((ev: any) => void) | null = null
+    onerror: ((ev: any) => void) | null = null
+    result: string | ArrayBuffer | null = null
+    readAsDataURL() {
         setTimeout(() => {
             this.result = new ArrayBuffer(0)
-            if (this.onload) this.onload()
+            if (this.onload) this.onload({} as any)
         }, 0)
     }
-    this.onload = null
-    this.onerror = null
-    this.result = null
 }
 
 describe('FileAddService', () => {
@@ -39,11 +39,11 @@ describe('FileAddService', () => {
         // Setup default mock implementations
         vi.mocked(pdfService.validatePDF).mockReturnValue({ valid: true })
         vi.mocked(pdfService.getPDFMetadata).mockResolvedValue({ pageCount: 2 })
-        vi.mocked(pdfService.processPDF).mockResolvedValue(undefined as unknown)
-        vi.mocked(db.savePageImage).mockResolvedValue(undefined as unknown)
+        vi.mocked(pdfService.processPDF).mockResolvedValue(undefined as any)
+        vi.mocked(db.savePageImage).mockResolvedValue(undefined as any)
 
         // Reset URL.createObjectURL
-        window.URL.createObjectURL = vi.fn((file: Blob) => `mock-url-${file?.name || 'unknown'}`)
+        window.URL.createObjectURL = vi.fn((file: any) => `mock-url-${file?.name || 'unknown'}`)
     })
 
     it('should recognize and handle PDF files', async () => {
@@ -140,7 +140,7 @@ describe('FileAddService', () => {
 
     it('if thumbnail generation fails, should fall back to base64', async () => {
         setupImageMocks()
-        const spyThumb = vi.spyOn(fileAddService as unknown, 'generateThumbnail').mockRejectedValue(new Error('Thumb failed'))
+        const spyThumb = vi.spyOn(fileAddService as any, 'generateThumbnail').mockRejectedValue(new Error('Thumb failed'))
         const mockImg = new File([''], 'photo.jpg', { type: 'image/jpeg' })
         const result = await fileAddService.processFiles([mockImg])
         expect(result.pages[0]?.thumbnailData).toBe('data:image/jpeg;base64,mocked_base64')
@@ -150,8 +150,8 @@ describe('FileAddService', () => {
 
     it('fileToBase64 failure branch', async () => {
         setupImageMocks()
-        vi.spyOn(fileAddService as unknown, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
-        vi.spyOn(fileAddService as unknown, 'fileToBase64').mockRejectedValue(new Error('Failed to read file'))
+        vi.spyOn(fileAddService as any, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
+        vi.spyOn(fileAddService as any, 'fileToBase64').mockRejectedValue(new Error('Failed to read file'))
         const mockImg = new File(['fake data'], 'fail.png', { type: 'image/png' })
         const result = await fileAddService.processFiles([mockImg], { generateThumbnails: false })
         expect(result.success).toBe(false)
@@ -161,7 +161,7 @@ describe('FileAddService', () => {
 
     it('fileToBase64 non-string result branch', async () => {
         setupImageMocks()
-        vi.spyOn(fileAddService as unknown, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
+        vi.spyOn(fileAddService as any, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
 
         // Defined outside to avoid nested function lint
         vi.stubGlobal('FileReader', MockFileReader)
@@ -206,9 +206,9 @@ describe('FileAddService', () => {
     })
 
     it('Mixed processing: failure should make success false', async () => {
-        vi.spyOn(fileAddService as unknown, 'generateThumbnail').mockResolvedValue('data:mock_thumb')
-        vi.spyOn(fileAddService as unknown, 'fileToBase64').mockResolvedValue('data:mock_full')
-        vi.spyOn(fileAddService as unknown, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
+        vi.spyOn(fileAddService as any, 'generateThumbnail').mockResolvedValue('data:mock_thumb')
+        vi.spyOn(fileAddService as any, 'fileToBase64').mockResolvedValue('data:mock_full')
+        vi.spyOn(fileAddService as any, 'getImageDimensions').mockResolvedValue({ width: 100, height: 100 })
 
         const validImg = new File([''], 'ok.png', { type: 'image/png' })
         const invalidFile = new File([''], 'bad.txt', { type: 'text/plain' })
@@ -228,19 +228,19 @@ describe('FileAddService', () => {
     })
 
     it('should correctly perform proportional scaling (landscape)', () => {
-        const calc = (fileAddService as unknown).calculateDimensions
+        const calc = (fileAddService as any).calculateDimensions
         const res = calc(1000, 500, 200, 300)
         expect(res).toEqual({ width: 200, height: 100 })
     })
 
     it('should correctly perform proportional scaling (portrait)', () => {
-        const calc = (fileAddService as unknown).calculateDimensions
+        const calc = (fileAddService as any).calculateDimensions
         const res = calc(500, 1000, 200, 300)
         expect(res).toEqual({ width: 150, height: 300 })
     })
 
     it('should not upscale images', () => {
-        const calc = (fileAddService as unknown).calculateDimensions
+        const calc = (fileAddService as any).calculateDimensions
         const res = calc(100, 100, 200, 300)
         expect(res).toEqual({ width: 100, height: 100 })
     })
@@ -249,7 +249,7 @@ describe('FileAddService', () => {
         const mockFiles = [new File([''], 'test.png', { type: 'image/png' })]
         const mockInput = setupInputMock(mockFiles)
         const promise = fileAddService.triggerFileSelect()
-        if (mockInput.onchange) mockInput.onchange({} as import("@/db").DBPage)
+        if (mockInput.onchange) (mockInput.onchange as any)({ target: { files: mockFiles } })
         const result = await promise
         expect(result).toEqual(mockFiles)
         expect(mockInput.type).toBe('file')
@@ -265,7 +265,7 @@ describe('FileAddService', () => {
     it('triggerFileSelect: should return empty array on cancel', async () => {
         const mockInput = setupInputMock([])
         const promise = fileAddService.triggerFileSelect()
-        if (mockInput.oncancel) mockInput.oncancel()
+        if (mockInput.oncancel) (mockInput.oncancel as any)()
         const result = await promise
         expect(result).toEqual([])
     })
@@ -273,15 +273,15 @@ describe('FileAddService', () => {
     it('triggerFileSelect: should reject on error', async () => {
         const mockInput = setupInputMock([])
         const promise = fileAddService.triggerFileSelect()
-        if (mockInput.onerror) mockInput.onerror()
+        if (mockInput.onerror) (mockInput as any).onerror()
         await expect(promise).rejects.toThrow('File selection failed')
     })
 })
 
 function setupImageMocks() {
-    (window as unknown).Image = class {
-        onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null
-        onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null
+    (window as any).Image = class {
+        onload: ((ev: any) => unknown) | null = null
+        onerror: ((ev: any) => unknown) | null = null
         _src: string = ''
         width: number = 100
         height: number = 100
@@ -289,26 +289,26 @@ function setupImageMocks() {
             this._src = s
             setTimeout(() => {
                 if (s && s.includes('fail')) {
-                    if (this.onerror) this.onerror()
+                    if (this.onerror) this.onerror({} as any)
                 } else {
-                    if (this.onload) this.onload()
+                    if (this.onload) this.onload({} as any)
                 }
             }, 0)
         }
         get src() { return this._src }
     };
 
-    (window as unknown).FileReader = class {
-        onload: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null
-        onerror: ((this: FileReader, ev: ProgressEvent<FileReader>) => unknown) | null = null
+    (window as any).FileReader = class {
+        onload: ((ev: any) => unknown) | null = null
+        onerror: ((ev: any) => unknown) | null = null
         result: string | ArrayBuffer | null = null
         readAsDataURL(file: File) {
             setTimeout(() => {
                 if (file.name === 'fail.png') {
-                    if (this.onerror) this.onerror()
+                    if (this.onerror) this.onerror({} as any)
                 } else {
                     this.result = `data:${file.type};base64,mocked_base64`
-                    if (this.onload) this.onload()
+                    if (this.onload) this.onload({} as any)
                 }
             }, 0)
         }
@@ -321,9 +321,9 @@ function setupImageMocks() {
         height: 0
     }
     vi.spyOn(document, 'createElement').mockImplementation((tag) => {
-        if (tag === 'canvas') return mockCanvas as unknown
-        if (tag === 'input') return { type: '', accept: '', multiple: false, click: vi.fn(), onchange: null } as import("@/db").DBPage
-        return {} as import("@/db").DBPage
+        if (tag === 'canvas') return mockCanvas as any
+        if (tag === 'input') return { type: '', accept: '', multiple: false, click: vi.fn(), onchange: null } as any
+        return {} as any
     })
 }
 
@@ -338,6 +338,6 @@ function setupInputMock(files: File[]) {
         oncancel: null as unknown,
         onerror: null as unknown
     }
-    vi.spyOn(document, 'createElement').mockReturnValue(mockInput as unknown)
+    vi.spyOn(document, 'createElement').mockReturnValue(mockInput as any)
     return mockInput
 }

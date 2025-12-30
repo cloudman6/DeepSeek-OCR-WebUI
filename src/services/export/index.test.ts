@@ -27,23 +27,23 @@ describe('ExportService', () => {
   })
 
   describe('unimplemented methods', () => {
-    const pages: unknown[] = []
-    const options: Record<string, unknown> = { format: 'markdown' }
+    const pages: any[] = []
+    const options: Record<string, any> = { format: 'markdown' }
 
     it('should throw error for exportToMarkdown', async () => {
-      await expect(exportService.exportToMarkdown(pages, options)).rejects.toThrow('Not implemented yet')
+      await expect(exportService.exportToMarkdown(pages as any, options as any)).rejects.toThrow('Not implemented yet')
     })
 
     it('should throw error for exportToHTML', async () => {
-      await expect(exportService.exportToHTML(pages, options)).rejects.toThrow('Not implemented yet')
+      await expect(exportService.exportToHTML(pages as any, options as any)).rejects.toThrow('Not implemented yet')
     })
 
     it('should throw error for exportToDOCX', async () => {
-      await expect(exportService.exportToDOCX(pages, options)).rejects.toThrow('Not implemented yet')
+      await expect(exportService.exportToDOCX(pages as any, options as any)).rejects.toThrow('Not implemented yet')
     })
 
     it('should throw error for exportToPDF', async () => {
-      await expect(exportService.exportToPDF(pages, options)).rejects.toThrow('Not implemented yet')
+      await expect(exportService.exportToPDF(pages as any, options as any)).rejects.toThrow('Not implemented yet')
     })
   })
 
@@ -61,7 +61,7 @@ describe('ExportService', () => {
         download: '',
         click: vi.fn(),
         style: {}
-      } as import("@/db").DBPage
+      } as any
       const createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockLink)
       const appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation(() => mockLink)
       const removeChildMock = vi.spyOn(document.body, 'removeChild').mockImplementation(() => mockLink)

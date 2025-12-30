@@ -17,38 +17,28 @@ export class DocxGenerator {
      * @param options Additional options for document styling
      * @returns A promise that resolves to a DOCX Blob
      */
+    /**
+     * Generate a DOCX blob from a Markdown string.
+     */
     async generate(markdown: string): Promise<Blob> {
         const tokens = this.md.parse(markdown, {})
         const children: Paragraph[] = []
 
-        // Basic transformation loop
-        // Note: This is a simplified version, focusing on common Markdown elements.
-        for (let i = 0; i < tokens.length; i++) {
+        let i = 0
+        while (i < tokens.length) {
             const token = tokens[i]!
 
             if (token.type === 'heading_open') {
-                const level = parseInt(token.tag.slice(1)) as any
-                const contentToken = tokens[++i]!
-                children.push(this.createHeading(contentToken.content, level))
-                i++ // skip heading_close
+                const result = this.processHeading(tokens, i)
+                children.push(result.paragraph)
+                i = result.nextIndex
             } else if (token.type === 'paragraph_open') {
-                const contentToken = tokens[++i]!
-                if (contentToken.type === 'inline') {
-                    // Check for images in inline children
-                    const imageToken = contentToken.children?.find(c => c.type === 'image')
-                    if (imageToken) {
-                        const imageId = imageToken.attrGet('src')?.split(':')[1]
-                        if (imageId) {
-                            const paragraph = await this.createImageParagraph(imageId)
-                            if (paragraph) children.push(paragraph)
-                        }
-                    } else {
-                        children.push(this.createParagraph(contentToken))
-                    }
-                }
-                i++ // skip paragraph_close
+                const result = await this.processParagraph(tokens, i)
+                if (result.paragraph) children.push(result.paragraph)
+                i = result.nextIndex
+            } else {
+                i++
             }
-            // More types like lists, tables, images will be added
         }
 
         const doc = new Document({
@@ -61,8 +51,35 @@ export class DocxGenerator {
         return await Packer.toBlob(doc)
     }
 
+    private processHeading(tokens: Token[], index: number) {
+        const token = tokens[index]!
+        const level = parseInt(token.tag.slice(1)) || 1
+        const contentToken = tokens[index + 1]!
+        const paragraph = this.createHeading(contentToken.content, level)
+        return { paragraph, nextIndex: index + 3 } // open, inline, close
+    }
+
+    private async processParagraph(tokens: Token[], index: number) {
+        const contentToken = tokens[index + 1]!
+        let paragraph: Paragraph | null = null
+
+        if (contentToken.type === 'inline') {
+            const imageToken = contentToken.children?.find(c => c.type === 'image')
+            if (imageToken) {
+                const imageId = imageToken.attrGet('src')?.split(':')[1]
+                if (imageId) {
+                    paragraph = await this.createImageParagraph(imageId)
+                }
+            } else {
+                paragraph = this.createParagraph(contentToken)
+            }
+        }
+
+        return { paragraph, nextIndex: index + 3 } // open, inline, close
+    }
+
     private createHeading(text: string, level: number): Paragraph {
-        let headingLevel: any = HeadingLevel.HEADING_1
+        let headingLevel: string = HeadingLevel.HEADING_1
         if (level === 2) headingLevel = HeadingLevel.HEADING_2
         if (level === 3) headingLevel = HeadingLevel.HEADING_3
         if (level === 4) headingLevel = HeadingLevel.HEADING_4
@@ -71,7 +88,8 @@ export class DocxGenerator {
 
         return new Paragraph({
             text,
-            heading: headingLevel
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            heading: headingLevel as any
         })
     }
 
@@ -121,7 +139,7 @@ export class DocxGenerator {
                         data: buffer,
                         type: 'png',
                         transformation: {
-                            width: 400, // TODO: Maintain aspect ratio or use box info
+                            width: 400, // Fixed width: Maintain aspect ratio or use box info in future
                             height: 300,
                         },
                     }),

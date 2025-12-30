@@ -279,23 +279,23 @@ describe('PageItem.vue', () => {
         })
 
         await wrapper.trigger('mouseenter')
-        expect(wrapper.vm.isPageHovered).toBe(true)
+        expect((wrapper.vm as any).isPageHovered).toBe(true)
 
         await wrapper.trigger('mouseleave')
-        expect(wrapper.vm.isPageHovered).toBe(false)
+        expect((wrapper.vm as any).isPageHovered).toBe(false)
 
         const deleteBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Delete page')
         await deleteBtn?.trigger('mouseenter')
-        expect(wrapper.vm.isDeleteHovered).toBe(true)
+        expect((wrapper.vm as any).isDeleteHovered).toBe(true)
 
         await deleteBtn?.trigger('mouseleave')
-        expect(wrapper.vm.isDeleteHovered).toBe(false)
+        expect((wrapper.vm as any).isDeleteHovered).toBe(false)
 
         const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
         await scanBtn?.trigger('mouseenter')
-        expect(wrapper.vm.isScanHovered).toBe(true)
+        expect((wrapper.vm as any).isScanHovered).toBe(true)
 
         await scanBtn?.trigger('mouseleave')
-        expect(wrapper.vm.isScanHovered).toBe(false)
+        expect((wrapper.vm as any).isScanHovered).toBe(false)
     })
 })

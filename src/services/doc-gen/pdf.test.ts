@@ -147,4 +147,48 @@ describe('SandwichPDFBuilder', () => {
         await expect(sandwichPDFBuilder.generate(mockBlob, ocrResult))
             .rejects.toThrow('Unsupported image format')
     })
+
+    it('should handle ArrayBuffer input', async () => {
+        const arrayBuffer = new ArrayBuffer(8)
+        const result = await sandwichPDFBuilder.generate(arrayBuffer, {
+            success: true,
+            text: '',
+            raw_text: '',
+            boxes: [],
+            image_dims: { w: 100, h: 100 },
+            prompt_type: 'document'
+        })
+        expect(result).toBeDefined()
+    })
+
+    it('should handle invalid raw_text type (not array)', async () => {
+        const ocrResult = {
+            success: true,
+            text: 'text',
+            raw_text: '"not an array"',
+            boxes: [],
+            image_dims: { w: 1, h: 1 },
+            prompt_type: 'document'
+        }
+        await sandwichPDFBuilder.generate(mockBlob, ocrResult)
+        expect(mockPage.drawText).not.toHaveBeenCalled()
+    })
+
+    it('should handle empty or malformed raw_text items', async () => {
+        const raw_text = JSON.stringify([
+            { text: '', box: [0, 0, 0, 0] },
+            { text: 'test', box: [0, 0] }, // malformed box
+            { text: 'ok', box: [0, 0, 10, 10] }
+        ])
+        const ocrResult = {
+            success: true,
+            text: '',
+            raw_text,
+            boxes: [],
+            image_dims: { w: 100, h: 100 },
+            prompt_type: 'document'
+        }
+        await sandwichPDFBuilder.generate(mockBlob, ocrResult)
+        expect(mockPage.drawText).toHaveBeenCalledWith('ok', expect.any(Object))
+    })
 })

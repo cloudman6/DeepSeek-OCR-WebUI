@@ -170,7 +170,7 @@ describe('PageList.vue', () => {
     expect(events).toBeTruthy()
     if (events) {
       const emittedPage = events[0]![0] as Page
-      expect(emittedPage.id).toBe(mockPages[1].id)
+      expect(emittedPage.id).toBe(mockPages[1]!.id)
     }
   })
 
@@ -278,7 +278,7 @@ describe('PageList.vue', () => {
       global: { plugins: [pinia] }
     })
 
-    const newPages = [...mockPages, { ...mockPages[0], id: 'page-3' }]
+    const newPages: Page[] = [...mockPages, { ...mockPages[0], id: 'page-3' } as Page]
     await wrapper.setProps({ pages: newPages })
 
     expect(wrapper.findAllComponents({ name: 'PageItem' })).toHaveLength(3)
@@ -299,7 +299,7 @@ describe('PageList.vue', () => {
     expect(store.reorderPages).toHaveBeenCalled()
     const callArgs = vi.mocked(store.reorderPages).mock.calls[0]![0]
     expect(callArgs).toHaveLength(2)
-    expect(callArgs![0].id).toBe('page-1')
+    expect(callArgs![0]!.id).toBe('page-1')
   })
 
   it('does not call reorderPages if drag ends at same index', async () => {

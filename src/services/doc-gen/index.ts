@@ -29,51 +29,53 @@ export class DocumentService {
     /**
      * Orchestrates the generation of all document formats (Markdown, DOCX, PDF)
      */
+    /**
+     * Orchestrates the generation of all document formats (Markdown, DOCX, PDF)
+     */
     async generateAll(pageId: string, ocrResult: OCRResult, signal?: AbortSignal) {
         ocrEvents.emit('doc:gen:start', { pageId, type: 'all' })
 
         try {
-            if (signal?.aborted) return
-
-            // 1. Get original image
-            const imageBlob = await db.getPageImage(pageId)
-            if (!imageBlob) {
-                throw new Error(`Image not found for page ${pageId}`)
+            const checkAbort = () => {
+                if (signal?.aborted) throw new Error('Aborted')
             }
 
-            if (signal?.aborted) return
+            checkAbort()
+            const imageBlob = await this.loadImage(pageId)
 
-            // 2. Generate Markdown (Includes slicing images)
-            // Ensure imageBlob is Blob for sliceImages
-            const blobForSlicing = imageBlob instanceof Blob
-                ? imageBlob
-                : new Blob([imageBlob]) // Should act as blob if it's ArrayBuffer
+            checkAbort()
+            const markdown = await this.generateMarkdownOnly(pageId, this.ensureBlob(imageBlob), ocrResult, signal)
 
-            const markdown = await this.generateMarkdownOnly(pageId, blobForSlicing, ocrResult, signal)
-
-            if (signal?.aborted) return
-
-            // 3. Generate DOCX
+            checkAbort()
             await this.generateDocx(pageId, markdown, signal)
 
-            if (signal?.aborted) return
-
-            // 4. Generate Searchable PDF
+            checkAbort()
             await this.generatePDF(pageId, imageBlob, ocrResult, signal)
 
-            if (signal?.aborted) return
-
-            // All done
+            checkAbort()
             ocrEvents.emit('doc:gen:success', { pageId, type: 'all', url: '' })
 
-        } catch (error) {
-            if (signal?.aborted) return
-
-            console.error(`[DocumentService] Error generating documents for ${pageId}`, error)
-            const err = error instanceof Error ? error : new Error(String(error))
-            ocrEvents.emit('doc:gen:error', { pageId, type: 'all', error: err })
-            throw err
+        } catch (error: unknown) {
+            if (error instanceof Error && error.message === 'Aborted') return
+            this.handleError(pageId, error)
         }
+    }
+
+    private async loadImage(pageId: string) {
+        const imageBlob = await db.getPageImage(pageId)
+        if (!imageBlob) throw new Error(`Image not found for page ${pageId}`)
+        return imageBlob
+    }
+
+    private ensureBlob(imageBlob: Blob | ArrayBuffer): Blob {
+        return imageBlob instanceof Blob ? imageBlob : new Blob([imageBlob])
+    }
+
+    private handleError(pageId: string, error: unknown) {
+        console.error(`[DocumentService] Error generating documents for ${pageId}`, error)
+        const err = error instanceof Error ? error : new Error(String(error))
+        ocrEvents.emit('doc:gen:error', { pageId, type: 'all', error: err })
+        throw err
     }
 
     private async generateMarkdownOnly(pageId: string, imageBlob: Blob, ocrResult: OCRResult, signal?: AbortSignal): Promise<string> {

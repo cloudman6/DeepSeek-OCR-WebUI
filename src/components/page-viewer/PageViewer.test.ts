@@ -26,7 +26,7 @@ vi.mock('naive-ui', () => ({
   },
   NButton: {
     name: 'NButton',
-    props: ['disabled', 'type', 'loading', 'size'],
+    props: ['disabled', 'type', 'loading', 'size', 'quaternary'],
     template: '<button :disabled="disabled"><slot name="icon"></slot><slot></slot></button>'
   },
   NButtonGroup: {
@@ -53,6 +53,21 @@ vi.mock('naive-ui', () => ({
     name: 'NText',
     props: ['type', 'depth'],
     template: '<span><slot></slot></span>'
+  },
+  NIcon: {
+    name: 'NIcon',
+    props: ['size'],
+    template: '<span><slot></slot></span>'
+  },
+  NTooltip: {
+    name: 'NTooltip',
+    props: ['trigger'],
+    template: '<span><slot name="trigger"></slot></span>'
+  },
+  NDivider: {
+    name: 'NDivider',
+    props: ['vertical'],
+    template: '<span class="n-divider"></span>'
   }
 }))
 
@@ -190,7 +205,7 @@ describe('PageViewer.vue', () => {
 
     statuses.forEach((status, index) => {
       const wrapper = mount(PageViewer, {
-        props: { currentPage: { ...mockPage, status: status as any } }
+        props: { currentPage: { ...mockPage, status: status as any } as any }
       })
       expect(wrapper.find('.viewer-toolbar').text()).toContain(`Status: ${expectedTexts[index]}`)
     })
@@ -240,9 +255,9 @@ describe('PageViewer.vue', () => {
     })
 
     // Explicitly call the handler to ensure coverage of those lines
-    await (wrapper.vm as unknown).onImageError()
-    expect((wrapper.vm as unknown).imageSize).toBe('Load failed')
-    expect((wrapper.vm as unknown).imageError).toBe('Failed to load image')
+    await (wrapper.vm as any).onImageError()
+    expect((wrapper.vm as any).imageSize).toBe('Load failed')
+    expect((wrapper.vm as any).imageError).toBe('Failed to load image')
   })
 
   it('guards runOCR execution', () => {
@@ -250,20 +265,20 @@ describe('PageViewer.vue', () => {
     const wrapper1 = mount(PageViewer, {
       props: { currentPage: null }
     })
-      ; (wrapper1.vm as unknown).runOCR() // Should return early
+      ; (wrapper1.vm as any).runOCR() // Should return early
 
     // 2. Status is processing (mocked as recognizing in this context for guard check)
-    const processingPage = { ...mockPage, status: 'recognizing' }
+    const processingPage = { ...mockPage, status: 'recognizing' as const }
     const wrapper2 = mount(PageViewer, {
       props: { currentPage: processingPage }
     })
-      ; (wrapper2.vm as unknown).runOCR() // Should return early
+      ; (wrapper2.vm as any).runOCR() // Should return early
 
     // 3. Normal execution
     const wrapper3 = mount(PageViewer, {
       props: { currentPage: mockPage }
     })
-      ; (wrapper3.vm as unknown).runOCR() // Should log/execute
+      ; (wrapper3.vm as any).runOCR() // Should log/execute
     expect(uiLogger.info).toHaveBeenCalledWith('Running OCR for page', mockPage.id)
   })
 

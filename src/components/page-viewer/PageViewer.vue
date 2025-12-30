@@ -212,6 +212,8 @@ const props = defineProps<{
   currentPage?: Page | null
 }>()
 
+
+
 const zoomLevel = ref(1)
 // const imageContainer = ref<HTMLElement>() // Unused ref removed
 const imageSize = ref<string>('')
@@ -302,46 +304,46 @@ onUnmounted(() => {
   }
 })
 
+const VIEW_STATUS_TEXT_MAP: Record<Page['status'] | 'ready', string> = {
+  'pending_render': 'Pending Render',
+  'rendering': 'Rendering',
+  'ready': 'Ready',
+  'pending_ocr': 'OCR Queued',
+  'recognizing': 'Recognizing...',
+  'ocr_success': 'OCR Done',
+  'pending_gen': 'Waiting for Gen',
+  'generating_markdown': 'Generating Markdown...',
+  'markdown_success': 'Markdown Ready',
+  'generating_pdf': 'Generating PDF...',
+  'pdf_success': 'PDF Ready',
+  'generating_docx': 'Generating DOCX...',
+  'completed': 'Completed',
+  'error': 'Error'
+}
+
 const statusText = computed(() => {
-  switch (status.value) {
-    case 'pending_render': return 'Pending Render'
-    case 'rendering': return 'Rendering'
-    case 'ready': return 'Ready'
-    case 'pending_ocr': return 'OCR Queued'
-    case 'recognizing': return 'Recognizing...'
-    case 'ocr_success': return 'OCR Done'
-    case 'pending_gen': return 'Waiting for Gen'
-    case 'generating_markdown': return 'Generating Markdown...'
-    case 'markdown_success': return 'Markdown Ready'
-    case 'generating_pdf': return 'Generating PDF...'
-    case 'pdf_success': return 'PDF Ready'
-    case 'generating_docx': return 'Generating DOCX...'
-    case 'completed': return 'Completed'
-    case 'error': return 'Error'
-    default: return 'Unknown'
-  }
+  return VIEW_STATUS_TEXT_MAP[status.value as Page['status']] || 'Unknown'
 })
 
+const VIEW_STATUS_TYPE_MAP: Record<Page['status'] | 'ready', 'success' | 'info' | 'warning' | 'error' | 'default'> = {
+  'completed': 'success',
+  'ready': 'success',
+  'ocr_success': 'success',
+  'markdown_success': 'success',
+  'pdf_success': 'success',
+  'rendering': 'info',
+  'recognizing': 'info',
+  'pending_ocr': 'info',
+  'pending_gen': 'info',
+  'generating_markdown': 'info',
+  'generating_pdf': 'info',
+  'generating_docx': 'info',
+  'error': 'error',
+  'pending_render': 'warning'
+}
+
 function getStatusType(): 'success' | 'info' | 'warning' | 'error' | 'default' {
-  switch (status.value) {
-    case 'completed':
-    case 'ready':
-    case 'ocr_success':
-    case 'markdown_success':
-    case 'pdf_success':
-      return 'success'
-    case 'rendering':
-    case 'recognizing':
-    case 'pending_ocr':
-    case 'pending_gen':
-    case 'generating_markdown':
-    case 'generating_pdf':
-    case 'generating_docx':
-      return 'info'
-    case 'error':
-      return 'error'
-    default: return 'default'
-  }
+  return VIEW_STATUS_TYPE_MAP[status.value as Page['status']] || 'default'
 }
 
 function zoomIn() {

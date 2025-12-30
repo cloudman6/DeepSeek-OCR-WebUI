@@ -59,4 +59,17 @@ describe('DocxGenerator', () => {
         const blob = await docxGenerator.generate('')
         expect(blob.size).toBeGreaterThan(0)
     })
+
+    it('should handle softbreak and hardbreak', async () => {
+        const markdown = 'Line1\nLine2  \nLine3'
+        const blob = await docxGenerator.generate(markdown)
+        expect(blob.size).toBeGreaterThan(0)
+    })
+
+    it('should handle createImageParagraph failure', async () => {
+        vi.mocked(db.getPageExtractedImage).mockRejectedValue(new Error('Extract Fail'))
+        const markdown = '![Fig](scan2doc-img:fail-id)'
+        const blob = await docxGenerator.generate(markdown)
+        expect(blob.size).toBeGreaterThan(0)
+    })
 })
