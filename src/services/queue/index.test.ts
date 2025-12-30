@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { queueManager } from './index'
+import { queueLogger } from '@/utils/logger'
 
 describe('QueueManager', () => {
     beforeEach(() => {
@@ -143,6 +144,19 @@ describe('QueueManager', () => {
         await p2
 
         expect(genFn).not.toHaveBeenCalled()
+    })
+
+    it('should handle errors in OCR task', async () => {
+        const consoleSpy = vi.spyOn(queueLogger, 'error')
+
+        await queueManager.addOCRTask('ocr_err', async () => {
+            throw new Error('OCR failed')
+        })
+
+        // Wait for queue
+        await new Promise(resolve => setTimeout(resolve, 0))
+
+        expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Task for page ocr_err failed'), expect.any(Error))
     })
 
     it('should handle errors in generation task', async () => {

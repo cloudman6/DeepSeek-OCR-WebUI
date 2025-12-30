@@ -45,11 +45,12 @@ description: Pipeline for validating quality gates before committing and pushing
    ```bash
    npm run test:unit -- --run --coverage
    ```
-   - **质量门禁标准**：
-     - 行覆盖率：>= 90%
-     - 分支覆盖率：>= 70%
-     - 函数覆盖率：>= 80%
-   - ❌ 如果覆盖率未达标，**报告用户并询问**：是否需要补充测试？
+   - **质量门禁标准 (针对每个文件)**：
+     - 行覆盖率 (Lines)：>= 90%
+     - 分支覆盖率 (Branches)：>= 70%
+     - 函数覆盖率 (Functions)：>= 80%
+     - 语句覆盖率 (Statements)：>= 80%
+   - ❌ 如果任何文件的覆盖率未达标，**报告用户并询问**：是否需要补充测试？
 
 // turbo
 4. **验证代码质量（复杂度 + Lint）**

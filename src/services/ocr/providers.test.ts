@@ -69,6 +69,25 @@ describe('DeepSeekOCRProvider', () => {
         })
     })
 
+
+    it('should handle minimal API response', async () => {
+        fetchMock.mockResolvedValue({
+            ok: true,
+            json: async () => ({
+                success: true,
+                text: 'min',
+                raw_text: 'min',
+                prompt_type: 'document'
+            })
+        })
+
+        const provider = new DeepSeekOCRProvider()
+        const result = await provider.process(new Blob([''], { type: 'image/jpeg' }))
+
+        expect(result.boxes).toEqual([])
+        expect(result.image_dims).toEqual({ w: 0, h: 0 })
+    })
+
     it('should handle API errors', async () => {
         fetchMock.mockResolvedValue({
             ok: false,
@@ -105,5 +124,30 @@ describe('DeepSeekOCRProvider', () => {
         expect(fetchMock).toHaveBeenCalledTimes(1)
         const [, options] = fetchMock.mock.calls[0]
         expect(options.signal).toBe(controller.signal)
+    })
+
+    it('should handle string input (Data URL) by converting to blob', async () => {
+        const provider = new DeepSeekOCRProvider()
+        const dataUrl = 'data:image/png;base64,fake'
+
+        // Mock fetch to return a blob for the data url conversion
+        // AND match the API call
+        fetchMock
+            .mockResolvedValueOnce({ blob: () => Promise.resolve(new Blob(['fake'], { type: 'image/png' })) }) // for data url
+            .mockResolvedValueOnce({ ok: true, json: async () => mockResponse }) // for api call
+
+        await provider.process(dataUrl)
+
+        expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    it('should handle non-Error objects thrown during processing', async () => {
+        const provider = new DeepSeekOCRProvider()
+
+        fetchMock.mockImplementation(() => {
+            throw 'Network String Error' // Throwing a string
+        })
+
+        await expect(provider.process(new Blob([''], { type: 'image/jpeg' }))).rejects.toThrow('Unknown error during OCR processing')
     })
 })

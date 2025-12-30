@@ -48,10 +48,11 @@ description: TDD development workflow with pre-check and post-verification gates
    ```bash
    npm run test:unit -- --run --coverage
    ```
-   - **覆盖率阈值**（来自 `vitest.config.ts`）：
-     - 行覆盖率：>= 90%
-     - 分支覆盖率：>= 70%
-     - 函数覆盖率：>= 80%
+   - **覆盖率阈值**（来自 `vitest.config.ts`，针对每个文件）：
+     - 行覆盖率 (Lines)：>= 90%
+     - 分支覆盖率 (Branches)：>= 70%
+     - 函数覆盖率 (Functions)：>= 80%
+     - 语句覆盖率 (Statements)：>= 80%
    - **强制目标**：尽可能达到 100% 逻辑覆盖率
    - ❌ 如果覆盖率未达标，**报告用户并询问**：是否需要先补充测试？
 
@@ -162,10 +163,11 @@ description: TDD development workflow with pre-check and post-verification gates
    ```bash
    npm run test:unit -- --run --coverage
    ```
-   - **覆盖率阈值**：
-     - 行：>= 90%
-     - 分支：>= 70%
-     - 函数：>= 80%
+   - **覆盖率阈值**（针对每个文件）：
+     - 行 (Lines)：>= 90%
+     - 分支 (Branches)：>= 70%
+     - 函数 (Functions)：>= 80%
+     - 语句 (Statements)：>= 80%
    - ❌ 如果覆盖率未达标，返回阶段 2 补充测试。
 
 // turbo

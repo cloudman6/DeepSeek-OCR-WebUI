@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import PageViewer from './PageViewer.vue'
 import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
@@ -275,5 +275,58 @@ describe('PageViewer.vue', () => {
 
     const ocrBtn = wrapper.findAll('button').find(b => b.text().includes('OCR'))
     expect(ocrBtn?.attributes('disabled')).toBeDefined()
+  })
+
+  it('handles image load failure with retry', async () => {
+    vi.useFakeTimers()
+    vi.mocked(db.getPageImage)
+      .mockRejectedValueOnce(new Error('Fail 1'))
+      .mockResolvedValueOnce(new Blob(['test'], { type: 'image/png' }))
+
+    mount(PageViewer, {
+      props: { currentPage: mockPage }
+    })
+
+    await flushPromises()
+    // Should be retrying, so getPageImage called once initially
+    expect(vi.mocked(db.getPageImage)).toHaveBeenCalledTimes(1)
+
+    // Fast forward 100ms
+    await vi.advanceTimersByTimeAsync(110)
+
+    // Should be called again
+    expect(vi.mocked(db.getPageImage)).toHaveBeenCalledTimes(2)
+
+    vi.useRealTimers()
+  })
+
+  it('cleans up URL on unmount', async () => {
+    // Mock success load
+    vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['test'], { type: 'image/png' }))
+
+    const wrapper = mount(PageViewer, {
+      props: { currentPage: mockPage }
+    })
+    await flushPromises()
+
+    wrapper.unmount()
+    expect(globalThis.URL.revokeObjectURL).toHaveBeenCalled()
+  })
+
+  it('handles image load event', async () => {
+    vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['test'], { type: 'image/png' }))
+    const wrapper = mount(PageViewer, {
+      props: { currentPage: mockPage }
+    })
+    await flushPromises()
+
+    const img = wrapper.find('.page-image')
+    // Mock naturalWidth/Height on the DOM element
+    Object.defineProperty(img.element, 'naturalWidth', { value: 100, writable: true })
+    Object.defineProperty(img.element, 'naturalHeight', { value: 200, writable: true })
+
+    await img.trigger('load')
+
+    expect(wrapper.text()).toContain('100 × 200')
   })
 })

@@ -47,7 +47,7 @@ description: E2E test development workflow using Playwright. Use this for creati
    npm run test:unit -- --run --coverage
    npm run lint:complexity
    ```
-   - ❌ 如果阈值未达标，**报告用户并询问**：是否需要先修复？
+   - ❌ 如果阈值（针对每个文件）未达标，**报告用户并询问**：是否需要先修复？
 
 ✅ **只有所有检查通过（或用户选择继续）后才能进入阶段 1。**
 
@@ -164,7 +164,7 @@ description: E2E test development workflow using Playwright. Use this for creati
    npm run test:unit -- --run --coverage
    npm run lint:complexity
    ```
-   - 引用 `/dev` 的质量门禁标准
+   - 引用 `/dev` 的质量门禁标准（针对每个文件）
    - ❌ 如果阈值未达标 → 切换到 `/dev` 流程修复代码
    - ⚠️ **切记**：如果你在任何步骤中跳过了测试或忽略了警告，必须在最终报告中明确告知用户。
 

@@ -39,6 +39,14 @@ describe('AppHeader', () => {
         expect(wrapper.text()).toContain('5 Pages Loaded')
     })
 
+    it('displays singular page text', () => {
+        const wrapper = mount(AppHeader, {
+            global: { components: { NLayoutHeader, NButton, NTag } },
+            props: { pageCount: 1 }
+        })
+        expect(wrapper.text()).toContain('1 Page Loaded')
+    })
+
     it('emits add-files event when import button is clicked', async () => {
         const wrapper = mount(AppHeader, {
             global: {

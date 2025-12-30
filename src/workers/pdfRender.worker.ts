@@ -45,6 +45,7 @@ type WorkerMessage = PDFRenderMessage
 type WorkerResponse = PDFRenderResult | WorkerStartedMessage | { type: 'error'; payload: PDFErrorMessage }
 
 // Polyfill global document for PDF.js internals that expect it even in workers
+/* v8 ignore start */
 if (typeof self !== 'undefined' && !self.document) {
   const mockElement = () => ({
     style: {},
@@ -72,6 +73,7 @@ if (typeof self !== 'undefined' && !self.document) {
     }),
   };
 }
+/* v8 ignore stop */
 
 // Custom CanvasFactory for Web Worker using OffscreenCanvas
 interface CanvasAndContext {

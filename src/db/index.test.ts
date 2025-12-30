@@ -399,10 +399,87 @@ describe('Scan2DocDB', () => {
             const storedBlob = stored?.blob
             expect(storedBlob instanceof Blob).toBe(true)
             if (storedBlob instanceof Blob) {
-                expect(storedBlob.size).toBe(data.blob.size)
+                expect(storedBlob.size).toBe((data.blob as Blob).size)
                 expect(storedBlob.type).toBe('image/png')
             }
         })
     })
 
+})
+
+describe('Full Coverage Scenarios', () => {
+    it('should delete all pages and associated data', async () => {
+        const pageId = 'p_del_all'
+        await db.savePage(createTestPage(pageId))
+        await db.addToQueue(pageId, 1)
+        await db.savePageImage(pageId, new Blob(['test']))
+
+        await db.deleteAllPages()
+
+        expect(await db.pages.count()).toBe(0)
+        expect(await db.pageImages.count()).toBe(0)
+        expect(await db.processingQueue.count()).toBe(0)
+    })
+
+    it('should update pages order', async () => {
+        const p1Id = await db.savePage(createTestPage('p1', 0))
+        const p2Id = await db.savePage(createTestPage('p2', 1))
+
+        await db.updatePagesOrder([{ id: p1Id, order: 5 }, { id: p2Id, order: 0 }])
+
+        const p1 = await db.getPage(p1Id)
+        const p2 = await db.getPage(p2Id)
+
+        expect(p1?.order).toBe(5)
+        expect(p2?.order).toBe(0)
+    })
+
+    it('should update page partials', async () => {
+        const p1Id = await db.savePage(createTestPage('p1'))
+        await db.updatePage(p1Id, { status: 'ocr_success' })
+
+        const p1 = await db.getPage(p1Id)
+        expect(p1?.status).toBe('ocr_success')
+    })
+
+    it('should fallback storage size if navigator.storage undefined', async () => {
+        // Mock navigator.storage undefined
+        const originalStorage = navigator.storage
+        // @ts-expect-error - readonly prop
+        delete navigator.storage
+
+        const size = await db.getStorageSize()
+        expect(size).toBe(0)
+
+        // Restore
+        Object.defineProperty(navigator, 'storage', { value: originalStorage })
+    })
+
+    it('should handle savePagesBatch with no IDs', async () => {
+        const pages = [
+            {
+                fileName: 'no_id.pdf',
+                fileSize: 10,
+                fileType: 'pdf',
+                origin: 'upload',
+                status: 'ready',
+                outputs: [],
+                logs: [],
+                progress: 0,
+                createdAt: new Date(),
+                updatedAt: new Date()
+            },
+        ] as Omit<DBPage, 'id' | 'order'>[]
+
+        const ids = await db.savePagesBatch(pages)
+        expect(ids.length).toBe(1)
+        expect(ids[0]).toBeDefined()
+        expect(ids[0]).toMatch(/^page_/)
+    })
+
+    it('should get all pages for display', async () => {
+        // Just alias
+        const pages = await db.getAllPagesForDisplay()
+        expect(pages).toBeInstanceOf(Array)
+    })
 })

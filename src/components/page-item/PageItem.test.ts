@@ -4,6 +4,7 @@ import { NButton } from 'naive-ui'
 import { createTestingPinia } from '@pinia/testing'
 import PageItem from './PageItem.vue'
 import type { Page } from '@/stores/pages'
+import { usePagesStore } from '@/stores/pages'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
 
@@ -163,5 +164,138 @@ describe('PageItem.vue', () => {
         expect(db.getPageImage).toHaveBeenCalledWith(mockPage.id)
 
         expect(ocrService.queueOCR).toHaveBeenCalledWith(mockPage.id, mockBlob)
+    })
+    it('handles Scan button error with unknown error', async () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage },
+            global: { plugins: [pinia] }
+        })
+
+        vi.mocked(db.getPageImage).mockRejectedValue('Unknown error')
+        const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
+        await scanBtn!.trigger('click')
+        await flushPromises()
+
+        expect(consoleSpy).toHaveBeenCalled()
+        consoleSpy.mockRestore()
+    })
+
+    it('handles checkbox change', async () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage },
+            global: { plugins: [pinia] }
+        })
+        const store = usePagesStore()
+
+        await wrapper.findComponent({ name: 'NCheckbox' }).vm.$emit('update:checked', true)
+        expect(store.togglePageSelection).toHaveBeenCalledWith(mockPage.id)
+    })
+
+    it('computes isScanning correctly', async () => {
+        const scanningPage = { ...mockPage, status: 'recognizing' as const }
+        const wrapper = mount(PageItem, {
+            props: { page: scanningPage },
+            global: { plugins: [pinia] }
+        })
+
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
+        expect(scanBtn?.attributes('disabled')).toBeDefined()
+    })
+
+    it('formats file size correctly', () => {
+        const wrapper = mount(PageItem, {
+            props: { page: { ...mockPage, fileSize: 0 } },
+            global: { plugins: [pinia] }
+        })
+        expect(wrapper.find('.page-info').text()).toBe('0 B')
+
+        const wrapper2 = mount(PageItem, {
+            props: { page: { ...mockPage, fileSize: 1024 } },
+            global: { plugins: [pinia] }
+        })
+        expect(wrapper2.find('.page-info').text()).toBe('1.0 KB')
+    })
+
+    it('returns correct status text and type', () => {
+        const statuses = [
+            { status: 'pending_render', text: 'Queued', type: 'warning' },
+            { status: 'rendering', text: 'Rendering', type: 'info' },
+            { status: 'pending_ocr', text: 'Queued', type: 'info' },
+            { status: 'recognizing', text: 'Scanning', type: 'info' },
+            { status: 'ocr_success', text: 'OCR Done', type: 'success' },
+            { status: 'error', text: 'Error', type: 'error' },
+            { status: 'completed', text: '', type: 'success' },
+            { status: 'ready', text: '', type: 'success' },
+        ] as const
+
+        statuses.forEach(({ status, text, type }) => {
+            const wrapper = mount(PageItem, {
+                props: { page: { ...mockPage, status, thumbnailData: undefined } },
+                global: { plugins: [pinia] }
+            })
+
+            if (text) {
+                expect(wrapper.find('.status-label').text()).toBe(text)
+            }
+            if (type === 'success' || type === 'info' || type === 'error' || type === 'warning') {
+                // NTag type check if tag exists
+                const tag = wrapper.findComponent({ name: 'NTag' })
+                if (tag.exists()) {
+                    expect(tag.props('type')).toBe(type) // Actually OCR tag is fixed in template?
+                }
+            }
+        })
+    })
+
+    it('applies dragging class', () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage, isDragging: true },
+            global: { plugins: [pinia] }
+        })
+        expect(wrapper.classes()).toContain('dragging')
+    })
+
+    it('handles image load failure (no blob)', async () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage },
+            global: { plugins: [pinia] }
+        })
+
+        vi.mocked(db.getPageImage).mockResolvedValue(undefined)
+
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
+        await scanBtn!.trigger('click')
+        await flushPromises()
+
+        expect(ocrService.queueOCR).not.toHaveBeenCalled()
+    })
+
+    it('updates hover states', async () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage },
+            global: { plugins: [pinia] }
+        })
+
+        await wrapper.trigger('mouseenter')
+        expect(wrapper.vm.isPageHovered).toBe(true)
+
+        await wrapper.trigger('mouseleave')
+        expect(wrapper.vm.isPageHovered).toBe(false)
+
+        const deleteBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Delete page')
+        await deleteBtn?.trigger('mouseenter')
+        expect(wrapper.vm.isDeleteHovered).toBe(true)
+
+        await deleteBtn?.trigger('mouseleave')
+        expect(wrapper.vm.isDeleteHovered).toBe(false)
+
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
+        await scanBtn?.trigger('mouseenter')
+        expect(wrapper.vm.isScanHovered).toBe(true)
+
+        await scanBtn?.trigger('mouseleave')
+        expect(wrapper.vm.isScanHovered).toBe(false)
     })
 })

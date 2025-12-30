@@ -103,8 +103,10 @@ vi.mock('./components/page-viewer/PageViewer.vue', () => ({
   }
 }))
 
+import { reactive } from 'vue'
+
 // Mock Store Instance
-const mockStore: MockStore = {
+const mockStore: MockStore = reactive({
   pages: [],
   selectedPageIds: [],
   loadPagesFromDB: vi.fn(),
@@ -113,7 +115,7 @@ const mockStore: MockStore = {
   undoDelete: vi.fn(),
   clearSelection: vi.fn(),
   addFiles: vi.fn()
-}
+})
 
 vi.mock('./stores/pages', () => ({
   usePagesStore: vi.fn(() => mockStore)
@@ -395,5 +397,34 @@ describe('App.vue', () => {
     await flushPromises()
 
     expect(uiLogger.error).toHaveBeenCalledWith('Error resuming PDF processing:', expect.any(Error))
+  })
+
+  describe('Watchers', () => {
+    it('updates selection when selected page is removed', async () => {
+      mockStore.pages = [{ id: 'p1' }, { id: 'p2' }]
+      mockStore.selectedPageIds = ['p1']
+      const wrapper = mount(App)
+
+        // Select p1
+        ; (wrapper.vm as AppInstance).selectedPageId = 'p1'
+
+      // Remove p1
+      mockStore.pages = [{ id: 'p2' }]
+      await wrapper.vm.$nextTick()
+
+      expect((wrapper.vm as AppInstance).selectedPageId).toBe('p2')
+    })
+
+    it('selects first page if none selected and pages added', async () => {
+      mockStore.pages = []
+      const wrapper = mount(App)
+      expect((wrapper.vm as AppInstance).selectedPageId).toBeNull()
+
+      // Add pages
+      mockStore.pages = [{ id: 'p1' }]
+      await wrapper.vm.$nextTick()
+
+      expect((wrapper.vm as AppInstance).selectedPageId).toBe('p1')
+    })
   })
 })
