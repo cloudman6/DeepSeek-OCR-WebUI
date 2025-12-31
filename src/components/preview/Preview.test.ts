@@ -87,6 +87,7 @@ describe('Preview.vue', () => {
   })
 
   it('handles binary status check and rendering paths', async () => {
+    vi.useFakeTimers()
     const wrapper = mount(Preview, { props: { currentPage: mockPage } })
     const vm = wrapper.vm as any
 
@@ -94,11 +95,15 @@ describe('Preview.vue', () => {
     await vm.checkBinaryStatus('p1', 'pdf')
     expect(vm.hasBinary).toBe(true)
 
-    // Test render paths directly
+    // Test DOCX render path with setTimeout callback
     vm.wordPreviewContainer = document.createElement('div')
-    vm.docxBlob = new Blob(['docx'])
-    await vm.renderDocx()
+    await vm.checkBinaryStatus('p1', 'docx')
+
+    // Advance timers to trigger the setTimeout callback
+    await vi.runAllTimersAsync()
+
     expect(vi.mocked(renderAsync)).toHaveBeenCalled()
+    vi.useRealTimers()
   })
 
   it('covers all download logic paths', async () => {
@@ -230,5 +235,36 @@ describe('Preview.vue', () => {
     vm.resetPreviewState()
     expect(vm.mdContent).toBe('')
     expect(vm.hasBinary).toBe(false)
+  })
+
+  it('covers handleDownloadMarkdown function', async () => {
+    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const vm = wrapper.vm as any
+    await flushPromises()
+
+    // Set up mdContent
+    vm.mdContent = '# Test Content'
+
+    // Mock document.createElement and related DOM methods
+    const mockAnchor = {
+      href: '',
+      download: '',
+      click: vi.fn()
+    }
+    const originalCreateElement = document.createElement.bind(document)
+    const createElementSpy = vi.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'a') return mockAnchor as any
+      return originalCreateElement(tag)
+    })
+    vi.spyOn(document.body, 'appendChild').mockImplementation(() => ({} as any))
+    vi.spyOn(document.body, 'removeChild').mockImplementation(() => ({} as any))
+
+    // Call the function
+    vm.handleDownloadMarkdown()
+
+    expect(mockAnchor.click).toHaveBeenCalled()
+    expect(mockAnchor.download).toContain('.md')
+
+    createElementSpy.mockRestore()
   })
 })

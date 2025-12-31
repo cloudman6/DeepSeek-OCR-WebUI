@@ -935,28 +935,29 @@ describe('Pages Store', () => {
             const store = usePagesStore()
             const mockFile = new File([''], 'test.pdf', { type: 'application/pdf' })
 
-            // Directly use the mocked instance from top-level vi.mock
             vi.mocked(fileAddService.processFiles).mockResolvedValueOnce({
                 success: true,
                 pages: [{ id: 'p1', order: 0 } as any]
             })
 
-            // Trigger via addFiles which calls waitForPDFQueuedPromise internally for PDF files
+            // Setup: use mock.calls to track registration
             const addPromise = store.addFiles([mockFile])
 
-            // The store calls pdfEvents.on to register a handler
-            // We need to wait for it to be registered, then call it
-            await vi.waitFor(() => {
-                const call = vi.mocked(pdfEvents.on).mock.calls.find(c => c[0] === 'pdf:pages:queued')
-                if (!call) throw new Error('Handler not registered')
-                const handler = call[1]
-                if (typeof handler === 'function') {
-                    (handler as any)()
+            // Poll for handler registration without nesting
+            let attempts = 0
+            while (attempts < 100) {
+                const calls = vi.mocked(pdfEvents.on).mock.calls
+                const queuedCall = calls.filter(c => c[0] === 'pdf:pages:queued')[0]
+                if (queuedCall && typeof queuedCall[1] === 'function') {
+                    (queuedCall[1] as any)()
+                    break
                 }
-            })
+                await new Promise(r => setTimeout(r, 10))
+                attempts++
+            }
 
             await addPromise
-            expect(true).toBe(true)
+            expect(attempts).toBeLessThan(100)
         })
     })
 })
