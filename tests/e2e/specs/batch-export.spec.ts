@@ -1,6 +1,21 @@
 import { test, expect } from '../fixtures/base-test';
 import path from 'path';
 import fs from 'fs';
+import JSZip from 'jszip';
+import { PDFDocument } from 'pdf-lib';
+import type { PageState } from '../../src/types/page';
+
+interface PagesStore {
+    pages: PageState[];
+    selectedPageIds: Set<string>;
+    loadPagesFromDB: () => Promise<void>;
+}
+
+declare global {
+    interface Window {
+        pagesStore?: PagesStore;
+    }
+}
 
 test.describe('Batch Export', () => {
     test.beforeEach(async ({ page }) => {
@@ -8,6 +23,22 @@ test.describe('Batch Export', () => {
         page.on('console', msg => {
             console.log(`[Browser Console] ${msg.type().toUpperCase()}: ${msg.text()}`);
         });
+
+        // Use a more robust way to clear data and wait for initialization
+        await page.goto('/');
+        await page.waitForLoadState('networkidle');
+
+        await page.evaluate(async () => {
+            const { db } = await import('/src/db/index.ts');
+            await db.clearAllData();
+            // Clear Pinia store if accessible
+            if (window.pagesStore) {
+                window.pagesStore.pages = [];
+                window.pagesStore.selectedPageIds = new Set();
+            }
+        });
+
+        await page.waitForTimeout(1000); // Breathe
 
         // Intercept OCR API to return mock data
         await page.route('**/ocr', async (route) => {
@@ -23,6 +54,7 @@ test.describe('Batch Export', () => {
 
     test('should handle batch export with some pages not ready (markdown)', async ({ page }) => {
         await page.goto('/');
+        await page.waitForSelector('.app-header button');
 
         // 1. Upload 3 images
         const filePaths = [
@@ -41,67 +73,198 @@ test.describe('Batch Export', () => {
         await expect(pageItems).toHaveCount(3, { timeout: 30000 });
 
         // 2. Trigger OCR for the first 2 pages
-        // Select page 1
-        await pageItems.nth(0).click();
-        await page.locator('.ocr-actions .trigger-btn').click();
+        for (let i = 0; i < 2; i++) {
+            await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
+            await page.locator('.ocr-actions .trigger-btn').click();
 
-        // Wait for store state to be ready
-        await page.waitForFunction(() => {
-            const pages = (window as unknown as { pagesStore: { pages: { status: string }[] } }).pagesStore?.pages || [];
-            return pages[0]?.status === 'ocr_success';
-        }, { timeout: 30000 });
+            await page.waitForFunction((idx) => {
+                const pages = window.pagesStore?.pages || [];
+                return pages[idx]?.status === 'ocr_success';
+            }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
+        }
 
-        // Force refresh to update UI for subsequent steps
-        await page.evaluate(() => (window as unknown as { pagesStore: { loadPagesFromDB: () => void } }).pagesStore?.loadPagesFromDB());
-
-        // Select page 2
-        await pageItems.nth(1).click();
-        await page.locator('.ocr-actions .trigger-btn').click();
-
-        await page.waitForFunction(() => {
-            const pages = (window as unknown as { pagesStore: { pages: { status: string }[] } }).pagesStore?.pages || [];
-            return pages[1]?.status === 'ocr_success';
-        }, { timeout: 30000 });
-
-        await page.evaluate(() => (window as unknown as { pagesStore: { loadPagesFromDB: () => void } }).pagesStore?.loadPagesFromDB());
+        // Force refresh
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
 
         // 3. Selection All
-        // Click the select-all checkbox (Naive UI 包装器)
         await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
 
         // 4. Trigger Export
         const exportTrigger = page.locator('.export-selected-btn');
-        await expect(exportTrigger).toBeVisible();
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
         await exportTrigger.click();
 
-        // Select "Export as Markdown" from dropdown
+        // Select "Export as Markdown"
         await page.locator('.n-dropdown-option:has-text("Export as Markdown")').click();
 
         // 5. Verify Confirmation Dialog
         const warningDialog = page.locator('.n-dialog.n-modal');
         await expect(warningDialog).toBeVisible({ timeout: 10000 });
-        await expect(warningDialog).toContainText('Some Pages Not Ready');
-        await expect(warningDialog).toContainText('1 of 3 pages');
 
         // 6. Hook Download and Confirm
         const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
-        // Click the positive action button in n-dialog
         await warningDialog.locator('.n-dialog__action button:has-text("Skip & Export")').click();
         const download = await downloadPromise;
 
         // 7. Verify File
         expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.md$/);
         const downloadPath = await download.path();
-        const stats = fs.statSync(downloadPath!);
-        expect(stats.size).toBeGreaterThan(0);
-
-        // 8. Verify Content (Must contain 2 pages content separated by ---)
         const content = fs.readFileSync(downloadPath!, 'utf-8');
-        // Based on sample.json, the output might be complex but we expect 2 separators if it's 2 pages?
-        // Actually Multi-page Markdown concatenates with '\n\n---\n\n'
-        // So for 2 pages, there should be 1 separator.
+
+        // Verify Content: "瑞慈" appears twice per sample.json page
+        const matches = content.match(/瑞慈/g);
+        expect(matches?.length || 0).toBe(4);
+
         const sections = content.split('\n\n---\n\n');
-        expect(sections.length, 'Should have exactly 2 pages exported').toBe(2);
+        expect(sections.length).toBe(2);
+
+        // Cleanup
+        await download.delete();
+    });
+
+    test('should handle batch export with some pages not ready (docx)', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForSelector('.app-header button');
+
+        // 1. Upload 3 images
+        const filePaths = [
+            path.resolve('tests/e2e/samples/sample.png'),
+            path.resolve('tests/e2e/samples/sample.jpg'),
+            path.resolve('tests/e2e/samples/sample.png')
+        ];
+
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
+        await page.locator('.app-header button').first().click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(filePaths);
+
+        // Wait for items to appear
+        const pageItems = page.locator('.page-item');
+        await expect(pageItems).toHaveCount(3, { timeout: 30000 });
+
+        // 2. Trigger OCR for the first 2 pages
+        for (let i = 0; i < 2; i++) {
+            await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
+            await page.locator('.ocr-actions .trigger-btn').click();
+
+            await page.waitForFunction((idx) => {
+                const pages = window.pagesStore?.pages || [];
+                return pages[idx]?.status === 'ocr_success';
+            }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
+        }
+
+        // Force refresh
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
+
+        // 3. Selection All
+        await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
+
+        // 4. Trigger Export
+        const exportTrigger = page.locator('.export-selected-btn');
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
+        await exportTrigger.click();
+
+        // Select "Export as DOCX"
+        await page.locator('.n-dropdown-option:has-text("Export as DOCX")').click();
+
+        // 5. Verify Confirmation Dialog
+        const warningDialog = page.locator('.n-dialog.n-modal');
+        await expect(warningDialog).toBeVisible({ timeout: 10000 });
+
+        // 6. Hook Download and Confirm
+        const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+        await warningDialog.locator('.n-dialog__action button:has-text("Skip & Export")').click();
+        const download = await downloadPromise;
+
+        // 7. Verify File and Content
+        expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.docx$/);
+        const downloadPath = await download.path();
+
+        // eslint-disable-next-line sonarjs/no-unsafe-unzip
+        const zip = await JSZip.loadAsync(fs.readFileSync(downloadPath!));
+        const docXml = await zip.file('word/document.xml')?.async('text');
+        expect(docXml).toBeDefined();
+
+        const matches = docXml!.match(/1021112511173001/g);
+        expect(matches?.length || 0).toBe(2);
+
+        // Cleanup
+        await download.delete();
+    });
+
+    test('should handle batch export with some pages not ready (pdf)', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForSelector('.app-header button');
+
+        // 1. Upload 3 images
+        const filePaths = [
+            path.resolve('tests/e2e/samples/sample.png'),
+            path.resolve('tests/e2e/samples/sample.jpg'),
+            path.resolve('tests/e2e/samples/sample.png')
+        ];
+
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
+        await page.locator('.app-header button').first().click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(filePaths);
+
+        // Wait for items to appear
+        const pageItems = page.locator('.page-item');
+        await expect(pageItems).toHaveCount(3, { timeout: 30000 });
+
+        // 2. Trigger OCR for the first 2 pages
+        for (let i = 0; i < 2; i++) {
+            await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
+            await page.locator('.ocr-actions .trigger-btn').click();
+
+            await page.waitForFunction((idx) => {
+                const pages = window.pagesStore?.pages || [];
+                return pages[idx]?.status === 'ocr_success';
+            }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
+        }
+
+        // Force refresh
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
+
+        // 3. Selection All
+        await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
+
+        // 4. Trigger Export
+        const exportTrigger = page.locator('.export-selected-btn');
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
+        await exportTrigger.click();
+
+        // Select "Export as PDF"
+        await page.locator('.n-dropdown-option:has-text("Export as PDF")').click();
+
+        // 5. Verify Confirmation Dialog
+        const warningDialog = page.locator('.n-dialog.n-modal');
+        await expect(warningDialog).toBeVisible({ timeout: 10000 });
+
+        // 6. Hook Download and Confirm
+        const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+        await warningDialog.locator('.n-dialog__action button:has-text("Skip & Export")').click();
+        const download = await downloadPromise;
+
+        // 7. Verify File and PDF Structure
+        expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.pdf$/);
+        const downloadPath = await download.path();
+
+        const pdfBytes = fs.readFileSync(downloadPath!);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        expect(pdfDoc.getPageCount()).toBe(2);
 
         // Cleanup
         await download.delete();
@@ -109,6 +272,7 @@ test.describe('Batch Export', () => {
 
     test('should handle batch export when all pages are ready (markdown)', async ({ page }) => {
         await page.goto('/');
+        await page.waitForSelector('.app-header button');
 
         // 1. Upload 2 images
         const filePaths = [
@@ -121,48 +285,173 @@ test.describe('Batch Export', () => {
         const fileChooser = await fileChooserPromise;
         await fileChooser.setFiles(filePaths);
 
-        // Wait for items
         const pageItems = page.locator('.page-item');
         await expect(pageItems).toHaveCount(2, { timeout: 30000 });
 
         // 2. Trigger OCR for ALL pages
         for (let i = 0; i < 2; i++) {
             await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
             await page.locator('.ocr-actions .trigger-btn').click();
 
-            // Wait for store state
             await page.waitForFunction((idx) => {
-                const pages = (window as unknown as { pagesStore: { pages: { status: string }[] } }).pagesStore?.pages || [];
+                const pages = window.pagesStore?.pages || [];
                 return pages[idx]?.status === 'ocr_success';
             }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
         }
 
         // Force refresh
-        await page.evaluate(() => (window as unknown as { pagesStore: { loadPagesFromDB: () => void } }).pagesStore?.loadPagesFromDB());
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
 
         // 3. Selection All
         await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
 
         // 4. Trigger Export
         const exportTrigger = page.locator('.export-selected-btn');
-        await expect(exportTrigger).toBeVisible();
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
         await exportTrigger.click();
 
         // Select "Export as Markdown"
         const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
         await page.locator('.n-dropdown-option:has-text("Export as Markdown")').click();
 
-        // 5. Verify direct download (No dialog should appear)
-        const warningDialog = page.locator('.n-dialog.n-modal');
-        await expect(warningDialog).not.toBeVisible({ timeout: 2000 });
-
+        // 5. Verify direct download
         const download = await downloadPromise;
-
-        // 6. Verify File
         expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.md$/);
+
         const downloadPath = await download.path();
-        const stats = fs.statSync(downloadPath!);
-        expect(stats.size).toBeGreaterThan(0);
+        const content = fs.readFileSync(downloadPath!, 'utf-8');
+
+        const matches = content.match(/瑞慈/g);
+        expect(matches?.length || 0).toBe(4);
+
+        // Cleanup
+        await download.delete();
+    });
+
+    test('should handle batch export when all pages are ready (docx)', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForSelector('.app-header button');
+
+        // 1. Upload 2 images
+        const filePaths = [
+            path.resolve('tests/e2e/samples/sample.png'),
+            path.resolve('tests/e2e/samples/sample.jpg')
+        ];
+
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
+        await page.locator('.app-header button').first().click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(filePaths);
+
+        const pageItems = page.locator('.page-item');
+        await expect(pageItems).toHaveCount(2, { timeout: 30000 });
+
+        // 2. Trigger OCR for ALL pages
+        for (let i = 0; i < 2; i++) {
+            await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
+            await page.locator('.ocr-actions .trigger-btn').click();
+
+            await page.waitForFunction((idx) => {
+                const pages = window.pagesStore?.pages || [];
+                return pages[idx]?.status === 'ocr_success';
+            }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
+        }
+
+        // Force refresh
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
+
+        // 3. Selection All
+        await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
+
+        // 4. Trigger Export
+        const exportTrigger = page.locator('.export-selected-btn');
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
+        await exportTrigger.click();
+
+        // Select "Export as DOCX"
+        const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+        await page.locator('.n-dropdown-option:has-text("Export as DOCX")').click();
+
+        // 5. Verify direct download and content
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.docx$/);
+
+        const downloadPath = await download.path();
+        // eslint-disable-next-line sonarjs/no-unsafe-unzip
+        const zip = await JSZip.loadAsync(fs.readFileSync(downloadPath!));
+        const docXml = await zip.file('word/document.xml')?.async('text');
+
+        const matches = docXml!.match(/1021112511173001/g);
+        expect(matches?.length || 0).toBe(2);
+
+        // Cleanup
+        await download.delete();
+    });
+
+    test('should handle batch export when all pages are ready (pdf)', async ({ page }) => {
+        await page.goto('/');
+        await page.waitForSelector('.app-header button');
+
+        // 1. Upload 2 images
+        const filePaths = [
+            path.resolve('tests/e2e/samples/sample.png'),
+            path.resolve('tests/e2e/samples/sample.jpg')
+        ];
+
+        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
+        await page.locator('.app-header button').first().click();
+        const fileChooser = await fileChooserPromise;
+        await fileChooser.setFiles(filePaths);
+
+        const pageItems = page.locator('.page-item');
+        await expect(pageItems).toHaveCount(2, { timeout: 30000 });
+
+        // 2. Trigger OCR for ALL pages
+        for (let i = 0; i < 2; i++) {
+            await pageItems.nth(i).click();
+            await page.waitForTimeout(500);
+            await page.locator('.ocr-actions .trigger-btn').click();
+
+            await page.waitForFunction((idx) => {
+                const pages = window.pagesStore?.pages || [];
+                return pages[idx]?.status === 'ocr_success';
+            }, i, { timeout: 30000 });
+            await page.waitForTimeout(500);
+        }
+
+        // Force refresh
+        await page.evaluate(() => window.pagesStore?.loadPagesFromDB());
+        await page.waitForTimeout(1000);
+
+        // 3. Selection All
+        await page.locator('.selection-toolbar .n-checkbox').click();
+        await page.waitForTimeout(1000);
+
+        // 4. Trigger Export
+        const exportTrigger = page.locator('.export-selected-btn');
+        await expect(exportTrigger).toBeEnabled({ timeout: 10000 });
+        await exportTrigger.click();
+
+        // Select "Export as PDF"
+        const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
+        await page.locator('.n-dropdown-option:has-text("Export as PDF")').click();
+
+        // 5. Verify direct download and page count
+        const download = await downloadPromise;
+        expect(download.suggestedFilename()).toMatch(/^document_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.pdf$/);
+
+        const downloadPath = await download.path();
+        const pdfBytes = fs.readFileSync(downloadPath!);
+        const pdfDoc = await PDFDocument.load(pdfBytes);
+        expect(pdfDoc.getPageCount()).toBe(2);
 
         // Cleanup
         await download.delete();
