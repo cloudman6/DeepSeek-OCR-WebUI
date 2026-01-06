@@ -206,7 +206,8 @@ async function handleScan() {
 
     notification.success({
       content: 'Added to OCR Queue',
-      duration: 2500
+      duration: 2500,
+      closable: false
     })
     await ocrService.queueOCR(props.page.id, imageBlob)
 

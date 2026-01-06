@@ -85,8 +85,8 @@ test.describe('Batch OCR', () => {
       // Click batch OCR button
       await page.click('[data-testid="batch-ocr-button"]');
 
-      // Verify success message
-      await expect(page.locator('.n-message').first()).toContainText(`已将 ${expectedPageCount} 个页面添加到 OCR 队列`, { timeout: 5000 });
+      // Verify success notification
+      await expect(page.locator('.n-notification').first()).toContainText(`Added ${expectedPageCount} pages to OCR queue`, { timeout: 5000 });
 
       // Wait for all pages to reach or pass ocr_success status
       for (let i = 0; i < expectedPageCount; i++) {
@@ -218,8 +218,8 @@ test.describe('Batch OCR', () => {
       // Click batch OCR
       await page.click('[data-testid="batch-ocr-button"]');
 
-      // Verify message shows only new page was processed (1 added, firstBatchCount skipped)
-      await expect(page.locator('.n-message').first()).toContainText(/已将 1 个页面添加到 OCR 队列.*跳过 \d+ 个已处理/, { timeout: 5000 });
+      // Verify notification shows only new page was processed (1 added, firstBatchCount skipped)
+      await expect(page.locator('.n-notification').first()).toContainText(/Added 1 page to OCR queue.*skipped \d+ processed/, { timeout: 5000 });
 
       // Wait for the new page to complete OCR
       await page.waitForFunction((idx) => {
@@ -287,12 +287,12 @@ test.describe('Batch OCR', () => {
       // All pages are now past ocr_success - try batch OCR again
       await page.click('[data-testid="batch-ocr-button"]');
 
-      // Verify warning message (look for the latest message with warning text)
-      await page.waitForTimeout(500); // Give time for message to appear
+      // Verify warning notification (look for the latest notification with warning text)
+      await page.waitForTimeout(500); // Give time for notification to appear
       const foundWarning = await page.evaluate(() => {
-        const messages = document.querySelectorAll('.n-message');
-        for (const msg of messages) {
-          if (msg.textContent?.includes('选中的页面都已处理或正在处理中')) {
+        const notifications = document.querySelectorAll('.n-notification');
+        for (const msg of notifications) {
+          if (msg.textContent?.includes('All selected pages are already processed or being processed')) {
             return true;
           }
         }

@@ -46,6 +46,11 @@ vi.mock('naive-ui', () => ({
     warning: messageWarningSpy,
     error: vi.fn()
   }),
+  useNotification: () => ({
+    success: messageSuccessSpy,
+    warning: messageWarningSpy,
+    error: vi.fn()
+  }),
   useDialog: () => ({
     warning: dialogWarningSpy
   })
@@ -692,7 +697,11 @@ describe('PageList.vue', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
 
       expect(ocrService.queueBatchOCR).toHaveBeenCalledWith(mockPages)
-      expect(messageSuccessSpy).toHaveBeenCalledWith('已将 2 个页面添加到 OCR 队列 (跳过 1 个已处理)')
+      expect(messageSuccessSpy).toHaveBeenCalledWith({
+        content: 'Added 2 pages to OCR queue (skipped 1 processed)',
+        duration: 2500,
+        closable: false
+      })
     })
 
     it('shows success message without skip info when nothing is skipped', async () => {
@@ -721,7 +730,11 @@ describe('PageList.vue', () => {
       await wrapper.find('.batch-ocr-btn').trigger('click')
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      expect(messageSuccessSpy).toHaveBeenCalledWith('已将 2 个页面添加到 OCR 队列')
+      expect(messageSuccessSpy).toHaveBeenCalledWith({
+        content: 'Added 2 pages to OCR queue',
+        duration: 2500,
+        closable: false
+      })
     })
 
     it('shows warning message when no pages can be queued', async () => {
@@ -750,7 +763,11 @@ describe('PageList.vue', () => {
       await wrapper.find('.batch-ocr-btn').trigger('click')
       await new Promise(resolve => setTimeout(resolve, 50))
 
-      expect(messageWarningSpy).toHaveBeenCalledWith('选中的页面都已处理或正在处理中')
+      expect(messageWarningSpy).toHaveBeenCalledWith({
+        content: 'All selected pages are already processed or being processed',
+        duration: 2500,
+        closable: false
+      })
     })
 
     it('does nothing when no pages are selected', async () => {

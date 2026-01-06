@@ -536,7 +536,8 @@ async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: st
     uiLogger.info(`Adding page to OCR Queue (${mode}):`, props.currentPage.id)
     notification.success({
       content: 'Added to OCR Queue',
-      duration: 2500
+      duration: 2500,
+      closable: false
     })
     
     await ocrService.queueOCR(props.currentPage.id, imageBlob, {

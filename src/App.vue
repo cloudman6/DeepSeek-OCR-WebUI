@@ -1,5 +1,5 @@
 <template>
-  <n-message-provider>
+  <n-message-provider placement="bottom-left">
     <n-notification-provider placement="bottom-left">
       <n-dialog-provider>
         <n-layout

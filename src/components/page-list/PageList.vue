@@ -156,7 +156,7 @@ import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
 import type { Page, PageStatus } from '@/stores/pages'
 import { TrashOutline, DownloadOutline, DocumentTextOutline } from '@vicons/ionicons5'
-import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon, NDropdown, useMessage, useDialog } from 'naive-ui'
+import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon, NDropdown, useMessage, useNotification, useDialog } from 'naive-ui'
 import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
@@ -177,6 +177,7 @@ const emit = defineEmits<{
 const pagesStore = usePagesStore()
 const isDeleteHovered = ref(false)
 const message = useMessage()
+const notification = useNotification()
 const dialog = useDialog()
 
 // Local copy of pages for drag and drop
@@ -227,15 +228,23 @@ async function handleBatchOCR() {
   // Call batch OCR service
   const result = await ocrService.queueBatchOCR(selectedPages)
 
-  // Show result notification
+  // Show result notification (using notification like single-page OCR)
   if (result.queued > 0) {
-    let msg = `已将 ${result.queued} 个页面添加到 OCR 队列`
+    let msg = `Added ${result.queued} page${result.queued > 1 ? 's' : ''} to OCR queue`
     if (result.skipped > 0) {
-      msg += ` (跳过 ${result.skipped} 个已处理)`
+      msg += ` (skipped ${result.skipped} processed)`
     }
-    message.success(msg)
+    notification.success({
+      content: msg,
+      duration: 2500,
+      closable: false
+    })
   } else {
-    message.warning('选中的页面都已处理或正在处理中')
+    notification.warning({
+      content: 'All selected pages are already processed or being processed',
+      duration: 2500,
+      closable: false
+    })
   }
 }
 
