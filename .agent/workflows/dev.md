@@ -74,7 +74,7 @@ description: TDD development workflow with pre-check and post-verification gates
 如果用户选择"修复"阶段 0 发现的问题：
 
 1. **暂停当前任务**，将其标记为"待恢复"
-2. **启动新的 /dev 任务**，专门修复发现的问题：
+2. **启动新的 /dev @.agent/workflows/dev.md 任务**，专门修复发现的问题：
    - 跳过阶段 0（已知问题，无需重复检查）
    - 执行阶段 1-4 完整流程
    - 任务名称应明确标注为"修复阶段 0 发现的问题"

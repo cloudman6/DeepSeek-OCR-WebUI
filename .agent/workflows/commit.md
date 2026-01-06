@@ -18,7 +18,7 @@ description: Pipeline for validating quality gates before committing and pushing
 
 ## 阶段 0：质量门禁（必须通过）
 
-> 引用 `/dev` workflow 的阶段 0，确保项目处于健康状态。
+> 引用 `/dev` workflow @.agent/workflows/dev.md 的阶段 0，确保项目处于健康状态。
 
 // turbo
 1. **清理环境（防止进程残留）**
@@ -71,12 +71,12 @@ description: Pipeline for validating quality gates before committing and pushing
 如果用户选择"修复"阶段 0 发现的问题：
 
 1. **暂停当前提交任务**：将其标记为待恢复状态。
-2. **启动新的 `/dev` 任务**：
+2. **启动新的 `/dev` @.agent/workflows/dev.md 任务**：
    - 目标是修复阶段 0 中失败的特定项目（如修复测试、降低复杂度或补充覆盖率）。
    - 跳过该修复任务的阶段 0 检查，直接进入阶段 1-4。
    - 必须遵循完整的 TDD 循环。
 3. **修复完成后**：
-   - 返回 `/commit` 任务。
+   - 返回 `/commit` @.agent/workflows/commit.md 任务。
    - 重新执行阶段 0 的全部检查以确保修复彻底且未引入新问题。
    - 只有重新验证通过后，才允许进入阶段 1 进行提交。
 

@@ -131,6 +131,3 @@ lint_report*.json
 *.tgz
 *.tar.gz
 
-# Sensitive test files (keep local, never commit)
-tests/e2e/samples/sample.json
-tests/e2e/samples/sample1.json

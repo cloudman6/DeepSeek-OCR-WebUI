@@ -2,7 +2,7 @@
 description: E2E test development workflow using Playwright. Use this for creating or updating end-to-end tests.
 ---
 
-这是 **E2E 测试开发**的专用流程。它遵循 TDD 风格，并在发现 Bug 时无缝切换到 `/dev` 流程进行修复。
+这是 **E2E 测试开发**的专用流程。它遵循 TDD 风格，并在发现 Bug 时无缝切换到 `/dev` @.agent/workflows/dev.md 流程进行修复。
 
 ## 前置条件
 - 已确定要测试的用户流程或功能
@@ -19,7 +19,7 @@ description: E2E test development workflow using Playwright. Use this for creati
 
 ## 阶段 0：飞行前检查（必须通过）
 
-> 引用 `/dev` workflow 的阶段 0，确保项目处于健康状态。
+> 引用 `/dev` workflow @.agent/workflows/dev.md 的阶段 0，确保项目处于健康状态。
 
 // turbo
 1. **清理环境（防止进程残留）**
@@ -56,12 +56,12 @@ description: E2E test development workflow using Playwright. Use this for creati
 如果用户选择"修复"阶段 0 发现的问题：
 
 1. **暂停当前 E2E 任务**：将其标记为待恢复状态。
-2. **启动新的 `/dev` 任务**：
+2. **启动新的 `/dev` @.agent/workflows/dev.md 任务**：
    - 目标是修复阶段 0 中失败的特定项目（如修复测试、降低复杂度或补充覆盖率）。
    - 跳过该修复任务的阶段 0 检查，直接进入阶段 1-4。
    - 必须遵循完整的 TDD 循环。
 3. **修复完成后**：
-   - 返回 `/e2e` 任务。
+   - 返回 `/e2e` @.agent/workflows/e2e.md 任务。
    - 重新执行阶段 0 的全部检查以确保项目恢复健康。
    - 只有重新验证通过后，才允许进入阶段 1 进行环境准备。
 
@@ -118,9 +118,9 @@ description: E2E test development workflow using Playwright. Use this for creati
 - 继续添加更多测试用例
 
 **情况 B：需要修改应用代码**
-- ⚠️ **切换到 `/dev` 流程**：
+- ⚠️ **切换到 `/dev` @.agent/workflows/dev.md 流程**：
   1. 暂停 E2E 测试开发
-  2. 按照 `/dev` 流程修复 Bug 或实现功能
+  2. 按照 `/dev` @.agent/workflows/dev.md 流程修复 Bug 或实现功能
   3. 确保单元测试覆盖
   4. 返回继续 E2E 测试
 
@@ -148,7 +148,7 @@ description: E2E test development workflow using Playwright. Use this for creati
    npm run test:e2e
    ```
    - ❌ 所有测试必须通过
-   - 如果 E2E 测试失败 → 返回阶段 2 修复测试或切换到 `/dev` 修复代码
+   - 如果 E2E 测试失败 → 返回阶段 2 修复测试或切换到 `/dev` @.agent/workflows/dev.md 修复代码
 
 // turbo
 2. **运行所有单元测试（确保无回归）**
@@ -156,7 +156,7 @@ description: E2E test development workflow using Playwright. Use this for creati
    npm run test:unit -- --run
    ```
    - ❌ 所有测试必须通过
-   - 如果单元测试失败 → 切换到 `/dev` 流程修复
+   - 如果单元测试失败 → 切换到 `/dev` @.agent/workflows/dev.md 流程修复
 
 // turbo
 3. **验证覆盖率和复杂度**
@@ -164,8 +164,8 @@ description: E2E test development workflow using Playwright. Use this for creati
    npm run test:unit -- --run --coverage
    npm run lint:complexity
    ```
-   - 引用 `/dev` 的质量门禁标准（针对每个文件）
-   - ❌ 如果阈值未达标 → 切换到 `/dev` 流程修复代码
+   - 引用 `/dev` @.agent/workflows/dev.md 的质量门禁标准（针对每个文件）
+   - ❌ 如果阈值未达标 → 切换到 `/dev` @.agent/workflows/dev.md 流程修复代码
    - ⚠️ **切记**：如果你在任何步骤中跳过了测试或忽略了警告，必须在最终报告中明确告知用户。
 
 // turbo
@@ -254,16 +254,16 @@ npx playwright show-report
 
 ---
 
-## 与 `/dev` 流程的协作
+## 与 `/dev` @.agent/workflows/dev.md 流程的协作
 
 当 E2E 测试发现 Bug 或需要新功能时：
 
 ```
 E2E 红色阶段 → 发现需要改代码
        ↓
- 切换到 /dev 流程
+ 切换到 /dev @.agent/workflows/dev.md 流程
        ↓
- /dev 阶段 1-4（完整 TDD 循环，跳过阶段 0 因为项目已健康）
+ /dev @.agent/workflows/dev.md 阶段 1-4（完整 TDD 循环，跳过阶段 0 因为项目已健康）
        ↓
  返回 E2E 流程
        ↓
@@ -272,7 +272,7 @@ E2E 绿色阶段 → 测试通过
 
 **关键原则**：
 - E2E 测试不应直接修改应用代码
-- 代码修改必须通过 `/dev` 流程，确保单元测试覆盖
+- 代码修改必须通过 `/dev` @.agent/workflows/dev.md 流程，确保单元测试覆盖
 - 这保证了测试金字塔的完整性
 
 ---
