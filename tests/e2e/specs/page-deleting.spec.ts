@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/base-test';
 import { getPdfPageCount } from '../utils/pdf-utils';
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 import type { Page, Locator } from '@playwright/test';
 
@@ -38,10 +39,9 @@ test.describe('Page Deleting', () => {
     async function uploadTestFiles(page: Page): Promise<number> {
         const filePaths = TEST_FILES.map(f => path.resolve(`tests/e2e/samples/${f}`));
 
-        const fileChooserPromise = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        // Note: This test focuses on page deletion, not file upload UI.
+        // Using direct injection for reliability.
+        await uploadFiles(page, filePaths, '.app-header button', true);
 
         // Calculate expected page count
         const expectedCount = await calculateExpectedPageCount(filePaths);

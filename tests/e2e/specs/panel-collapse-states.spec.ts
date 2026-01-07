@@ -25,6 +25,7 @@
  */
 
 import { test, expect } from '../fixtures/base-test';
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -54,10 +55,8 @@ test.describe('Panel Collapse States', () => {
      */
     async function uploadTestFile(page: Page): Promise<void> {
         const filePath = path.resolve('tests/e2e/samples/sample.png');
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles([filePath]);
+        // Upload file using direct injection
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // Wait for page item to appear
         await expect(page.locator('.page-item')).toBeVisible({ timeout: 30000 });

@@ -26,7 +26,7 @@
           text
           size="tiny"
           circle
-          title="Export selected pages"
+          :title="$t('pageList.exportAs', [$t('common.export')])"
           class="export-selected-btn"
         >
           <template #icon>
@@ -46,7 +46,7 @@
         text
         size="tiny"
         circle
-        title="Scan selected pages to document"
+        :title="$t('pageList.scanSelected')"
         class="batch-ocr-btn"
         data-testid="batch-ocr-button"
         @click="handleBatchOCR"
@@ -71,7 +71,7 @@
           transform: isDeleteHovered ? 'scale(1.1)' : 'scale(1)',
           transition: 'all 0.2s ease'
         }"
-        title="Delete selected pages"
+        :title="$t('pageList.deleteSelected')"
         class="delete-selected-btn"
         data-testid="batch-delete-button"
         @click="handleBatchDelete"
@@ -93,8 +93,10 @@
       <draggable
         v-model="localPages"
         item-key="id"
+        handle=".drag-handle"
         ghost-class="ghost"
         chosen-class="chosen"
+        @start="handleDragStart"
         @end="handleDragEnd"
       >
         <template #item="{ element: page }">
@@ -110,7 +112,7 @@
       <!-- Empty state when no pages -->
       <n-empty
         v-if="localPages.length === 0"
-        description="No pages added"
+        :description="$t('pageList.noPages')"
         class="empty-state"
       >
         <template #icon>
@@ -151,6 +153,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, h } from 'vue'
+import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
@@ -160,6 +163,8 @@ import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon, NDropdown, useMessage, u
 import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   pages: Page[]
@@ -176,6 +181,7 @@ const emit = defineEmits<{
 
 const pagesStore = usePagesStore()
 const isDeleteHovered = ref(false)
+const isDragging = ref(false)
 const message = useMessage()
 const notification = useNotification()
 const dialog = useDialog()
@@ -185,6 +191,7 @@ const localPages = ref<Page[]>([...props.pages])
 
 // Watch for changes in props.pages and update local copy
 watch(() => props.pages, (newPages) => {
+  if (isDragging.value) return
   localPages.value = [...newPages]
 }, { deep: true, immediate: true })
 
@@ -230,18 +237,23 @@ async function handleBatchOCR() {
 
   // Show result notification (using notification like single-page OCR)
   if (result.queued > 0) {
-    let msg = `Added ${result.queued} page${result.queued > 1 ? 's' : ''} to OCR queue`
+    const msg = t('pageList.addedToQueue', [result.queued, result.queued > 1 ? 's' : ''])
     if (result.skipped > 0) {
-      msg += ` (skipped ${result.skipped} processed)`
+      notification.success({
+        content: msg + ` (${t('pageList.skippedProcessed', [result.skipped])})`,
+        duration: 2500,
+        closable: false
+      })
+    } else {
+      notification.success({
+        content: msg,
+        duration: 2500,
+        closable: false
+      })
     }
-    notification.success({
-      content: msg,
-      duration: 2500,
-      closable: false
-    })
   } else {
     notification.warning({
-      content: 'All selected pages are already processed or being processed',
+      content: t('pageList.allProcessed'),
       duration: 2500,
       closable: false
     })
@@ -253,19 +265,19 @@ const exportMenuOptions = computed(() => {
   const stats = exportStats.value
   return [
     {
-      label: `Export as Markdown (${stats.markdown}/${stats.total})`,
+      label: t('pageList.exportAs', [`Markdown (${stats.markdown}/${stats.total})`]),
       key: 'markdown',
       disabled: stats.markdown === 0,
       icon: () => h(NIcon, null, { default: () => h(DocumentTextOutline) })
     },
     {
-      label: `Export as DOCX (${stats.docx}/${stats.total})`,
+      label: t('pageList.exportAs', [`DOCX (${stats.docx}/${stats.total})`]),
       key: 'docx',
       disabled: stats.docx === 0,
       icon: () => h(NIcon, null, { default: () => h(DownloadOutline) })
     },
     {
-      label: `Export as PDF (${stats.pdf}/${stats.total})`,
+      label: t('pageList.exportAs', [`PDF (${stats.pdf}/${stats.total})`]),
       key: 'pdf',
       disabled: stats.pdf === 0,
       icon: () => h(NIcon, null, { default: () => h(DownloadOutline) })
@@ -319,16 +331,16 @@ async function handleQuickExport(format: ExportFormat) {
   // All pages ready, export directly
   if (invalidPages.length === 0) {
     await performExport(validPages, format)
-    message.success(`Exported ${validPages.length} pages`)
+    message.success(t('pageList.exportedPages', [validPages.length]))
     return
   }
-  
+
   // No pages ready, show warning
   if (validPages.length === 0) {
     dialog.warning({
-      title: 'Cannot Export',
-      content: `All ${invalidPages.length} selected pages don't have Markdown data yet.`,
-      positiveText: 'OK'
+      title: t('pageList.cannotExport'),
+      content: t('pageList.allPagesNotReady', [invalidPages.length]),
+      positiveText: t('common.ok')
     })
     return
   }
@@ -369,31 +381,31 @@ async function showExportConfirmDialog(
 ) {
   return new Promise((resolve) => {
     dialog.warning({
-      title: 'Some Pages Not Ready',
+      title: t('pageList.somePagesNotReady'),
       content: () => h('div', { class: 'export-warning-content' }, [
-        h('p', { style: 'margin-bottom: 12px' }, 
-          `${invalidPages.length} of ${validPages.length + invalidPages.length} pages don't have ${format.toUpperCase()} data yet:`
+        h('p', { style: 'margin-bottom: 12px' },
+          t('pageList.pagesNotReady', [invalidPages.length, validPages.length + invalidPages.length, format.toUpperCase()])
         ),
-        h('div', { 
+        h('div', {
           class: 'page-list-preview',
           style: 'max-height: 150px; overflow-y: auto; background: #f5f5f5; padding: 8px; border-radius: 4px; margin-bottom: 12px'
-        }, 
-          invalidPages.map(p => 
-            h('div', { style: 'font-size: 13px; color: #666; padding: 2px 0' }, 
+        },
+          invalidPages.map(p =>
+            h('div', { style: 'font-size: 13px; color: #666; padding: 2px 0' },
               `• ${p.fileName} - ${getStatusLabel(p.status)}`
             )
           )
         ),
-        h('p', { style: 'font-size: 13px; color: #666' }, 
-          'You can cancel to complete OCR first, or skip these pages and export the rest.'
+        h('p', { style: 'font-size: 13px; color: #666' },
+          t('pageList.youCanCancel')
         )
       ]),
-      positiveText: 'Skip & Export',
-      negativeText: 'Cancel',
+      positiveText: t('pageList.skipAndExport'),
+      negativeText: t('common.cancel'),
       onPositiveClick: async () => {
         await performExport(validPages, format as ExportFormat)
         message.success(
-          `Exported ${validPages.length} pages (skipped ${invalidPages.length})`
+          t('pageList.exportedSkipped', [validPages.length, invalidPages.length])
         )
         resolve(true)
       },
@@ -424,23 +436,24 @@ async function performExport(pages: Page[], format: ExportFormat) {
 }
 
 function getStatusLabel(status: PageStatus): string {
-  const labels: Record<PageStatus, string> = {
-    'pending_render': 'Rendering...',
-    'rendering': 'Rendering...',
-    'pending_ocr': 'OCR Queued',
-    'recognizing': 'OCR Running...',
-    'ocr_success': 'OCR Done',
-    'pending_gen': 'Generating...',
-    'generating_markdown': 'Generating MD...',
-    'markdown_success': 'MD Ready',
-    'generating_docx': 'Generating DOCX...',
-    'generating_pdf': 'Generating PDF...',
-    'pdf_success': 'PDF Ready',
-    'ready': 'Ready',
-    'completed': 'Completed',
-    'error': 'Error'
+  const labelMap: Record<PageStatus, string> = {
+    'pending_render': 'status.rendering',
+    'rendering': 'status.rendering',
+    'pending_ocr': 'status.ocrQueued',
+    'recognizing': 'status.recognizing',
+    'ocr_success': 'status.ocrDone',
+    'pending_gen': 'status.waitingForGen',
+    'generating_markdown': 'status.generatingMarkdown',
+    'markdown_success': 'status.markdownReady',
+    'generating_docx': 'status.generatingDOCX',
+    'generating_pdf': 'status.generatingPDF',
+    'pdf_success': 'status.pdfReady',
+    'ready': 'status.ready',
+    'completed': 'status.completed',
+    'error': 'status.error'
   }
-  return labels[status] || status
+  const key = labelMap[status] || 'status.unknown'
+  return t(key)
 }
 
 interface DragEndEvent {
@@ -448,7 +461,12 @@ interface DragEndEvent {
   newIndex: number
 }
 
+function handleDragStart() {
+  isDragging.value = true
+}
+
 async function handleDragEnd(event: DragEndEvent) {
+  isDragging.value = false
   const { oldIndex, newIndex } = event
 
   if (oldIndex !== newIndex) {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import OCRInputModal from './OCRInputModal.vue'
+import { i18n } from '@/i18n'
 
 // Mock Naive UI components
 vi.mock('naive-ui', () => ({
@@ -22,7 +23,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
         expect(wrapper.find('.n-modal').exists()).toBe(true)
         expect(wrapper.find('textarea').attributes('placeholder')).toContain('locate')
@@ -33,7 +35,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: false,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
         expect(wrapper.find('.n-modal').exists()).toBe(false)
     })
@@ -43,7 +46,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
         expect(wrapper.vm.title).toBe('Locate Object')
 
@@ -57,7 +61,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: false,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
 
         // Set some value internally
@@ -74,7 +79,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
 
         const input = wrapper.find('textarea')
@@ -93,7 +99,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
 
         await wrapper.find('.btn-positive').trigger('click')
@@ -105,7 +112,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
 
         await wrapper.find('.btn-negative').trigger('click')
@@ -118,7 +126,8 @@ describe('OCRInputModal.vue', () => {
             props: {
                 show: true,
                 mode: 'find'
-            }
+            },
+            global: { plugins: [i18n] }
         })
 
         const input = wrapper.find('textarea')

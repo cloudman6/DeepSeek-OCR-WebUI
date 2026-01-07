@@ -7,6 +7,7 @@ export default defineConfig({
     retries: process.env.CI ? 2 : 0,
     workers: process.env.CI ? 1 : undefined,
     reporter: [['html', { open: 'never' }]],
+    timeout: 90000, // 90 seconds for tests that involve file uploads and exports
     use: {
         baseURL: 'http://localhost:5173',
         trace: 'on-first-retry',

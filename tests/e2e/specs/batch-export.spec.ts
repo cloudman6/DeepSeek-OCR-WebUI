@@ -4,6 +4,7 @@ import fs from 'fs';
 import JSZip from 'jszip';
 import { PDFDocument } from 'pdf-lib';
 import type { PageState } from '../../src/types/page';
+import { uploadFiles } from '../utils/file-upload';
 
 interface PagesStore {
     pages: PageState[];
@@ -57,16 +58,14 @@ test.describe('Batch Export', () => {
         await page.waitForSelector('.app-header button');
 
         // 1. Upload 3 images
+        // Note: This test focuses on export functionality, not file upload UI.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg'),
             path.resolve('tests/e2e/samples/sample.png')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         // Wait for items to appear
         const pageItems = page.locator('.page-item');
@@ -131,16 +130,14 @@ test.describe('Batch Export', () => {
         await page.waitForSelector('.app-header button');
 
         // 1. Upload 3 images
+        // Note: This test focuses on export functionality, not file upload UI.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg'),
             path.resolve('tests/e2e/samples/sample.png')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         // Wait for items to appear
         const pageItems = page.locator('.page-item');
@@ -205,16 +202,14 @@ test.describe('Batch Export', () => {
         await page.waitForSelector('.app-header button');
 
         // 1. Upload 3 images
+        // Note: This test focuses on export functionality, not file upload UI.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg'),
             path.resolve('tests/e2e/samples/sample.png')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         // Wait for items to appear
         const pageItems = page.locator('.page-item');
@@ -275,15 +270,13 @@ test.describe('Batch Export', () => {
         await page.waitForSelector('.app-header button');
 
         // 1. Upload 2 images
+        // Note: This test focuses on export functionality, not file upload UI.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         const pageItems = page.locator('.page-item');
         await expect(pageItems).toHaveCount(2, { timeout: 30000 });
@@ -334,18 +327,19 @@ test.describe('Batch Export', () => {
 
     test('should handle batch export when all pages are ready (docx)', async ({ page }) => {
         await page.goto('/');
-        await page.waitForSelector('.app-header button');
+        await page.waitForLoadState('networkidle');
 
         // 1. Upload 2 images
+        // Note: This test focuses on export functionality, not file upload UI.
+        // We use direct injection here because programmatic input.click() in the app
+        // doesn't reliably trigger Playwright's filechooser event. The file upload
+        // functionality itself is tested in file-adding.spec.ts.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         const pageItems = page.locator('.page-item');
         await expect(pageItems).toHaveCount(2, { timeout: 30000 });
@@ -401,15 +395,13 @@ test.describe('Batch Export', () => {
         await page.waitForSelector('.app-header button');
 
         // 1. Upload 2 images
+        // Note: This test focuses on export functionality, not file upload UI.
         const filePaths = [
             path.resolve('tests/e2e/samples/sample.png'),
             path.resolve('tests/e2e/samples/sample.jpg')
         ];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        await uploadFiles(page, filePaths, '.app-header button', true); // preferDirect=true for reliability
 
         const pageItems = page.locator('.page-item');
         await expect(pageItems).toHaveCount(2, { timeout: 30000 });

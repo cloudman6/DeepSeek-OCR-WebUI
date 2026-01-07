@@ -12,7 +12,7 @@
       >
         <DocumentText />
       </n-icon>
-      <span class="app-title">Scan2Doc</span>
+      <span class="app-title">{{ $t('header.scan2Doc') }}</span>
     </div>
 
     <!-- Center: OCR Queue Status -->
@@ -33,7 +33,7 @@
               class="status-spinner"
             />
             <span class="status-text">
-              Processing: {{ store.activeOCRTasks.length }} | Waiting: {{ store.queuedOCRTasks.length }}
+              {{ $t('header.processing') }}: {{ store.activeOCRTasks.length }} | {{ $t('header.waiting') }}: {{ store.queuedOCRTasks.length }}
             </span>
           </div>
         </template>
@@ -43,18 +43,21 @@
 
     <!-- Right: Actions -->
     <div class="header-actions">
+      <!-- Language Selector -->
+      <LanguageSelector />
+
       <!-- Page Count Badge -->
-      <n-tag 
-        v-if="pageCount > 0" 
-        round 
-        :bordered="false" 
-        type="info" 
+      <n-tag
+        v-if="pageCount > 0"
+        round
+        :bordered="false"
+        type="info"
         size="small"
         class="page-count-badge"
       >
         {{ pageCountText }}
       </n-tag>
-      
+
       <!-- Primary CTA -->
       <n-button
         type="primary"
@@ -67,7 +70,7 @@
             <CloudUpload />
           </n-icon>
         </template>
-        Import Files
+        {{ $t('header.importFiles') }}
       </n-button>
     </div>
   </n-layout-header>
@@ -75,10 +78,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NLayoutHeader, NButton, NIcon, NTag, NPopover, NSpin } from 'naive-ui'
 import { DocumentText, CloudUpload } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import OCRQueuePopover from '@/components/common/OCRQueuePopover.vue'
+import LanguageSelector from '@/components/common/LanguageSelector.vue'
 
 const props = defineProps<{
   pageCount: number
@@ -88,11 +93,14 @@ const emit = defineEmits<{
   (e: 'add-files'): void
 }>()
 
+const { t } = useI18n()
 const store = usePagesStore()
 const showQueue = ref(false)
 
 const pageCountText = computed(() => {
-  return `${props.pageCount} ${props.pageCount > 1 ? 'Pages' : 'Page'} Loaded`
+  return props.pageCount > 1
+    ? t('header.pagesLoaded', [props.pageCount])
+    : t('header.pageLoaded', [props.pageCount])
 })
 
 const handleAddFiles = () => {

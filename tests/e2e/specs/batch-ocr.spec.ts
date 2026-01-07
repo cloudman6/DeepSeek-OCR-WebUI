@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/base-test';
 import { getPdfPageCount } from '../utils/pdf-utils';
+import { uploadFiles } from '../utils/file-upload';
 import { Route } from 'playwright';
 import fs from 'fs';
 import path from 'path';
@@ -84,12 +85,6 @@ function checkAllPagesCompletedOCR(): boolean {
   );
 }
 
-// Helper function to check if notification count increased
-function checkNotificationCountIncreased(countBefore: number): boolean {
-  const notifications = document.querySelectorAll('.n-notification');
-  return notifications.length > countBefore;
-}
-
 test.describe('Batch OCR', () => {
   test.describe('Basic Batch OCR', () => {
     test('should process all ready pages when batch OCR is clicked', async ({ page }) => {
@@ -109,10 +104,8 @@ test.describe('Batch OCR', () => {
         });
       });
 
-      const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-      await page.locator('.app-header button').first().click();
-      const fileChooser = await fileChooserPromise;
-      await fileChooser.setFiles(filePath);
+      // Upload file using direct injection
+      await uploadFiles(page, [filePath], '.app-header button', true);
 
       // Wait for all pages to be ready (rendering complete)
       const pageItems = page.locator('.page-item');
@@ -171,10 +164,8 @@ test.describe('Batch OCR', () => {
 
       // Upload first PDF
       const filePath1 = path.resolve('tests/e2e/samples/sample.pdf');
-      const fileChooserPromise1 = page.waitForEvent('filechooser', { timeout: 60000 });
-      await page.locator('.app-header button').first().click();
-      const fileChooser1 = await fileChooserPromise1;
-      await fileChooser1.setFiles(filePath1);
+      // Upload first file using direct injection
+      await uploadFiles(page, [filePath1], '.app-header button', true);
 
       // Wait for pages to be ready
       let pageItems = page.locator('.page-item');
@@ -194,6 +185,9 @@ test.describe('Batch OCR', () => {
       await page.check('[data-testid="select-all-checkbox"]');
       await page.click('[data-testid="batch-ocr-button"]');
 
+      // Verify notification for first batch
+      await expect(page.locator('.n-notification', { hasText: /Added \d+ pages to OCR queue/ })).toBeVisible({ timeout: 5000 });
+
       // Wait for first batch to reach pending_ocr status (they should be stuck there due to delay)
       await page.waitForFunction(checkProcessingPagesCount, firstBatchCount, { timeout: 10000 });
 
@@ -203,10 +197,8 @@ test.describe('Batch OCR', () => {
       // Upload second file (PNG - single page, ready status)
       const filePath2 = path.resolve('tests/e2e/samples/sample.png');
 
-      const fileChooserPromise2 = page.waitForEvent('filechooser', { timeout: 60000 });
-      await page.locator('.app-header button').first().click();
-      const fileChooser2 = await fileChooserPromise2;
-      await fileChooser2.setFiles(filePath2);
+      // Upload second file using direct injection
+      await uploadFiles(page, [filePath2], '.app-header button', true);
 
       // Wait for new page to be ready
       pageItems = page.locator('.page-item');
@@ -221,18 +213,14 @@ test.describe('Batch OCR', () => {
       // Select all pages (including those in OCR queue)
       await page.check('[data-testid="select-all-checkbox"]');
 
-      // Get notification count before clicking batch OCR
-      const notificationCountBefore = await page.locator('.n-notification').count();
-
       // Click batch OCR
       await page.click('[data-testid="batch-ocr-button"]');
 
       // Verify notification shows only new page was queued (first batch was skipped because they're in queue)
-      // Wait for a new notification to appear
-      await page.waitForFunction(checkNotificationCountIncreased, notificationCountBefore, { timeout: 5000 });
-
-      // Check the latest notification
-      await expect(page.locator('.n-notification').nth(notificationCountBefore)).toContainText(/Added 1 page to OCR queue.*skipped \d+/, { timeout: 5000 });
+      // Check for the specific notification with "skipped" text
+      const skipNotification = page.locator('.n-notification', { hasText: /skipped/ });
+      await expect(skipNotification).toBeVisible({ timeout: 5000 });
+      await expect(skipNotification).toContainText(/Added 1 page to OCR queue.*skipped \d+/);
 
       // Now allow the first batch OCR to complete
       firstBatchComplete.value = true;
@@ -254,10 +242,8 @@ test.describe('Batch OCR', () => {
       // Upload PDF
       const filePath = path.resolve('tests/e2e/samples/sample.pdf');
 
-      const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-      await page.locator('.app-header button').first().click();
-      const fileChooser = await fileChooserPromise;
-      await fileChooser.setFiles(filePath);
+      // Upload file using direct injection
+      await uploadFiles(page, [filePath], '.app-header button', true);
 
       // Wait for pages to be ready
       const pageItems = page.locator('.page-item');
@@ -283,18 +269,8 @@ test.describe('Batch OCR', () => {
       // All pages are now in OCR queue - try batch OCR again
       await page.click('[data-testid="batch-ocr-button"]');
 
-      // Verify warning notification (look for the latest notification with warning text)
-      await page.waitForTimeout(500); // Give time for notification to appear
-      const foundWarning = await page.evaluate(() => {
-        const notifications = document.querySelectorAll('.n-notification');
-        for (const msg of notifications) {
-          if (msg.textContent?.includes('All selected pages are already processed or being processed')) {
-            return true;
-          }
-        }
-        return false;
-      });
-      expect(foundWarning).toBeTruthy();
+      // Verify warning notification
+      await expect(page.locator('.n-notification', { hasText: 'All selected pages are already processed or being processed' })).toBeVisible({ timeout: 5000 });
 
       // Now allow the OCR to complete
       allowOCRToComplete.value = true;

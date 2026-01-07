@@ -1,0 +1,92 @@
+import { describe, it, expect, vi } from 'vitest'
+import { mount } from '@vue/test-utils'
+import LanguageSelector from './LanguageSelector.vue'
+import { createI18n } from 'vue-i18n'
+import en from '@/i18n/locales/en'
+import zhCN from '@/i18n/locales/zh-CN'
+import { setLocale } from '@/i18n'
+
+// Mock i18n setLocale
+vi.mock('@/i18n', async () => {
+    const actual = await vi.importActual('@/i18n') as any
+    return {
+        ...actual,
+        setLocale: vi.fn()
+    }
+})
+
+describe('LanguageSelector.vue', () => {
+    const createI18nInstance = (locale = 'en') => createI18n({
+        legacy: false,
+        locale,
+        fallbackLocale: 'en',
+        messages: { en, 'zh-CN': zhCN },
+        globalInjection: true
+    })
+
+    it('renders current language label correctly', () => {
+        const i18n = createI18nInstance('en')
+        const wrapper = mount(LanguageSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
+        expect(wrapper.text()).toContain('English')
+    })
+
+    it('emits setLocale when a language is selected', async () => {
+        const i18n = createI18nInstance('en')
+        const wrapper = mount(LanguageSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
+
+        // Access the internal handleLanguageChange method
+        await (wrapper.vm as any).handleLanguageChange('zh-CN')
+        
+        expect(setLocale).toHaveBeenCalledWith('zh-CN')
+    })
+
+    it('updates label when locale changes', async () => {
+        const i18n = createI18nInstance('en')
+        const wrapper = mount(LanguageSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
+        
+        // Mock locale change
+        i18n.global.locale.value = 'zh-CN'
+        
+        await wrapper.vm.$nextTick()
+        expect(wrapper.text()).toContain('中文')
+    })
+
+    it('correctly calculates language options', async () => {
+        const i18n = createI18nInstance('en')
+        const wrapper = mount(LanguageSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
+        
+        // Initial locale is 'en'
+        let options = (wrapper.vm as any).languageOptions
+        expect(options).toHaveLength(2)
+        expect(options[0].key).toBe('en')
+        expect(options[1].key).toBe('zh-CN')
+        
+        // English should be disabled because current locale is 'en'
+        expect(options[0].disabled).toBe(true)
+        expect(options[1].disabled).toBe(false)
+
+        // Change locale to zh-CN and check options again
+        i18n.global.locale.value = 'zh-CN'
+        await wrapper.vm.$nextTick()
+        
+        options = (wrapper.vm as any).languageOptions
+        expect(options[0].disabled).toBe(false)
+        expect(options[1].disabled).toBe(true)
+    })
+})

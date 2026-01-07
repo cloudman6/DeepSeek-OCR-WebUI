@@ -38,13 +38,14 @@
 
 <script setup lang="ts">
 import { ref, computed, h } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NButton, NButtonGroup, NDropdown, NIcon } from 'naive-ui'
 import type { DropdownOption } from 'naive-ui'
-import { 
-  DocumentTextOutline, 
-  ScanOutline, 
-  TextOutline, 
-  ImageOutline, 
+import {
+  DocumentTextOutline,
+  ScanOutline,
+  TextOutline,
+  ImageOutline,
   ChatboxEllipsesOutline,
   SearchOutline,
   CreateOutline,
@@ -66,27 +67,28 @@ const props = withDefaults(defineProps<Props>(), {
   disabled: false
 })
 
+const { t } = useI18n()
 const emit = defineEmits<Emits>()
 
 const selectedMode = ref<OCRPromptType>('document')
 
-const MODE_CONFIG: Record<OCRPromptType, { label: string, icon: import('vue').Component }> = {
-  document: { label: 'Scan to Document', icon: DocumentTextOutline },
-  ocr: { label: 'General OCR', icon: ScanOutline },
-  free: { label: 'Extract Raw Text', icon: TextOutline },
-  figure: { label: 'Parse Figure', icon: ImageOutline },
-  describe: { label: 'Describe Image', icon: ChatboxEllipsesOutline },
-  find: { label: 'Locate Object', icon: SearchOutline },
-  freeform: { label: 'Custom Prompt', icon: CreateOutline }
+const MODE_CONFIG: Record<OCRPromptType, { key: string, icon: import('vue').Component }> = {
+  document: { key: 'ocr.scanToDocument', icon: DocumentTextOutline },
+  ocr: { key: 'ocr.generalOCR', icon: ScanOutline },
+  free: { key: 'ocr.extractRawText', icon: TextOutline },
+  figure: { key: 'ocr.parseFigure', icon: ImageOutline },
+  describe: { key: 'ocr.describeImage', icon: ChatboxEllipsesOutline },
+  find: { key: 'ocr.locateObject', icon: SearchOutline },
+  freeform: { key: 'ocr.customPrompt', icon: CreateOutline }
 }
 
-const currentLabel = computed(() => MODE_CONFIG[selectedMode.value].label)
+const currentLabel = computed(() => t(MODE_CONFIG[selectedMode.value].key))
 const currentIcon = computed(() => MODE_CONFIG[selectedMode.value].icon)
 const buttonType = computed(() => props.loading ? 'info' : 'primary')
 
 const menuOptions = computed<DropdownOption[]>(() => {
   return (Object.keys(MODE_CONFIG) as OCRPromptType[]).map(key => ({
-    label: MODE_CONFIG[key].label,
+    label: t(MODE_CONFIG[key].key),
     key: key,
     icon: () => h(NIcon, null, { default: () => h(MODE_CONFIG[key].icon) })
   }))

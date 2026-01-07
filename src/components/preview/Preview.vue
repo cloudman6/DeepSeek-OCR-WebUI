@@ -19,14 +19,14 @@
         class="header-actions"
       >
         <!-- Generic download button for binary outputs -->
-        <n-button 
-          size="small" 
-          secondary 
-          type="primary" 
+        <n-button
+          size="small"
+          secondary
+          type="primary"
           :disabled="isBinaryLoading"
           @click="downloadBinary(currentView)"
         >
-          Download {{ currentView.toUpperCase() }}
+          {{ $t('preview.download', [currentView.toUpperCase()]) }}
         </n-button>
       </div>
       <div
@@ -39,20 +39,20 @@
           :round="false"
         >
           <template #checked>
-            Preview
+            {{ $t('preview.preview') }}
           </template>
           <template #unchecked>
-            Source
+            {{ $t('preview.source') }}
           </template>
         </n-switch>
-        <n-button 
-          size="small" 
-          secondary 
-          type="primary" 
+        <n-button
+          size="small"
+          secondary
+          type="primary"
           :disabled="!mdContent || isLoadingMd"
           @click="handleDownloadMarkdown"
         >
-          Download MD
+          {{ $t('preview.downloadMD') }}
         </n-button>
       </div>
     </div>
@@ -65,7 +65,7 @@
       >
         <n-spin
           v-if="isLoadingMd"
-          description="Loading markdown..."
+          :description="$t('preview.loadingMarkdown')"
         />
         <template v-else>
           <div
@@ -76,7 +76,7 @@
           <pre
             v-else
             class="markdown-preview"
-          >{{ mdContent || 'No markdown content available' }}</pre>
+          >{{ mdContent || $t('preview.noMarkdown') }}</pre>
         </template>
       </div>
 
@@ -87,11 +87,11 @@
       >
         <n-spin
           v-if="isBinaryLoading"
-          description="Loading DOCX..."
+          :description="$t('preview.loadingDOCX')"
         />
         <n-empty
           v-else-if="!hasBinary"
-          description="DOCX not generated yet"
+          :description="$t('preview.docxNotReady')"
         />
         <div
           v-else
@@ -108,7 +108,7 @@
               ghost
               @click="downloadBinary('docx')"
             >
-              Download DOCX
+              {{ $t('preview.downloadDOCX') }}
             </n-button>
           </div>
         </div>
@@ -121,11 +121,11 @@
       >
         <n-spin
           v-if="isBinaryLoading"
-          description="Checking PDF status..."
+          :description="$t('preview.checkingPDF')"
         />
         <n-empty
           v-else-if="!hasBinary"
-          description="Sandwich PDF not generated yet"
+          :description="$t('preview.pdfNotReady')"
         />
         <div
           v-else
@@ -145,7 +145,7 @@
               size="small"
               @click="downloadBinary('pdf')"
             >
-              Download Searchable PDF
+              {{ $t('preview.downloadSearchablePDF') }}
             </n-button>
           </div>
         </div>
@@ -156,6 +156,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NTabs, NTabPane, NEmpty, NButton, NSpin, NSwitch } from 'naive-ui'
 import { renderAsync } from 'docx-preview'
 import MarkdownIt from 'markdown-it'
@@ -168,6 +169,8 @@ import 'github-markdown-css/github-markdown.css'
 import { exportService } from '@/services/export'
 
 import type { Page } from '@/stores/pages'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   currentPage?: Page | null
@@ -275,11 +278,11 @@ const processMarkdownImages = async (markdown: string): Promise<string> => {
 }
 const previewObjectUrls: string[] = []
 
-const views = [
-  { key: 'md' as const, label: 'Markdown' },
-  { key: 'docx' as const, label: 'Word' },
-  { key: 'pdf' as const, label: 'PDF' }
-]
+const views = computed(() => [
+  { key: 'md' as const, label: t('preview.markdown') },
+  { key: 'docx' as const, label: t('preview.word') },
+  { key: 'pdf' as const, label: t('preview.pdf') }
+])
 
 const pdfPreviewUrl = ref<string>('')
 
@@ -495,7 +498,7 @@ async function loadMarkdown(pageId: string) {
         }
     } catch (error) {
         uiLogger.error('Failed to load markdown', error)
-        mdContent.value = 'Failed to load content.'
+        mdContent.value = t('preview.failedToLoad')
     } finally {
         isLoadingMd.value = false
     }

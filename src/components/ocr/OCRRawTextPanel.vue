@@ -8,7 +8,7 @@
         <n-icon :class="{ rotated: expanded }">
           <ChevronForwardOutline />
         </n-icon>
-        <span class="title">OCR Raw Result</span>
+        <span class="title">{{ t('ocrRawTextPanel.title') }}</span>
       </div>
       <n-button
         size="tiny"
@@ -20,7 +20,7 @@
             <CopyOutline />
           </n-icon>
         </template>
-        Copy
+        {{ t('ocrRawTextPanel.copy') }}
       </n-button>
     </div>
     
@@ -30,7 +30,7 @@
           style="max-height: 300px"
           :x-scrollable="false"
         >
-          <pre class="raw-text-content">{{ text || 'No raw text available' }}</pre>
+          <pre class="raw-text-content">{{ text || t('ocrRawTextPanel.noRawText') }}</pre>
         </n-scrollbar>
       </div>
     </n-collapse-transition>
@@ -39,6 +39,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NButton, NIcon, NCollapseTransition, NScrollbar, useMessage } from 'naive-ui'
 import { ChevronForwardOutline, CopyOutline } from '@vicons/ionicons5'
 import { uiLogger } from '@/utils/logger'
@@ -48,6 +49,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { t } = useI18n()
 const expanded = ref(true)
 const message = useMessage()
 
@@ -57,11 +59,11 @@ function toggleExpand() {
 
 async function handleCopy() {
   if (!props.text) return
-  
+
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
        await navigator.clipboard.writeText(props.text)
-       message.success('Copied to clipboard')
+       message.success(t('ocrRawTextPanel.copied'))
     } else {
        // Fallback for older browsers or non-secure contexts
        const textArea = document.createElement('textarea')
@@ -70,16 +72,16 @@ async function handleCopy() {
        textArea.select()
        try {
          document.execCommand('copy')
-         message.success('Copied to clipboard')
+         message.success(t('ocrRawTextPanel.copied'))
        } catch (err) {
          uiLogger.error('document.execCommand copy failed', err)
-         message.error('Failed to copy text')
+         message.error(t('ocrRawTextPanel.copyFailed'))
        }
        document.body.removeChild(textArea)
     }
   } catch (err) {
     uiLogger.error('handleCopy failed', err)
-    message.error('Failed to copy text')
+    message.error(t('ocrRawTextPanel.copyFailed'))
   }
 }
 </script>

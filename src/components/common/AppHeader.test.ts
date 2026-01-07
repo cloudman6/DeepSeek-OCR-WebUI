@@ -3,11 +3,20 @@ import { mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import AppHeader from './AppHeader.vue'
 import { NLayoutHeader, NButton, NTag, NSpin, NIcon } from 'naive-ui'
+import { i18n } from '../../../tests/setup'
 
 // Mock child component
 vi.mock('@/components/common/OCRQueuePopover.vue', () => ({
     default: {
         template: '<div>OCR Queue</div>'
+    }
+}))
+
+// Mock child component
+vi.mock('@/components/common/LanguageSelector.vue', () => ({
+    default: {
+        name: 'LanguageSelector',
+        template: '<div class="language-selector-stub">Language</div>'
     }
 }))
 
@@ -38,6 +47,7 @@ describe('AppHeader', () => {
 
     const createMountOptions = (props = {}) => ({
         global: {
+            plugins: [i18n],
             components: {
                 NLayoutHeader,
                 NButton,
@@ -46,12 +56,19 @@ describe('AppHeader', () => {
                 NIcon
             },
             stubs: {
+                LanguageSelector: {
+                    name: 'LanguageSelector',
+                    template: '<div class="language-selector-stub">Language</div>'
+                },
                 OCRQueuePopover: {
                     name: 'OCRQueuePopover',
                     template: '<div class="ocr-queue-popover-stub"><slot></slot></div>'
                 },
                 NPopover: {
                     template: '<div class="n-popover-stub"><slot name="trigger"></slot><slot></slot></div>'
+                },
+                NDropdown: {
+                    template: '<div class="n-dropdown-stub"><slot></slot></div>'
                 }
             }
         },

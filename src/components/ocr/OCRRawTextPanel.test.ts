@@ -1,6 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import OCRRawTextPanel from './OCRRawTextPanel.vue'
+import { i18n } from '@/i18n'
 
 // Mock Naive UI message
 const messageMock = {
@@ -45,7 +46,8 @@ describe('OCRRawTextPanel.vue', () => {
 
     it('renders correctly', () => {
         const wrapper = mount(OCRRawTextPanel, {
-            props: defaultProps
+            props: defaultProps,
+            global: { plugins: [i18n] }
         })
         expect(wrapper.find('.ocr-raw-text-panel').exists()).toBe(true)
         expect(wrapper.find('.title').text()).toBe('OCR Raw Result')
@@ -53,13 +55,14 @@ describe('OCRRawTextPanel.vue', () => {
 
     it('toggles expand/collapse', async () => {
         const wrapper = mount(OCRRawTextPanel, {
-            props: defaultProps
+            props: defaultProps,
+            global: { plugins: [i18n] }
         })
 
         // Default is expanded
         expect(wrapper.vm.expanded).toBe(true)
 
-        // Convert to any to access private/internal elements if needed, 
+        // Convert to any to access private/internal elements if needed,
         // but better to interact via UI
         await wrapper.find('.panel-header').trigger('click')
         expect(wrapper.vm.expanded).toBe(false)
@@ -72,19 +75,21 @@ describe('OCRRawTextPanel.vue', () => {
         writeTextMock.mockResolvedValue(undefined)
 
         const wrapper = mount(OCRRawTextPanel, {
-            props: defaultProps
+            props: defaultProps,
+            global: { plugins: [i18n] }
         })
 
         const copyButton = wrapper.find('.panel-header button') // Finding the copy button
         await copyButton.trigger('click')
 
         expect(writeTextMock).toHaveBeenCalledWith('Sample OCR Text')
-        expect(messageMock.success).toHaveBeenCalledWith('Copied to clipboard')
+        expect(messageMock.success).toHaveBeenCalledWith('Copied!')
     })
 
     it('handles empty text copy gracefully', async () => {
         const wrapper = mount(OCRRawTextPanel, {
-            props: { text: '' }
+            props: { text: '' },
+            global: { plugins: [i18n] }
         })
 
         const copyButton = wrapper.find('.panel-header button')
@@ -97,14 +102,15 @@ describe('OCRRawTextPanel.vue', () => {
         writeTextMock.mockRejectedValue(new Error('Copy failed'))
 
         const wrapper = mount(OCRRawTextPanel, {
-            props: defaultProps
+            props: defaultProps,
+            global: { plugins: [i18n] }
         })
 
         const copyButton = wrapper.find('.panel-header button')
         await copyButton.trigger('click')
 
         expect(writeTextMock).toHaveBeenCalled()
-        expect(messageMock.error).toHaveBeenCalledWith('Failed to copy text')
+        expect(messageMock.error).toHaveBeenCalledWith('Copy failed')
     })
 
     it('falls back to document.execCommand when navigator.clipboard is unavailable', async () => {
@@ -118,13 +124,14 @@ describe('OCRRawTextPanel.vue', () => {
         document.execCommand = execCommandMock
 
         const wrapper = mount(OCRRawTextPanel, {
-            props: defaultProps
+            props: defaultProps,
+            global: { plugins: [i18n] }
         })
 
         const copyButton = wrapper.find('.panel-header button')
         await copyButton.trigger('click')
 
         expect(execCommandMock).toHaveBeenCalledWith('copy')
-        expect(messageMock.success).toHaveBeenCalledWith('Copied to clipboard')
+        expect(messageMock.success).toHaveBeenCalledWith('Copied!')
     })
 })

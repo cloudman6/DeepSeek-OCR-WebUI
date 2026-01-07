@@ -1,6 +1,6 @@
 import { test, expect } from '../fixtures/base-test';
 import { getPdfPageCount } from '../utils/pdf-utils';
-
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 
 test.describe('File Adding', () => {
@@ -11,15 +11,8 @@ test.describe('File Adding', () => {
         const filePath = path.resolve('tests/e2e/samples/sample.pdf');
         const expectedPageCount = await getPdfPageCount(filePath);
 
-        // Setup file chooser
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-
-        // Click Add File
-        await page.locator('.app-header button').first().click();
-
-        // Handle chooser
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePath);
+        // Upload file using direct injection
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // Assert: Wait for correct number of items
         const pageItems = page.locator('.page-item');
@@ -44,10 +37,8 @@ test.describe('File Adding', () => {
 
         const filePaths = [pdfPath, pngPath, jpgPath];
 
-        const fileChooserPromise = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        // Upload files using direct injection
+        await uploadFiles(page, filePaths, '.app-header button', true);
 
         // Wait for ALL items to be visible
         const pageItems = page.locator('.page-item');
@@ -74,10 +65,7 @@ test.describe('File Adding', () => {
         const singleFilePageCount = await getPdfPageCount(filePath);
 
         // First upload
-        const fileChooserPromise1 = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles(filePath);
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // Record initial count
         await expect(async () => {
@@ -86,10 +74,7 @@ test.describe('File Adding', () => {
         }).toPass({ timeout: 30000 });
 
         // Second upload (same file)
-        const fileChooserPromise2 = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles(filePath);
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // Should now have exactly double the items
         const expectedTotalCount = singleFilePageCount * 2;
@@ -111,10 +96,7 @@ test.describe('File Adding', () => {
         const jpgPath = path.resolve('tests/e2e/samples/sample.jpg');
 
         // 1. Add first image (PNG)
-        const fileChooserPromise1 = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles(pngPath);
+        await uploadFiles(page, [pngPath], '.app-header button', true);
 
         // Verify PNG is selected in PageList
         const pageItems = page.locator('.page-item');
@@ -127,10 +109,7 @@ test.describe('File Adding', () => {
         await expect(page.locator('.page-viewer')).toContainText('141.8 KB');
 
         // 2. Add second image (JPG)
-        const fileChooserPromise2 = page.waitForEvent('filechooser', { timeout: 60000 });
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles(jpgPath);
+        await uploadFiles(page, [jpgPath], '.app-header button', true);
 
         // Wait for both items
         await expect(pageItems).toHaveCount(2);

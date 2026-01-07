@@ -7,6 +7,7 @@ import type { Page } from '@/stores/pages'
 import { usePagesStore } from '@/stores/pages'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
+import { i18n } from '@/i18n'
 
 // Mock dependencies
 vi.mock('@/services/ocr', () => ({
@@ -99,7 +100,7 @@ describe('PageItem.vue', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
-                plugins: [pinia]
+                plugins: [pinia, i18n]
             }
         })
 
@@ -111,7 +112,7 @@ describe('PageItem.vue', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
-                plugins: [pinia]
+                plugins: [pinia, i18n]
             }
         })
 
@@ -123,7 +124,7 @@ describe('PageItem.vue', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
-                plugins: [pinia]
+                plugins: [pinia, i18n]
             }
         })
 
@@ -136,7 +137,7 @@ describe('PageItem.vue', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
-                plugins: [pinia]
+                plugins: [pinia, i18n]
             }
         })
 
@@ -152,7 +153,7 @@ describe('PageItem.vue', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
             global: {
-                plugins: [pinia]
+                plugins: [pinia, i18n]
             }
         })
 
@@ -174,7 +175,7 @@ describe('PageItem.vue', () => {
     it('handles Scan button error with unknown error', async () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
 
         vi.mocked(db.getPageImage).mockRejectedValue('Unknown error')
@@ -191,7 +192,7 @@ describe('PageItem.vue', () => {
     it('handles checkbox change', async () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
         const store = usePagesStore()
 
@@ -203,7 +204,7 @@ describe('PageItem.vue', () => {
         const scanningPage = { ...mockPage, status: 'recognizing' as const }
         const wrapper = mount(PageItem, {
             props: { page: scanningPage },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
 
         const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
@@ -213,13 +214,13 @@ describe('PageItem.vue', () => {
     it('formats file size correctly', () => {
         const wrapper = mount(PageItem, {
             props: { page: { ...mockPage, fileSize: 0 } },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
         expect(wrapper.find('.page-info').text()).toBe('0 B')
 
         const wrapper2 = mount(PageItem, {
             props: { page: { ...mockPage, fileSize: 1024 } },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
         expect(wrapper2.find('.page-info').text()).toBe('1.0 KB')
     })
@@ -239,7 +240,7 @@ describe('PageItem.vue', () => {
         statuses.forEach(({ status, text, type }) => {
             const wrapper = mount(PageItem, {
                 props: { page: { ...mockPage, status, thumbnailData: undefined } },
-                global: { plugins: [pinia] }
+                global: { plugins: [pinia, i18n] }
             })
 
             if (text) {
@@ -258,7 +259,7 @@ describe('PageItem.vue', () => {
     it('applies dragging class', () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage, isDragging: true },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
         expect(wrapper.classes()).toContain('dragging')
     })
@@ -266,7 +267,7 @@ describe('PageItem.vue', () => {
     it('handles image load failure (no blob)', async () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
 
         vi.mocked(db.getPageImage).mockResolvedValue(undefined)
@@ -281,7 +282,7 @@ describe('PageItem.vue', () => {
     it('updates hover states', async () => {
         const wrapper = mount(PageItem, {
             props: { page: mockPage },
-            global: { plugins: [pinia] }
+            global: { plugins: [pinia, i18n] }
         })
 
         await wrapper.trigger('mouseenter')

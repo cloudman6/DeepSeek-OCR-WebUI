@@ -1,4 +1,5 @@
 import { test, expect } from '../fixtures/base-test';
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 import type { Page } from '@playwright/test';
 
@@ -17,10 +18,9 @@ test.describe('Page-List UI Interactions', () => {
     async function uploadTestFiles(page: Page): Promise<number> {
         const filePaths = TEST_FILES.map(f => path.resolve(`tests/e2e/samples/${f}`));
 
-        const fileChooserPromise = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePaths);
+        // Note: This test focuses on UI interactions, not file upload UI.
+        // Using direct injection for reliability.
+        await uploadFiles(page, filePaths, '.app-header button', true);
 
         // Wait for all page items to appear (PDF + images)
         const pageItems = page.locator('.page-item');
@@ -207,26 +207,12 @@ test.describe('Page-List UI Interactions', () => {
         const pageItems = page.locator('.page-item');
         const sourceItem = pageItems.nth(0);
         const targetItem = pageItems.nth(1);
+        // Perform drag using dragTo for better reliability
+        // Targeting the .drag-handle specifically
+        const sourceHandle = sourceItem.locator('.drag-handle');
+        const targetHandle = targetItem.locator('.drag-handle');
 
-        const sourceBBox = await sourceItem.boundingBox();
-        const targetBBox = await targetItem.boundingBox();
-
-        if (!sourceBBox || !targetBBox) {
-            throw new Error('Could not get bounding boxes for drag operation');
-        }
-
-        const sourceX = sourceBBox.x + sourceBBox.width / 2;
-        const sourceY = sourceBBox.y + sourceBBox.height / 2;
-        const targetX = targetBBox.x + targetBBox.width / 2;
-        const targetY = targetBBox.y + targetBBox.height / 2;
-
-        // Perform drag
-        await page.mouse.move(sourceX, sourceY);
-        await page.mouse.down();
-        await page.waitForTimeout(100);
-        await page.mouse.move(targetX, targetY, { steps: 10 });
-        await page.waitForTimeout(100);
-        await page.mouse.up();
+        await sourceHandle.dragTo(targetHandle);
 
         // Wait for reorder to complete
         await page.waitForTimeout(1000);

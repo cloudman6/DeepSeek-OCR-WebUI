@@ -1,5 +1,17 @@
 import { beforeAll, afterEach, vi } from 'vitest'
 import 'fake-indexeddb/auto'
+import { createI18n } from 'vue-i18n'
+import en from '@/i18n/locales/en'
+import zhCN from '@/i18n/locales/zh-CN'
+
+// Create i18n instance for testing
+const i18n = createI18n({
+  legacy: false,
+  locale: 'en',
+  fallbackLocale: 'en',
+  messages: { en, 'zh-CN': zhCN },
+  globalInjection: true
+})
 
 // Mock browser global variables
 if (typeof global.URL.createObjectURL === 'undefined') {
@@ -40,3 +52,6 @@ afterEach(() => {
     // Cleanup logic after each test
     vi.clearAllMocks()
 })
+
+// Export i18n instance for use in tests
+export { i18n }

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createTestingPinia } from '@pinia/testing'
 import PageList from './PageList.vue'
+import { i18n } from '../../../tests/setup'
 
 import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
@@ -148,7 +149,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -162,7 +163,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: [], selectedId: null },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -174,7 +175,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: 'page-1' },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -187,7 +188,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: 'page-1' },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -205,7 +206,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: 'page-1' },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -225,7 +226,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -243,7 +244,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -263,7 +264,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [pinia]
+        plugins: [pinia, i18n]
       }
     })
 
@@ -282,7 +283,7 @@ describe('PageList.vue', () => {
     const wrapper2 = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [selectedPinia]
+        plugins: [selectedPinia, i18n]
       }
     })
 
@@ -307,7 +308,7 @@ describe('PageList.vue', () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
       global: {
-        plugins: [selectedPinia]
+        plugins: [selectedPinia, i18n]
       }
     })
 
@@ -322,7 +323,7 @@ describe('PageList.vue', () => {
   it('updates local pages when props pages change', async () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [pinia] }
+      global: { plugins: [pinia, i18n] }
     })
 
     const newPages: Page[] = [...mockPages, { ...mockPages[0], id: 'page-3' } as Page]
@@ -334,7 +335,7 @@ describe('PageList.vue', () => {
   it('calls reorderPages when drag ends at a different index', async () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [pinia] }
+      global: { plugins: [pinia, i18n] }
     })
 
     const store = usePagesStore()
@@ -352,7 +353,7 @@ describe('PageList.vue', () => {
   it('does not call reorderPages if drag ends at same index', async () => {
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [pinia] }
+      global: { plugins: [pinia, i18n] }
     })
 
     const store = usePagesStore()
@@ -369,7 +370,7 @@ describe('PageList.vue', () => {
     })
     const wrapper = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [selectedPinia] }
+      global: { plugins: [selectedPinia, i18n] }
     })
 
     const deleteBtn = wrapper.find('.delete-selected-btn')
@@ -390,7 +391,7 @@ describe('PageList.vue', () => {
   it('renders empty state with icon when no pages', () => {
     const wrapper = mount(PageList, {
       props: { pages: [], selectedId: null },
-      global: { plugins: [pinia] }
+      global: { plugins: [pinia, i18n] }
     })
 
     const empty = wrapper.findComponent({ name: 'NEmpty' })
@@ -409,7 +410,7 @@ describe('PageList.vue', () => {
 
     const wrapper1 = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [pinia1] }
+      global: { plugins: [pinia1, i18n] }
     })
 
     const exportDropdown1 = wrapper1.findComponent({ name: 'NDropdown' })
@@ -424,7 +425,7 @@ describe('PageList.vue', () => {
 
     const wrapper2 = mount(PageList, {
       props: { pages: mockPages, selectedId: null },
-      global: { plugins: [pinia2] }
+      global: { plugins: [pinia2, i18n] }
     })
 
     const exportDropdown2 = wrapper2.findComponent({ name: 'NDropdown' })
@@ -443,7 +444,7 @@ describe('PageList.vue', () => {
       })
       return mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
     }
 
@@ -607,7 +608,7 @@ describe('PageList.vue', () => {
       })
       const wrapper = mount(PageList, {
         props: { pages: customPages as any, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
 
       // We need to trigger readiness check that finds them all not ready to show dialog
@@ -650,7 +651,7 @@ describe('PageList.vue', () => {
 
       const wrapper1 = mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia1] }
+        global: { plugins: [pinia1, i18n] }
       })
 
       expect(wrapper1.find('.batch-ocr-btn').exists()).toBe(false)
@@ -664,7 +665,7 @@ describe('PageList.vue', () => {
 
       const wrapper2 = mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia2] }
+        global: { plugins: [pinia2, i18n] }
       })
 
       expect(wrapper2.find('.batch-ocr-btn').exists()).toBe(true)
@@ -690,7 +691,7 @@ describe('PageList.vue', () => {
 
       const wrapper = mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
 
       await wrapper.find('.batch-ocr-btn').trigger('click')
@@ -724,7 +725,7 @@ describe('PageList.vue', () => {
 
       const wrapper = mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
 
       await wrapper.find('.batch-ocr-btn').trigger('click')
@@ -757,7 +758,7 @@ describe('PageList.vue', () => {
 
       const wrapper = mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
 
       await wrapper.find('.batch-ocr-btn').trigger('click')
@@ -789,7 +790,7 @@ describe('PageList.vue', () => {
 
       mount(PageList, {
         props: { pages: mockPages, selectedId: null },
-        global: { plugins: [pinia] }
+        global: { plugins: [pinia, i18n] }
       })
 
       expect(ocrService.queueBatchOCR).not.toHaveBeenCalled()

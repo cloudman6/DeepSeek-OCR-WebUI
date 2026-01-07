@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="queue-header">
       <div class="header-title">
-        <span class="title-text">OCR Queue</span>
+        <span class="title-text">{{ t('ocrQueuePopover.title') }}</span>
         <n-badge
           :value="store.ocrTaskCount"
           type="success"
@@ -22,9 +22,9 @@
           <template #icon>
             <n-icon><CloseCircleOutline /></n-icon>
           </template>
-          Cancel Selected
+          {{ t('ocrQueuePopover.cancelSelected') }}
         </n-button>
-        
+
         <!-- Remove All -->
         <n-button
           v-if="store.ocrTaskCount > 0"
@@ -34,7 +34,7 @@
           class="action-btn"
           @click="handleStopAll"
         >
-          Cancel All
+          {{ t('ocrQueuePopover.cancelAll') }}
         </n-button>
       </div>
     </div>
@@ -46,7 +46,7 @@
         class="empty-state"
       >
         <n-empty
-          description="No active OCR tasks"
+          :description="t('ocrQueue.noActiveTasks')"
           size="small"
         />
       </div>
@@ -63,7 +63,7 @@
             size="small"
             @update:checked="handleSelectAll"
           >
-            Select All
+            {{ t('ocrQueuePopover.selectAll') }}
           </n-checkbox>
         </div>
 
@@ -81,7 +81,7 @@
             <n-spin size="small" />
             <div class="file-details">
               <span class="file-name">{{ page.fileName }}</span>
-              <span class="status-text">Recognizing...</span>
+              <span class="status-text">{{ t('ocrQueuePopover.recognizing') }}</span>
             </div>
           </div>
           <n-button
@@ -116,7 +116,7 @@
             </n-icon>
             <div class="file-details">
               <span class="file-name">{{ page.fileName }}</span>
-              <span class="status-text">Waiting...</span>
+              <span class="status-text">{{ t('ocrQueuePopover.waiting') }}</span>
             </div>
           </div>
           <n-button
@@ -141,7 +141,7 @@
         secondary
         @click="$emit('close')"
       >
-        Close
+        {{ t('ocrQueuePopover.close') }}
       </n-button>
     </div>
   </div>
@@ -149,11 +149,13 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePagesStore } from '@/stores/pages'
 import { NButton, NIcon, NBadge, NScrollbar, NEmpty, NCheckbox, NSpin, createDiscreteApi } from 'naive-ui'
 import { CloseCircleOutline, TimeOutline } from '@vicons/ionicons5'
 
 const store = usePagesStore()
+const { t } = useI18n()
 const { message } = createDiscreteApi(['message'])
 
 defineEmits<{
@@ -193,7 +195,7 @@ function handleSelectAll(checked: boolean) {
 async function handleStopSingle(id: string) {
   await store.cancelOCRTasks([id])
   selectedIds.value.delete(id)
-  message.info('Task cancelled')
+  message.info(t('ocrQueuePopover.taskCancelled'))
 }
 
 // Unified action for "Remove Selected" (Batch)
@@ -203,14 +205,14 @@ async function handleStopSelected() {
 
   await store.cancelOCRTasks(ids)
   selectedIds.value.clear()
-  message.success(`${ids.length} tasks cancelled`)
+  message.success(t('ocrQueuePopover.tasksCancelled', { n: ids.length }))
 }
 
 // Remove All
 async function handleStopAll() {
   await store.cancelOCRTasks(allTaskIds.value)
   selectedIds.value.clear()
-  message.success('All tasks cancelled')
+  message.success(t('ocrQueuePopover.allTasksCancelled'))
 }
 
 defineExpose({

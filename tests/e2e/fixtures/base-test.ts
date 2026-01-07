@@ -1,4 +1,6 @@
 import { test as base, expect } from '@playwright/test';
+import path from 'path';
+import fs from 'fs';
 
 /**
  * Known benign patterns that should be filtered out from console logs
@@ -31,6 +33,21 @@ function shouldFilterLog(cleanText: string): boolean {
 export const test = base.extend({
     page: async ({ page }, use) => {
         const logs: { type: string; text: string }[] = [];
+
+        // Mock font fetch to ensure it doesn't fail in tests (which causes WinAnsi encoding errors for CJK)
+        // This is applied globally to all tests that use the 'page' fixture
+        await page.route('**/standard_fonts/**', async (route) => {
+            const url = new URL(route.request().url());
+            const filePath = path.join(process.cwd(), 'public', url.pathname);
+            if (fs.existsSync(filePath)) {
+                await route.fulfill({
+                    status: 200,
+                    body: fs.readFileSync(filePath),
+                });
+            } else {
+                await route.continue();
+            }
+        });
 
         // Listen for console messages
         page.on('console', msg => {

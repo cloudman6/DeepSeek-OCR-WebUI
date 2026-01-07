@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import type { ComponentPublicInstance } from 'vue'
 import App from './App.vue'
 import type { Page } from '@/stores/pages'
+import { i18n } from '../tests/setup'
 
 import { createDiscreteApi } from 'naive-ui'
 import { uiLogger } from '@/utils/logger'
@@ -147,6 +148,16 @@ vi.mock('./services/pdf', () => ({
 describe('App.vue', () => {
   let mockMessage: MockDiscreteApi['message']
 
+  // Helper function to mount App with i18n
+  function mountApp(options = {}) {
+    return mount(App, {
+      global: {
+        plugins: [i18n]
+      },
+      ...options
+    })
+  }
+
   beforeEach(() => {
     setActivePinia(createPinia())
 
@@ -188,7 +199,7 @@ describe('App.vue', () => {
   })
 
   it('mounts and loads pages from DB', async () => {
-    mount(App)
+    mountApp()
     await flushPromises()
     expect(mockStore.loadPagesFromDB).toHaveBeenCalled()
   })
@@ -200,7 +211,7 @@ describe('App.vue', () => {
     ]
     mockStore.selectedPageIds = ['p1']
 
-    const wrapper = mount(App)
+    const wrapper = mountApp()
     const page: Partial<Page> = { id: 'p2', fileName: 'f2.png' }
 
       ; (wrapper.vm as AppInstance).handlePageSelected(page as Page)
@@ -214,7 +225,7 @@ describe('App.vue', () => {
     mockStore.pages = [page]
     mockStore.selectedPageIds = ['p1']
 
-    const wrapper = mount(App)
+    const wrapper = mountApp()
       ; (wrapper.vm as AppInstance).handlePageSelected(page as Page)
 
     expect(mockStore.selectedPageIds).toEqual(['p1'])
@@ -237,7 +248,7 @@ describe('App.vue', () => {
       }
       vi.mocked(createDiscreteApi).mockReturnValue({ message: mockMessage, dialog: mockDialog } as any)
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
 
       await (wrapper.vm as AppInstance).handlePageDeleted(mockPage as Page)
 
@@ -257,7 +268,7 @@ describe('App.vue', () => {
       }
       vi.mocked(createDiscreteApi).mockReturnValue({ message: mockMessage, dialog: mockDialog } as any)
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
 
       await (wrapper.vm as AppInstance).handleBatchDeleted(pages as Page[])
 
@@ -273,7 +284,7 @@ describe('App.vue', () => {
       }
       vi.mocked(createDiscreteApi).mockReturnValue({ message: mockMessage, dialog: mockDialog } as any)
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handlePageDeleted(mockPage as Page)
 
       expect(mockStore.deletePages).not.toHaveBeenCalled()
@@ -285,7 +296,7 @@ describe('App.vue', () => {
       mockStore.pages = [p1, p2]
       mockStore.deletePages.mockReturnValue(p1)
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
         ; (wrapper.vm as any).selectedPageId = 'p1'
 
       // We need to simulate the dialog confirm
@@ -315,7 +326,7 @@ describe('App.vue', () => {
       }
       vi.mocked(createDiscreteApi).mockReturnValue({ message: mockMessage, dialog: mockDialog } as any)
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
 
       await (wrapper.vm as AppInstance).handlePageDeleted(mockPage as Page)
 
@@ -332,7 +343,7 @@ describe('App.vue', () => {
         pages: [mockPage]
       })
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handleFileAdd()
 
       // Store updated, computed should update
@@ -345,7 +356,7 @@ describe('App.vue', () => {
         pages: [{ id: 'p1' }, { id: 'p2' }]
       })
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handleFileAdd()
 
       expect(mockStore.addFiles).toHaveBeenCalled()
@@ -357,7 +368,7 @@ describe('App.vue', () => {
         error: 'No files selected'
       })
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handleFileAdd()
 
       expect(mockMessage.error).not.toHaveBeenCalled()
@@ -369,7 +380,7 @@ describe('App.vue', () => {
         error: 'Unsupported type'
       })
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handleFileAdd()
 
       expect(mockMessage.error).toHaveBeenCalledWith('Unsupported type')
@@ -377,7 +388,7 @@ describe('App.vue', () => {
 
     it('handles handleFileAdd throw', async () => {
       mockStore.addFiles.mockRejectedValue(new Error('Crash'))
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await (wrapper.vm as AppInstance).handleFileAdd()
 
       expect(mockMessage.error).toHaveBeenCalledWith('Add failed. Please try again.')
@@ -390,7 +401,7 @@ describe('App.vue', () => {
         pages: [mockPage]
       })
 
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       const event: Partial<DragEvent> = {
         preventDefault: vi.fn(),
         dataTransfer: {
@@ -405,7 +416,7 @@ describe('App.vue', () => {
     })
 
     it('handles handleDrop with zero files', async () => {
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       const event: Partial<DragEvent> = {
         preventDefault: vi.fn(),
         dataTransfer: {
@@ -417,7 +428,7 @@ describe('App.vue', () => {
     })
 
     it('handleDragOver prevents default', () => {
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       const event: Partial<DragEvent> = { preventDefault: vi.fn() }
         ; (wrapper.vm as AppInstance).handleDragOver(event as DragEvent)
       expect(event.preventDefault).toHaveBeenCalled()
@@ -428,7 +439,7 @@ describe('App.vue', () => {
     const { pdfService } = await import('./services/pdf')
     vi.mocked(pdfService.resumeProcessing).mockRejectedValue(new Error('Resume failed'))
 
-    mount(App)
+    mountApp()
     await flushPromises()
 
     expect(uiLogger.error).toHaveBeenCalledWith('Error resuming PDF processing:', expect.any(Error))
@@ -438,7 +449,7 @@ describe('App.vue', () => {
     it('updates selection when selected page is removed', async () => {
       mockStore.pages = [{ id: 'p1' }, { id: 'p2' }]
       mockStore.selectedPageIds = ['p1']
-      const wrapper = mount(App)
+      const wrapper = mountApp()
 
         ; (wrapper.vm as AppInstance).selectedPageId = 'p1'
 
@@ -451,7 +462,7 @@ describe('App.vue', () => {
 
     it('selects first page if none selected and pages added', async () => {
       mockStore.pages = []
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       expect((wrapper.vm as AppInstance).selectedPageId).toBeNull()
 
       // Add pages
@@ -468,7 +479,7 @@ describe('App.vue', () => {
     })
 
     it('toggles pageViewerCollapsed and previewCollapsed via divider buttons', async () => {
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await flushPromises()
 
       // Initially both expanded
@@ -509,7 +520,7 @@ describe('App.vue', () => {
     })
 
     it('toggles sider collapse via custom trigger', async () => {
-      const wrapper = mount(App)
+      const wrapper = mountApp()
       await flushPromises()
 
       const triggerBtn = wrapper.find('.sider-trigger-container button')

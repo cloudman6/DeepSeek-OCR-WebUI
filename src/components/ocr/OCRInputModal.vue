@@ -4,7 +4,7 @@
     preset="dialog"
     :title="title"
     :positive-text="confirmText"
-    negative-text="Cancel"
+    :negative-text="t('common.cancel')"
     @update:show="$emit('update:show', $event)"
     @positive-click="handleSubmit"
     @negative-click="$emit('update:show', false)"
@@ -24,6 +24,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NModal, NInput } from 'naive-ui'
 import type { OCRPromptType } from '@/services/ocr'
 
@@ -40,16 +41,17 @@ interface Emits {
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
+const { t } = useI18n()
 const inputValue = ref('')
 
 const isFind = computed(() => props.mode === 'find')
 
-const title = computed(() => isFind.value ? 'Locate Object' : 'Custom Prompt')
-const placeholder = computed(() => isFind.value 
-  ? 'Enter the object name to locate (e.g., "signature", "red stamp")' 
-  : 'Enter your custom prompt for the OCR model'
+const title = computed(() => isFind.value ? t('ocrInputModal.locateObject') : t('ocrInputModal.customPrompt'))
+const placeholder = computed(() => isFind.value
+  ? t('ocrInputModal.locatePlaceholder')
+  : t('ocrInputModal.promptPlaceholder')
 )
-const confirmText = computed(() => isFind.value ? 'Locate' : 'Run OCR')
+const confirmText = computed(() => isFind.value ? t('ocrInputModal.locate') : t('ocrInputModal.runOCR'))
 
 // Reset input when opening
 watch(() => props.show, (val) => {

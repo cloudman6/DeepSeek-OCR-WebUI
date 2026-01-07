@@ -8,7 +8,7 @@
           @dragover="handleDragOver"
         >
           <!-- Header -->
-          <AppHeader 
+          <AppHeader
             :page-count="pagesStore.pages.length"
             @add-files="handleFileAdd"
           />
@@ -24,7 +24,7 @@
             >
               <EmptyState @add-files="handleFileAdd" />
             </div>
-      
+
             <template v-else>
               <!-- Page List with custom collapse trigger -->
               <n-layout-sider
@@ -45,7 +45,7 @@
                   />
                 </div>
               </n-layout-sider>
-            
+
               <!-- Custom Page List Collapse Trigger (BTN-PL) - positioned outside sider -->
               <div class="sider-trigger-container">
                 <n-tooltip :placement="pageListCollapsed ? 'right' : 'left'">
@@ -65,10 +65,10 @@
                       </template>
                     </n-button>
                   </template>
-                  {{ pageListCollapsed ? 'Expand Page List' : 'Collapse Page List' }}
+                  {{ pageListCollapsed ? $t('app.expandPageList') : $t('app.collapsePageList') }}
                 </n-tooltip>
               </div>
-  
+
               <!-- Middle: Content area with PageViewer, Divider, and Preview -->
               <div class="content-area">
                 <!-- PageViewer -->
@@ -106,7 +106,7 @@
                         </template>
                       </n-button>
                     </template>
-                    Collapse Viewer
+                    {{ $t('app.collapseViewer') }}
                   </n-tooltip>
 
                   <!-- PageViewer expand: show when PV collapsed -->
@@ -126,7 +126,7 @@
                         </template>
                       </n-button>
                     </template>
-                    Expand Viewer
+                    {{ $t('app.expandViewer') }}
                   </n-tooltip>
 
                   <!-- Preview collapse: show when both expanded -->
@@ -146,7 +146,7 @@
                         </template>
                       </n-button>
                     </template>
-                    Collapse Preview
+                    {{ $t('app.collapsePreview') }}
                   </n-tooltip>
                 </div>
 
@@ -181,7 +181,7 @@
                         </template>
                       </n-button>
                     </template>
-                    Expand Preview
+                    {{ $t('app.expandPreview') }}
                   </n-tooltip>
                 </div>
               </div>
@@ -195,6 +195,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePagesStore } from './stores/pages'
 import type { Page } from './stores/pages'
 import { uiLogger } from '@/utils/logger'
@@ -208,6 +209,7 @@ import { ChevronForwardOutline, ChevronBackOutline } from '@vicons/ionicons5'
 // Import documentService to ensure it's initialized and listening to OCR events
 import { documentService } from '@/services/doc-gen'
 
+const { t } = useI18n()
 const pagesStore = usePagesStore()
 const { message, dialog } = createDiscreteApi(['message', 'dialog'], {
   configProviderProps: {},
@@ -235,7 +237,7 @@ const previewWidth = computed(() => {
 })
 
 const selectedPageId = ref<string | null>(null)
-const currentPage = computed(() => 
+const currentPage = computed(() =>
   pagesStore.pages.find(p => p.id === selectedPageId.value) || null
 )
 
@@ -269,15 +271,15 @@ async function handleBatchDeleted(pages: Page[]) {
 // Unified deletion handler for both single and batch operations
 async function handleDeletion(pagesToDelete: Page[]) {
   const isSingle = pagesToDelete.length === 1
-  const content = isSingle 
-    ? `Are you sure you want to delete "${pagesToDelete[0]!.fileName}"?`
-    : `Are you sure you want to delete ${pagesToDelete.length} selected pages?`
+  const content = isSingle
+    ? t('app.deleteConfirmSingle', [pagesToDelete[0]!.fileName])
+    : t('app.deleteConfirmMultiple', [pagesToDelete.length])
 
   dialog.warning({
-    title: 'Confirm Deletion',
+    title: t('app.deleteConfirmTitle'),
     content,
-    positiveText: 'Confirm',
-    negativeText: 'Cancel',
+    positiveText: t('app.deletePositive'),
+    negativeText: t('app.deleteNegative'),
     onPositiveClick: async () => {
       try {
         const pageIds = pagesToDelete.map(page => page.id)
@@ -291,8 +293,8 @@ async function handleDeletion(pagesToDelete: Page[]) {
 
           // Create appropriate message
           const successMsg = isSingle
-            ? `Page "${pagesToDelete[0]!.fileName}" deleted`
-            : `${pagesToDelete.length} pages deleted`
+            ? t('app.pageDeleted', [pagesToDelete[0]!.fileName])
+            : t('app.pagesDeleted', [pagesToDelete.length])
 
           // Show success message using Naive UI message
           message.success(successMsg)
@@ -307,7 +309,7 @@ async function handleDeletion(pagesToDelete: Page[]) {
         }
       } catch (error) {
         uiLogger.error('Delete failed:', error)
-        message.error(`Failed to delete ${isSingle ? 'page' : 'pages'}`)
+        message.error(isSingle ? 'Failed to delete page' : 'Failed to delete pages')
       }
     }
   })
@@ -341,7 +343,7 @@ async function handleFileAdd() {
     }
   } catch (error) {
     uiLogger.error('Add failed:', error)
-    message.error('Add failed. Please try again.')
+    message.error(t('app.addFailed'))
   }
 }
 

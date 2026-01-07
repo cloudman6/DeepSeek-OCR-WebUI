@@ -50,7 +50,7 @@
             size="small"
             @click="fitToScreen"
           >
-            Fit
+            {{ $t('pageViewer.fit') }}
           </n-button>
         </n-space>
       </n-space>
@@ -90,7 +90,7 @@
         
         <n-empty
           v-else-if="!imageLoading"
-          description="No image available"
+          :description="$t('pageViewer.noImageAvailable')"
         >
           <template #icon>
             <svg
@@ -126,7 +126,7 @@
           class="loading-overlay"
         >
           <template #description>
-            Loading image...
+            {{ $t('pageViewer.loadingImage') }}
           </template>
         </n-spin>
 
@@ -140,7 +140,7 @@
       </div>
       <n-empty
         v-else
-        description="Select a page to view"
+        :description="$t('pageViewer.selectPageToView')"
         class="placeholder-select"
       >
         <template #icon>
@@ -184,7 +184,7 @@
       >
         <n-space size="medium">
           <n-text depth="3">
-            Status: <n-text
+            {{ $t('pageViewer.status') }}: <n-text
               :type="getStatusType()"
               depth="1"
             >
@@ -195,7 +195,7 @@
             v-if="imageSize"
             depth="3"
           >
-            Size: <n-text depth="1">
+            {{ $t('pageViewer.size') }}: <n-text depth="1">
               {{ imageSize }}
             </n-text>
           </n-text>
@@ -203,7 +203,7 @@
             v-if="currentPage?.fileSize !== undefined"
             depth="3"
           >
-            File: <n-text depth="1">
+            {{ $t('pageViewer.file') }}: <n-text depth="1">
               {{ formatFileSize(currentPage.fileSize) }}
             </n-text>
           </n-text>
@@ -228,6 +228,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { uiLogger } from '@/utils/logger'
 import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText } from 'naive-ui'
 import { db } from '@/db'
@@ -239,6 +240,8 @@ import OCRResultOverlay from '@/components/ocr/OCRResultOverlay.vue'
 import OCRRawTextPanel from '@/components/ocr/OCRRawTextPanel.vue'
 
 import type { Page } from '@/stores/pages'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   currentPage?: Page | null
@@ -375,7 +378,7 @@ async function loadPageBlob(pageId: string, retry = true) {
       await new Promise(resolve => setTimeout(resolve, 100))
       await loadPageBlob(pageId, false)
     } else {
-      imageError.value = 'Full image not found in storage'
+      imageError.value = t('pageViewer.fullImageNotFound')
     }
   } catch (error) {
     uiLogger.error('Failed to load full image', error)
@@ -383,7 +386,7 @@ async function loadPageBlob(pageId: string, retry = true) {
       await new Promise(resolve => setTimeout(resolve, 100))
       await loadPageBlob(pageId, false)
     } else {
-      imageError.value = 'Failed to load image from storage'
+      imageError.value = t('pageViewer.failedToLoadFromStorage')
     }
   } finally {
     if (!retry) {
@@ -412,24 +415,25 @@ onUnmounted(() => {
 })
 
 const VIEW_STATUS_TEXT_MAP: Record<Page['status'] | 'ready', string> = {
-  'pending_render': 'Pending Render',
-  'rendering': 'Rendering',
-  'ready': 'Ready',
-  'pending_ocr': 'OCR Queued',
-  'recognizing': 'Recognizing...',
-  'ocr_success': 'OCR Done',
-  'pending_gen': 'Waiting for Gen',
-  'generating_markdown': 'Generating Markdown...',
-  'markdown_success': 'Markdown Ready',
-  'generating_pdf': 'Generating PDF...',
-  'pdf_success': 'PDF Ready',
-  'generating_docx': 'Generating DOCX...',
-  'completed': 'Completed',
-  'error': 'Error'
+  'pending_render': 'status.pendingRender',
+  'rendering': 'status.rendering',
+  'ready': 'status.ready',
+  'pending_ocr': 'status.ocrQueued',
+  'recognizing': 'status.recognizing',
+  'ocr_success': 'status.ocrDone',
+  'pending_gen': 'status.waitingForGen',
+  'generating_markdown': 'status.generatingMarkdown',
+  'markdown_success': 'status.markdownReady',
+  'generating_pdf': 'status.generatingPDF',
+  'pdf_success': 'status.pdfReady',
+  'generating_docx': 'status.generatingDOCX',
+  'completed': 'status.completed',
+  'error': 'status.error'
 }
 
 const statusText = computed(() => {
-  return VIEW_STATUS_TEXT_MAP[status.value as Page['status']] || 'Unknown'
+  const key = VIEW_STATUS_TEXT_MAP[status.value as Page['status']] || 'status.unknown'
+  return t(key)
 })
 
 const VIEW_STATUS_TYPE_MAP: Record<Page['status'] | 'ready', 'success' | 'info' | 'warning' | 'error' | 'default'> = {
@@ -479,9 +483,9 @@ function onImageLoad(event: Event) {
 }
 
 function onImageError() {
-  imageSize.value = 'Load failed'
+  imageSize.value = t('pageViewer.loadFailed')
   imageLoading.value = false
-  imageError.value = 'Failed to load image'
+  imageError.value = t('pageViewer.failedToLoadImage')
 }
 
 function formatFileSize(bytes: number): string {
@@ -527,15 +531,15 @@ async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: st
   
   try {
     const imageBlob = await db.getPageImage(props.currentPage.id)
-    
+
     if (!imageBlob) {
-      message.error('Could not retrieve image data')
+      message.error(t('ocr.couldNotRetrieveImage'))
       return
     }
 
     uiLogger.info(`Adding page to OCR Queue (${mode}):`, props.currentPage.id)
     notification.success({
-      content: 'Added to OCR Queue',
+      content: t('ocr.addedToQueue'),
       duration: 2500,
       closable: false
     })
@@ -547,7 +551,7 @@ async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: st
 
   } catch (error) {
     uiLogger.error('OCR Error:', error)
-    message.error('OCR Failed: ' + (error instanceof Error ? error.message : String(error)))
+    message.error(t('ocr.ocrFailed', [(error instanceof Error ? error.message : String(error))]))
   }
 }
 // Removed old runOCR function in place of new handlers

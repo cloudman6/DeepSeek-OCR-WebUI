@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import PageViewer from './PageViewer.vue'
 import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
+import { i18n } from '../../../tests/setup'
 
 // Mock logger
 vi.mock('@/utils/logger', () => ({
@@ -128,6 +129,16 @@ globalThis.URL.revokeObjectURL = vi.fn()
 describe('PageViewer.vue', () => {
   let mockPage: import("@/stores/pages").Page
 
+  // Helper function to mount PageViewer with i18n
+  function mountPageViewer(props = {}) {
+    return mount(PageViewer, {
+      global: {
+        plugins: [i18n]
+      },
+      props
+    })
+  }
+
   beforeEach(() => {
     mockPage = {
       id: 'page-1',
@@ -153,8 +164,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('renders select placeholder when no page is provided', () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: null }
+    const wrapper = mountPageViewer({
+      currentPage: null
     })
 
     expect(wrapper.find('.placeholder-select').exists()).toBe(true)
@@ -162,8 +173,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('loads and displays image when a page is provided', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     // Wait for promises to resolve
@@ -182,8 +193,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('handles zoom controls correctly', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     // Initial zoom is 1
@@ -208,8 +219,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('limits zoom level between 0.25 and 3', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     const zoomInBtn = wrapper.findAll('button').find(b => b.text() === '+')
@@ -229,8 +240,8 @@ describe('PageViewer.vue', () => {
   it('shows error message if image is not found in DB', async () => {
     vi.mocked(db.getPageImage).mockResolvedValue(undefined)
 
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     // Should call getPageImage (at least once, maybe twice due to retry)
@@ -250,8 +261,8 @@ describe('PageViewer.vue', () => {
     const expectedTexts = ['Pending Render', 'Rendering', 'Ready', 'Recognizing', 'Completed', 'Error', 'Unknown']
 
     statuses.forEach((status, index) => {
-      const wrapper = mount(PageViewer, {
-        props: { currentPage: { ...mockPage, status: status as any } as any }
+      const wrapper = mountPageViewer({
+        currentPage: { ...mockPage, status: status as any }
       })
       expect(wrapper.find('.viewer-toolbar').text()).toContain(`Status: ${expectedTexts[index]}`)
     })
@@ -267,16 +278,16 @@ describe('PageViewer.vue', () => {
     ]
 
     testCases.forEach(({ bytes, expected }) => {
-      const wrapper = mount(PageViewer, {
-        props: { currentPage: { ...mockPage, fileSize: bytes } }
+      const wrapper = mountPageViewer({
+        currentPage: { ...mockPage, fileSize: bytes }
       })
       expect(wrapper.find('.viewer-toolbar').text()).toContain(`File: ${expected}`)
     })
   })
 
   it('revokes URL when current page changes', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     await vi.waitFor(() => {
@@ -292,8 +303,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('handles image error and updates state', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
     await vi.waitFor(() => {
@@ -306,23 +317,33 @@ describe('PageViewer.vue', () => {
     expect((wrapper.vm as any).imageError).toBe('Failed to load image')
   })
 
+  it('handles submitOCR error (no blob)', async () => {
+    vi.mocked(db.getPageImage).mockResolvedValue(undefined)
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
+    })
+    await (wrapper.vm as any).submitOCR('document')
+    const message = (wrapper.vm as any).message
+    expect(message.error).toHaveBeenCalledWith('Could not retrieve image data')
+  })
+
   it('guards submitOCR execution', async () => {
     // 1. No current page
-    const wrapper1 = mount(PageViewer, {
-      props: { currentPage: null }
+    const wrapper1 = mountPageViewer({
+      currentPage: null
     })
       ; await (wrapper1.vm as any).submitOCR('document') // Should return early
 
     // 2. Status is processing (mocked as recognizing in this context for guard check)
     const processingPage = { ...mockPage, status: 'recognizing' as const }
-    const wrapper2 = mount(PageViewer, {
-      props: { currentPage: processingPage }
+    const wrapper2 = mountPageViewer({
+      currentPage: processingPage
     })
       ; await (wrapper2.vm as any).submitOCR('document') // Should return early
 
     // 3. Normal execution
-    const wrapper3 = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper3 = mountPageViewer({
+      currentPage: mockPage
     })
     await flushPromises()
       ; await (wrapper3.vm as any).submitOCR('document') // Should log/execute
@@ -331,8 +352,8 @@ describe('PageViewer.vue', () => {
 
   it('handles submitOCR error (no blob)', async () => {
     vi.mocked(db.getPageImage).mockResolvedValue(undefined)
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
     await (wrapper.vm as any).submitOCR('document')
     const message = (wrapper.vm as any).message
@@ -340,8 +361,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('handles handleOCRRun branches', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
     // Branch 1: 'find' or 'freeform' -> shows modal
     await (wrapper.vm as any).handleOCRRun('find')
@@ -354,8 +375,8 @@ describe('PageViewer.vue', () => {
   })
 
   it('handles handleInputSubmit', async () => {
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
 
       // Case 1: find
@@ -371,8 +392,8 @@ describe('PageViewer.vue', () => {
 
   it('disables OCRModeSelector when status is not ready', async () => {
     const processingPage = { ...mockPage, status: 'recognizing' as const }
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: processingPage }
+    const wrapper = mountPageViewer({
+      currentPage: processingPage
     })
 
     // Check if OCRModeSelector is disabled via prop
@@ -385,8 +406,8 @@ describe('PageViewer.vue', () => {
       .mockRejectedValueOnce(new Error('Fail 1'))
       .mockResolvedValueOnce(new Blob(['test'], { type: 'image/png' }))
 
-    mount(PageViewer, {
-      props: { currentPage: mockPage }
+    mountPageViewer({
+      currentPage: mockPage
     })
 
     await flushPromises()
@@ -406,8 +427,8 @@ describe('PageViewer.vue', () => {
     // Mock success load
     vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['test'], { type: 'image/png' }))
 
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
     await flushPromises()
 
@@ -417,8 +438,8 @@ describe('PageViewer.vue', () => {
 
   it('handles image load event', async () => {
     vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['test'], { type: 'image/png' }))
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: mockPage }
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
     })
     await flushPromises()
 
@@ -437,8 +458,8 @@ describe('PageViewer.vue', () => {
     const pageRecognizing = { ...mockPage, id: pageId, status: 'recognizing' as const }
     const pageSuccess = { ...mockPage, id: pageId, status: 'ocr_success' as const }
 
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: pageRecognizing }
+    const wrapper = mountPageViewer({
+      currentPage: pageRecognizing
     })
 
     await flushPromises()
@@ -456,8 +477,8 @@ describe('PageViewer.vue', () => {
     const page1 = { ...mockPage, id: 'p1', status: 'ready' as const }
     const page2 = { ...mockPage, id: 'p2', status: 'completed' as const }
 
-    const wrapper = mount(PageViewer, {
-      props: { currentPage: page1 }
+    const wrapper = mountPageViewer({
+      currentPage: page1
     })
 
     await flushPromises()

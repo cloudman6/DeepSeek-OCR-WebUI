@@ -10,15 +10,15 @@
         </n-icon>
       </div>
       <h1 class="hero-title">
-        Scan2Doc
+        {{ $t('emptyState.title') }}
       </h1>
       <p class="hero-subtitle">
-        Drop PDF or Images here to start
+        {{ $t('emptyState.subtitle') }}
       </p>
-      
-      <n-button 
-        type="primary" 
-        size="large" 
+
+      <n-button
+        type="primary"
+        size="large"
         class="select-files-btn"
         @click="$emit('add-files')"
       >
@@ -27,7 +27,7 @@
             <Add />
           </n-icon>
         </template>
-        Select Files
+        {{ $t('emptyState.selectFiles') }}
       </n-button>
     </div>
   </div>

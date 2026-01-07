@@ -28,7 +28,7 @@
         size="tiny"
         circle
         class="action-btn"
-        title="Scan to Document"
+        :title="t('pageItem.scanToDocument')"
         :disabled="isScanning"
         @click.stop="handleScan"
         @mouseenter="isScanHovered = true"
@@ -49,7 +49,7 @@
         size="tiny"
         circle
         class="action-btn"
-        title="Delete page"
+        :title="t('pageItem.deletePage')"
         :disabled="isScanning"
         @click.stop="handleDelete"
         @mouseenter="isDeleteHovered = true"
@@ -138,6 +138,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { NButton, NTag, NCheckbox, NSpin, NIcon, useMessage, useNotification } from 'naive-ui'
 import { TrashOutline, DocumentTextOutline } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
@@ -164,6 +165,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<Emits>()
 
 // Store and reactive state
+const { t } = useI18n()
 const pagesStore = usePagesStore()
 const message = useMessage() // Access Naive UI message
 const notification = useNotification()

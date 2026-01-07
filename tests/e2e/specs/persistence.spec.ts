@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/base-test';
 import { getPdfPageCount } from '../utils/pdf-utils';
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 
 test.describe('Persistence', () => {
@@ -13,13 +14,8 @@ test.describe('Persistence', () => {
         const filePath = path.resolve('tests/e2e/samples/sample.pdf');
         const expectedPageCount = await getPdfPageCount(filePath);
 
-        const fileChooserPromise = page.waitForEvent('filechooser');
-
-        // Use the specific button locator
-        await page.locator('.app-header button').first().click();
-
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePath);
+        // Note: This test focuses on persistence, not file upload UI.
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // 2. Wait for items to appear and be ready
         const pageItems = page.locator('.page-item');
@@ -60,10 +56,8 @@ test.describe('Persistence', () => {
         const filePath = path.resolve('tests/e2e/samples/sample3.pdf');
         const expectedPageCount = await getPdfPageCount(filePath);
 
-        const fileChooserPromise = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles(filePath);
+        // Note: This test focuses on persistence, not file upload UI.
+        await uploadFiles(page, [filePath], '.app-header button', true);
 
         // 2. Wait for page items to appear
         const pageItems = page.locator('.page-item');

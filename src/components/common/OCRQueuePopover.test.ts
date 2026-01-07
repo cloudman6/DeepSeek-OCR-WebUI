@@ -4,6 +4,7 @@ import type { Mock } from 'vitest'
 import OCRQueuePopover from '@/components/common/OCRQueuePopover.vue'
 import { createTestingPinia } from '@pinia/testing'
 import { usePagesStore } from '@/stores/pages'
+import { i18n } from '@/i18n'
 
 // Monkey-patch CSSStyleDeclaration to prevent JSDOM crash on Naive UI styles
 if (typeof CSSStyleDeclaration !== 'undefined') {
@@ -71,7 +72,7 @@ describe('OCRQueuePopover', () => {
     const mountComponent = () => {
         return mount(OCRQueuePopover, {
             global: {
-                plugins: [pinia],
+                plugins: [pinia, i18n],
                 stubs: {
                     NIcon: { template: '<i><slot /></i>' },
                     NBadge: { template: '<span><slot /></span>' },

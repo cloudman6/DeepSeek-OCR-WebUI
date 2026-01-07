@@ -3,6 +3,7 @@ import { mount, flushPromises } from '@vue/test-utils'
 import Preview from './Preview.vue'
 import { db } from '@/db'
 import { renderAsync } from 'docx-preview'
+import { i18n } from '../../../tests/setup'
 
 // Functional mock for Naive UI
 vi.mock('naive-ui', () => ({
@@ -57,6 +58,15 @@ vi.mock('@/services/export', () => ({
 import { exportService } from '@/services/export'
 
 describe('Preview.vue', () => {
+  // Helper function to mount Preview with i18n
+  function mountPreview(props = {}) {
+    return mount(Preview, {
+      global: {
+        plugins: [i18n]
+      },
+      props
+    })
+  }
   const mockPage = {
     id: 'p1',
     status: 'ready',
@@ -73,7 +83,7 @@ describe('Preview.vue', () => {
   })
 
   it('mounts and renders initial state', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     await flushPromises()
     expect(wrapper.exists()).toBe(true)
     const vm = wrapper.vm as any
@@ -81,7 +91,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers UI template branches (tabs and buttons)', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Switch to DOCX view
@@ -103,7 +113,7 @@ describe('Preview.vue', () => {
 
   it('handles binary status check and rendering paths', async () => {
     vi.useFakeTimers()
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Test checkBinaryStatus
@@ -122,7 +132,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers all download logic paths', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     await flushPromises()
 
@@ -153,7 +163,7 @@ describe('Preview.vue', () => {
 
   it('handles edge cases in markdown loading', async () => {
     vi.mocked(db.getPageMarkdown).mockResolvedValue(undefined)
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Test OCR text fallback
@@ -170,7 +180,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageExtractedImage).mockResolvedValue({ blob: new Blob(['img']) } as any)
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: '![img](scan2doc-img:id1)' } as any)
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     await vm.loadMarkdown('p1')
@@ -183,7 +193,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers UI template branches (switch and md)', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     vm.currentView = 'md'
     await flushPromises()
@@ -200,7 +210,7 @@ describe('Preview.vue', () => {
 
   it('covers loadMarkdown fallback to ocrText', async () => {
     vi.mocked(db.getPageMarkdown).mockResolvedValue(null as any)
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     vm.mdContent = ''
     await vm.loadMarkdown('p1')
@@ -208,7 +218,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers renderDocx error path', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Set container manually
@@ -224,7 +234,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers checkBinaryStatus pdf cleanup and error path', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     vm.pdfPreviewUrl = 'blob:old'
 
@@ -239,7 +249,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers cleanupPdfUrl and handlePreviewUpdate branches', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // cleanupPdfUrl
@@ -254,7 +264,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers handleDownloadMarkdown function', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     await flushPromises()
 
@@ -274,7 +284,7 @@ describe('Preview.vue', () => {
     // Checking imports... "import MarkdownIt from 'markdown-it'". It is NOT mocked in this file.
     // So we can test the real rendering.
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Test case from user request: \(100^{\circ}\mathrm{C}\) -> Normalized to $...$
@@ -293,7 +303,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageExtractedImage).mockResolvedValue({ blob: new Blob(['img']) } as any)
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: '<img src="scan2doc-img:html-id" alt="html-alt">' } as any)
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     await vm.loadMarkdown('p1')
@@ -308,7 +318,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageExtractedImage).mockResolvedValue({ blob: new Uint8Array([1, 2, 3]) } as any)
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: '![img](scan2doc-img:fallback-id)' } as any)
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     await vm.loadMarkdown('p1')
@@ -323,7 +333,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: '![img](scan2doc-img:error-id)' } as any)
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     await vm.loadMarkdown('p1')
@@ -339,7 +349,7 @@ describe('Preview.vue', () => {
   })
 
   it('triggers download from template buttons', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Switch to DOCX and click download button in footer (line 109)
@@ -361,7 +371,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: '这是一段中文内容，包含很多汉字。' } as any)
     vi.mocked(db.getPageDOCX).mockResolvedValue(new Blob(['docx']))
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Create a mock container with docx-preview elements including tables
@@ -413,7 +423,7 @@ describe('Preview.vue', () => {
     vi.mocked(db.getPageMarkdown).mockResolvedValue({ content: 'This is English content without Chinese characters.' } as any)
     vi.mocked(db.getPageDOCX).mockResolvedValue(new Blob(['docx']))
 
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Create mock container
@@ -447,7 +457,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers applyPreviewStyleOverrides early return when container is null', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     vm.wordPreviewContainer = null
@@ -457,7 +467,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers checkBinaryStatus markdown preload error path', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Mock markdown to throw error during preload
@@ -478,7 +488,7 @@ describe('Preview.vue', () => {
     }
     vi.mocked(db.getPageMarkdown).mockResolvedValue(null as any)
 
-    const wrapper = mount(Preview, { props: { currentPage: pageWithEmptyText } })
+    const wrapper = mountPreview({ currentPage: pageWithEmptyText })
     const vm = wrapper.vm as any
 
     // Clear mdContent
@@ -490,7 +500,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers handleDownloadMarkdown early return cases', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     // Test with empty mdContent
@@ -511,7 +521,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers performViewUpdate view change branches', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
     await flushPromises()
 
@@ -539,7 +549,7 @@ describe('Preview.vue', () => {
   })
 
   it('covers downloadBinary with no blob returned', async () => {
-    const wrapper = mount(Preview, { props: { currentPage: mockPage } })
+    const wrapper = mountPreview({ currentPage: mockPage })
     const vm = wrapper.vm as any
 
     vi.mocked(db.getPageDOCX).mockResolvedValue(null as any)

@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/base-test';
 import { getPdfPageCount } from '../utils/pdf-utils';
+import { uploadFiles } from '../utils/file-upload';
 import path from 'path';
 
 test.describe('Order Integrity (Mixed Files)', () => {
@@ -35,10 +36,8 @@ test.describe('Order Integrity (Mixed Files)', () => {
         const pdfPageCount = await getPdfPageCount(pdfPath);
 
         // 1. Upload PNG
-        const fileChooserPromise1 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles([pngPath]);
+        // Note: This test focuses on order integrity, not file upload UI.
+        await uploadFiles(page, [pngPath], '.app-header button', true);
 
         // Wait for PNG to appear and be ready
         await expect(page.locator('.page-item')).toHaveCount(1);
@@ -48,10 +47,7 @@ test.describe('Order Integrity (Mixed Files)', () => {
         await expect(pngItem.locator('.thumbnail-img')).toBeVisible({ timeout: 15000 });
 
         // 2. Upload PDF
-        const fileChooserPromise2 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles([pdfPath]);
+        await uploadFiles(page, [pdfPath], '.app-header button', true);
 
         // 3. Verify Total Count
         const expectedTotal = 1 + pdfPageCount;
@@ -72,19 +68,13 @@ test.describe('Order Integrity (Mixed Files)', () => {
         const pdfPageCount = await getPdfPageCount(pdfPath);
 
         // 1. Upload PDF
-        const fileChooserPromise1 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles([pdfPath]);
+        await uploadFiles(page, [pdfPath], '.app-header button', true);
 
         // Wait for PDF pages to start appearing
         await expect(page.locator('.page-item')).not.toHaveCount(0, { timeout: 30000 });
 
         // 2. Immediately Upload PNG (during PDF processing)
-        const fileChooserPromise2 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles([pngPath]);
+        await uploadFiles(page, [pngPath], '.app-header button', true);
 
         // 3. Verify Total Count
         const expectedTotal = pdfPageCount + 1;
@@ -108,16 +98,10 @@ test.describe('Order Integrity (Mixed Files)', () => {
         const pngPath2 = path.resolve('tests/e2e/samples/sample1.png');
 
         // 1. Upload first Image
-        const fileChooserPromise1 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles([pngPath]);
+        await uploadFiles(page, [pngPath], '.app-header button', true);
 
         // 2. Upload second Image immediately
-        const fileChooserPromise2 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles([pngPath2]);
+        await uploadFiles(page, [pngPath2], '.app-header button', true);
 
         // 3. Verify order
         await expect(page.locator('.page-item')).toHaveCount(2, { timeout: 30000 });
@@ -136,16 +120,10 @@ test.describe('Order Integrity (Mixed Files)', () => {
         const expectedTotal = pdfPageCount1 + pdfPageCount2;
 
         // 1. Upload first PDF
-        const fileChooserPromise1 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser1 = await fileChooserPromise1;
-        await fileChooser1.setFiles([pdfPath]);
+        await uploadFiles(page, [pdfPath], '.app-header button', true);
 
         // 2. Upload second PDF
-        const fileChooserPromise2 = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser2 = await fileChooserPromise2;
-        await fileChooser2.setFiles([pdfPath2]);
+        await uploadFiles(page, [pdfPath2], '.app-header button', true);
 
         // 3. Wait for all items
         await expect(page.locator('.page-item')).toHaveCount(expectedTotal, { timeout: 45000 });
@@ -178,10 +156,7 @@ test.describe('Order Integrity (Mixed Files)', () => {
         const expectedTotal = 1 + pdfPageCount;
 
         // Upload both together
-        const fileChooserPromise = page.waitForEvent('filechooser');
-        await page.locator('.app-header button').first().click();
-        const fileChooser = await fileChooserPromise;
-        await fileChooser.setFiles([pngPath, pdfPath]);
+        await uploadFiles(page, [pngPath, pdfPath], '.app-header button', true);
 
         await expect(page.locator('.page-item')).toHaveCount(expectedTotal, { timeout: 30000 });
 
@@ -216,11 +191,8 @@ test.describe('Order Integrity (Mixed Files)', () => {
 
         // Trigger multiple uploads rapidly without waiting for completion
         for (let i = 0; i < iterations; i++) {
-            const fileChooserPromise = page.waitForEvent('filechooser');
-            await page.locator('.app-header button').first().click();
-            const fileChooser = await fileChooserPromise;
             // Mixed png and pdf
-            await fileChooser.setFiles([pngPath, pdfPath]);
+            await uploadFiles(page, [pngPath, pdfPath], '.app-header button', true);
         }
 
         // Wait for all pages to be created and processed

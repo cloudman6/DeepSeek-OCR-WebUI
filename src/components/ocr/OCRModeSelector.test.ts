@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import OCRModeSelector from './OCRModeSelector.vue'
 import { h } from 'vue'
+import { i18n } from '../../../tests/setup'
 
 // Mock Naive UI components
 vi.mock('naive-ui', () => ({
@@ -39,19 +40,31 @@ vi.mock('@vicons/ionicons5', () => ({
 
 describe('OCRModeSelector.vue', () => {
     it('renders default mode correctly', () => {
-        const wrapper = mount(OCRModeSelector)
+        const wrapper = mount(OCRModeSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
         expect(wrapper.find('.trigger-btn').text()).toContain('Scan to Document')
     })
 
     it('emits run event when main button clicked', async () => {
-        const wrapper = mount(OCRModeSelector)
+        const wrapper = mount(OCRModeSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
         await wrapper.find('.trigger-btn').trigger('click')
         expect(wrapper.emitted('run')).toBeTruthy()
         expect(wrapper.emitted('run')![0]).toEqual(['document'])
     })
 
     it('changes mode and emits run when dropdown item selected', async () => {
-        const wrapper = mount(OCRModeSelector)
+        const wrapper = mount(OCRModeSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
 
         // Simulate selection from dropdown (via handleSelect)
         await (wrapper.vm as any).handleSelect('ocr')
@@ -63,7 +76,10 @@ describe('OCRModeSelector.vue', () => {
 
     it('updates button type when loading', async () => {
         const wrapper = mount(OCRModeSelector, {
-            props: { loading: true }
+            props: { loading: true },
+            global: {
+                plugins: [i18n]
+            }
         })
         expect(wrapper.vm.buttonType).toBe('info')
 
@@ -73,7 +89,10 @@ describe('OCRModeSelector.vue', () => {
 
     it('disables buttons when disabled prop is true', () => {
         const wrapper = mount(OCRModeSelector, {
-            props: { disabled: true }
+            props: { disabled: true },
+            global: {
+                plugins: [i18n]
+            }
         })
         const buttons = wrapper.findAll('.n-button')
         buttons.forEach(btn => {
@@ -82,7 +101,11 @@ describe('OCRModeSelector.vue', () => {
     })
 
     it('correctly generates menu options with icons', () => {
-        const wrapper = mount(OCRModeSelector)
+        const wrapper = mount(OCRModeSelector, {
+            global: {
+                plugins: [i18n]
+            }
+        })
         const options = wrapper.vm.menuOptions
         expect(options.length).toBe(7)
         expect(options[0].label).toBe('Scan to Document')

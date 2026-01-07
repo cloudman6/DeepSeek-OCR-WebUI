@@ -36,28 +36,36 @@ export class FontLoaderService {
   }
 
   /**
-   * Fetch font bytes from URL with caching
+   * Fetch font bytes from URL with caching and retries
    */
-  async fetchFontBytes(url: string): Promise<Uint8Array | null> {
+  async fetchFontBytes(url: string, retries = 3): Promise<Uint8Array | null> {
     if (this.fontCache.has(url)) {
       return this.fontCache.get(url)!
     }
 
-    try {
-      const response = await fetch(url)
-      if (!response.ok) {
-        throw new Error(`Failed to fetch font: ${response.status} ${response.statusText}`)
+    for (let i = 0; i < retries; i++) {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error(`Failed to fetch font: ${response.status} ${response.statusText}`)
+        }
+
+        const buffer = await response.arrayBuffer()
+        const bytes = new Uint8Array(buffer)
+
+        this.fontCache.set(url, bytes)
+        return bytes
+      } catch (error) {
+        if (i === retries - 1) {
+          pdfLogger.warn(`Failed to fetch font bytes from ${url} after ${retries} attempts:`, error)
+          return null
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 500 * (i + 1)))
       }
-
-      const buffer = await response.arrayBuffer()
-      const bytes = new Uint8Array(buffer)
-
-      this.fontCache.set(url, bytes)
-      return bytes
-    } catch (error) {
-      pdfLogger.warn(`Failed to fetch font bytes from ${url}:`, error)
-      return null
     }
+
+    return null
   }
 
   /**
