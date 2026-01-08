@@ -2,19 +2,21 @@
   <n-dropdown
     placement="bottom-end"
     :options="languageOptions"
+    data-testid="language-selector-dropdown"
     @select="handleLanguageChange"
   >
     <n-button
       secondary
       size="small"
       :title="$t('common.language')"
+      data-testid="language-selector-button"
     >
       <template #icon>
         <n-icon>
           <LanguageOutline />
         </n-icon>
       </template>
-      {{ currentLabel }}
+      <span data-testid="current-language-label">{{ currentLabel }}</span>
     </n-button>
   </n-dropdown>
 </template>

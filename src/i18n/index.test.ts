@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { SUPPORT_LOCALES, DEFAULT_LOCALE, setLocale, getCurrentLocale, i18n, getInitialLocale } from './index'
+import { SUPPORT_LOCALES, setLocale, getCurrentLocale, i18n, getInitialLocale } from './index'
 
 describe('i18n Service', () => {
     beforeEach(() => {

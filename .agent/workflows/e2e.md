@@ -222,14 +222,8 @@ await page.waitForSelector('[data-testid="processing-complete"]');
 await page.waitForTimeout(3000); // 不推荐
 ```
 
-### 文件上传测试
-```typescript
-// 使用 File Chooser 机制
-const fileChooserPromise = page.waitForEvent('filechooser');
-await page.click('[data-testid="upload-btn"]');
-const fileChooser = await fileChooserPromise;
-await fileChooser.setFiles('path/to/test-file.pdf');
-```
+### 文件上传
+使用 `tests/e2e/utils/file-upload.ts` 中的 `uploadFiles` 工具函数
 
 ### 测试隔离与环境标准
 - 每个测试应独立运行，不依赖其他测试的状态。
