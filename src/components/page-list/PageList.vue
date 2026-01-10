@@ -168,6 +168,8 @@ import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
 
+import { uiLogger } from '@/utils/logger'
+
 const { t } = useI18n()
 
 const props = defineProps<{
