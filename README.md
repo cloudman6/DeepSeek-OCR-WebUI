@@ -67,6 +67,16 @@ npm run test:unit
 
 # Run UI tests with Vitest UI
 npm run test:ui
+
+# Run E2E tests
+npm run test:e2e
+
+# Run stability tests
+npm run test:e2e:quick-stability  # Quick verification (10 times)
+npm run test:e2e:stability        # Full verification (50 times)
+
+# Generate test report
+npm run test:e2e:report
 ```
 
 ## 🏗️ Architecture Principles
