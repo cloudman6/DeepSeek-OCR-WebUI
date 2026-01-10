@@ -12,6 +12,7 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+test-stability-logs/
 
 # Dependency directories
 node_modules/
