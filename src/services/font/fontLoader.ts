@@ -20,7 +20,7 @@ export class FontLoaderService {
 
   // Default CJK Font URL (Noto Sans SC)
   // Using local file for offline support and performance
-  static readonly SC_FONT_URL = '/standard_fonts/NotoSansSC-Regular.woff2'
+  static readonly SC_FONT_URL = `${import.meta.env.BASE_URL}standard_fonts/NotoSansSC-Regular.woff2`.replace(/\/+/g, '/')
   // Note: WOFF2 is widely supported but PDF-LIB usually prefers TTF/OTF or Standard 14. 
   // However, @pdf-lib/fontkit supposedly supports WOFF2 if the browser/environment does? 
   // Actually, pdf-lib + fontkit handles most formats. Let's start with this.  
