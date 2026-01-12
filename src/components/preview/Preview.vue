@@ -23,6 +23,8 @@
           size="large"
           text
           :disabled="isBinaryLoading || !hasBinary"
+          :aria-label="$t('preview.download', [currentView === 'docx' ? 'DOCX' : 'PDF'])"
+          :title="$t('preview.download', [currentView === 'docx' ? 'DOCX' : 'PDF'])"
           @click="downloadBinary(currentView)"
           @mouseenter="isHeaderDownloadHovered = true"
           @mouseleave="isHeaderDownloadHovered = false"
@@ -43,6 +45,8 @@
           size="large"
           text
           :disabled="!mdContent || isLoadingMd"
+          :aria-label="$t('preview.downloadMD')"
+          :title="$t('preview.downloadMD')"
           @click="handleDownloadMarkdown"
           @mouseenter="isHeaderDownloadHovered = true"
           @mouseleave="isHeaderDownloadHovered = false"

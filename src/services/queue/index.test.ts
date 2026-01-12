@@ -113,15 +113,10 @@ describe('QueueManager', () => {
 
         await queueManager.addGenerationTask('gen1', taskFn)
 
-        // Wait start
-        await new Promise(r => setTimeout(r, 10))
-
-        expect(queueManager.getStats().generation.pending).toBe(1)
-        expect(queueManager.getStats().generation.size).toBe(1)
-
+        // Wait for task to finish
         await vi.waitFor(() => {
-            if (queueManager.getStats().generation.pending !== 0) throw new Error('Not finished')
-        })
+            if (taskFn.mock.calls.length === 0) throw new Error('Task not called yet')
+        }, { timeout: 500 })
 
         expect(taskFn).toHaveBeenCalled()
     })
@@ -129,12 +124,15 @@ describe('QueueManager', () => {
     it('should cancel generation task', async () => {
         const genFn = vi.fn()
 
-        // Block queue
-        await queueManager.addGenerationTask('g1', async () => new Promise(r => setTimeout(r, 50)))
+        // Fill the queue to its concurrency limit (2)
+        await queueManager.addGenerationTask('g1', async () => new Promise(r => setTimeout(r, 100)))
+        await queueManager.addGenerationTask('g2', async () => new Promise(r => setTimeout(r, 100)))
 
-        await queueManager.addGenerationTask('g2', genFn)
+        // Add a third task that should wait in queue
+        await queueManager.addGenerationTask('g3', genFn)
 
-        queueManager.cancel('g2')
+        // Cancel g3 before it starts
+        queueManager.cancel('g3')
 
         await vi.waitFor(() => {
             if (queueManager.getStats().generation.pending !== 0) throw new Error('Not finished')

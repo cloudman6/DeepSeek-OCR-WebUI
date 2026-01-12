@@ -155,6 +155,32 @@ export class OCRService {
 
     return { queued, skipped, failed }
   }
+
+  /**
+   * Resume interrupted OCR tasks on startup
+   * Retries pages that were in 'pending_ocr' or 'recognizing' state
+   * @param pages - Array of pages with id and status
+   */
+  async resumeBatchOCR(
+    pages: Array<{ id: string; status: string }>
+  ): Promise<void> {
+    const resumeStatuses = ['pending_ocr', 'recognizing']
+
+    for (const page of pages) {
+      if (resumeStatuses.includes(page.status)) {
+        try {
+          const imageBlob = await db.getPageImage(page.id)
+          if (imageBlob) {
+            await this.queueOCR(page.id, imageBlob, {
+              prompt_type: 'document'
+            })
+          }
+        } catch (error) {
+          console.error(`[OCRService] Failed to resume task for ${page.id}:`, error)
+        }
+      }
+    }
+  }
 }
 
 export const ocrService = new OCRService()

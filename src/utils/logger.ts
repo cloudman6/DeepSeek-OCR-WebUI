@@ -13,5 +13,6 @@ export const storeLogger = logger.withTag('Store')
 export const addLogger = logger.withTag('Add')
 export const uiLogger = logger.withTag('UI')
 export const workerLogger = logger.withTag('Worker')
+export const ocrLogger = logger.withTag('OCR')
 
 export default logger

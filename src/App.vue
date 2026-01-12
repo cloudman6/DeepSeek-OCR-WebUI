@@ -210,7 +210,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePagesStore } from './stores/pages'
 import type { Page } from './stores/pages'
@@ -222,9 +222,10 @@ import AppHeader from './components/common/AppHeader.vue'
 import EmptyState from './components/common/EmptyState.vue'
 import { NLayout, NLayoutSider, NButton, NIcon, NTooltip, createDiscreteApi, NMessageProvider, NDialogProvider, NNotificationProvider } from 'naive-ui'
 import { ChevronForwardOutline, ChevronBackOutline } from '@vicons/ionicons5'
-// Import documentService to ensure it's initialized and listening to OCR events
-import { documentService } from '@/services/doc-gen'
 import { ocrEvents } from '@/services/ocr/events'
+import { ocrService } from '@/services/ocr'
+import { queueManager } from '@/services/queue'
+
 
 const { t } = useI18n()
 const pagesStore = usePagesStore()
@@ -449,9 +450,19 @@ watch(() => pagesStore.pages, (newPages) => {
   // to avoid race condition and double-triggering during initialization
 }, { deep: true })
 
+// Store resume timer ID to clear it on unmount
+let resumeTimer: ReturnType<typeof setTimeout> | null = null
+
 // Load pages from database on mount and resume PDF processing
 onMounted(async () => {
   await pagesStore.loadPagesFromDB()
+  
+  // Resume any interrupted OCR tasks with a delay to avoid server concurrency issues
+  resumeTimer = setTimeout(async () => {
+    await ocrService.resumeBatchOCR(pagesStore.pages)
+    resumeTimer = null
+  }, 500)
+
   if (pagesStore.pages.length > 0 && !selectedPageId.value) {
     const firstPage = pagesStore.pages[0]
     if (firstPage) {
@@ -489,9 +500,25 @@ onMounted(async () => {
   // Expose store for E2E testing observability
   if (typeof window !== 'undefined') {
     (window as unknown as { pagesStore: typeof pagesStore }).pagesStore = pagesStore
-    // Log documentService to avoid tree-shaking and satisfy linter
-    console.log('[App] Document service initialized', !!documentService)
+    
+    // Handle page refresh/close - this is critical for cleaning up queues
+    window.addEventListener('beforeunload', () => {
+      if (resumeTimer !== null) {
+        clearTimeout(resumeTimer)
+      }
+      queueManager.clear()
+    })
   }
+})
+
+// Clean up on normal component unmount (SPA navigation, not page refresh)
+onBeforeUnmount(() => {  
+  if (resumeTimer !== null) {
+    clearTimeout(resumeTimer)
+  }
+  
+  // Clear queues (note: this won't fire on page refresh, see beforeunload listener above)
+  queueManager.clear()
 })
 </script>
 

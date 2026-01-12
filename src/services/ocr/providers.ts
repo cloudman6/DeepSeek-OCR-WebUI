@@ -1,4 +1,5 @@
 import { config } from '@/config'
+import { ocrLogger } from '@/utils/logger'
 import type { OCRProvider, OCRResult, OCROptions } from './index'
 
 export class DeepSeekOCRProvider implements OCRProvider {
@@ -64,6 +65,16 @@ export class DeepSeekOCRProvider implements OCRProvider {
                 prompt_type: result.prompt_type
             }
         } catch (error) {
+            // Don't log AbortError as it's an expected cancellation signal
+            if (error instanceof Error && error.name === 'AbortError') {
+                throw error;
+            }
+
+            ocrLogger.error('[DeepSeekOCRProvider] Process failed:', {
+                endpoint: config.ocrApiEndpoint,
+                error,
+                options
+            })
             if (error instanceof Error) {
                 throw error;
             }

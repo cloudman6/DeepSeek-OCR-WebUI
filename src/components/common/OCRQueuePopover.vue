@@ -9,8 +9,7 @@
           type="success"
         />
       </div>
-      <div class="header-actions">
-      </div>
+      <div class="header-actions" />
     </div>
 
     <!-- Task List -->
@@ -36,8 +35,7 @@
             :indeterminate="isPartiallySelected"
             size="small"
             @update:checked="handleSelectAll"
-          >
-          </n-checkbox>
+          />
 
           <!-- Remove Selected -->
           <n-button

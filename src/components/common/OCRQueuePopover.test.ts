@@ -5,6 +5,7 @@ import OCRQueuePopover from '@/components/common/OCRQueuePopover.vue'
 import { createTestingPinia } from '@pinia/testing'
 import { usePagesStore } from '@/stores/pages'
 import { i18n } from '@/i18n'
+import { NCheckbox } from 'naive-ui'
 
 // Monkey-patch CSSStyleDeclaration to prevent JSDOM crash on Naive UI styles
 if (typeof CSSStyleDeclaration !== 'undefined') {
@@ -144,6 +145,59 @@ describe('OCRQueuePopover', () => {
 
         await vm.handleItemSelect('p1', true)
         expect(vm.isPartiallySelected).toBe(true)
+
+        // Test unchecking (covers else branch of handleItemSelect)
+        await vm.handleItemSelect('p1', false)
+        expect(vm.selectedIds.has('p1')).toBe(false)
+        expect(vm.isPartiallySelected).toBe(false)
+    })
+
+    it('handles queued task interactions and hover states', async () => {
+        const s = usePagesStore(pinia)
+        const queuedId = 'p2'
+        const cancelSpy = vi.fn()
+        s.cancelOCRTasks = cancelSpy
+
+        // @ts-expect-error - testing-pinia stubs
+        s.pages = [activeTask, queuedTask]
+        // @ts-expect-error - testing-pinia stubs
+        s.activeOCRTasks = [activeTask]
+        // @ts-expect-error - testing-pinia stubs
+        s.queuedOCRTasks = [queuedTask]
+        // @ts-expect-error - testing-pinia stubs
+        s.ocrTaskCount = 2
+
+        const wrapper = mountComponent()
+        const vm = wrapper.vm as unknown as PopoverVM
+        await vm.$nextTick()
+
+        // Find queued tasks section
+        const queuedItems = wrapper.findAll('.task-item.queued')
+        expect(queuedItems.length).toBe(1)
+        const queuedItem = queuedItems[0]
+
+        // Test checkbox interaction
+        const queuedCheckbox = queuedItem!.findComponent(NCheckbox)
+        queuedCheckbox.vm.$emit('update:checked', true)
+        expect(vm.selectedIds.has(queuedId)).toBe(true)
+
+        // Test cancel button hover and click
+        const queuedCancelBtn = queuedItem!.find('button.cancel-btn')
+        expect(queuedCancelBtn.exists()).toBe(true)
+
+        // Trigger hover events to cover mouseenter/mouseleave
+        await queuedCancelBtn.trigger('mouseenter')
+        await queuedCancelBtn.trigger('mouseleave')
+
+        await queuedCancelBtn.trigger('click')
+        expect(cancelSpy).toHaveBeenCalledWith([queuedId])
+
+        // Test active task button hover (toolbar button)
+        const batchBtn = wrapper.find('.list-toolbar .action-btn')
+        if (batchBtn.exists()) {
+            await batchBtn.trigger('mouseenter')
+            await batchBtn.trigger('mouseleave')
+        }
     })
 
     it('cancels selected tasks and clears selection', async () => {

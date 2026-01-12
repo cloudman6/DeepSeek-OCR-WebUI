@@ -312,4 +312,38 @@ describe('OCRService', () => {
       expect(result).toEqual({ queued: 0, skipped: 2, failed: 0 })
     })
   })
+
+
+  describe('resumeBatchOCR', () => {
+    it('should re-queue tasks with recognizing and pending_ocr status', async () => {
+      const service = new OCRService()
+      const pages = [
+        { id: 'p1', status: 'recognizing' },
+        { id: 'p2', status: 'pending_ocr' },
+        { id: 'p3', status: 'ready' } // Should be ignored
+      ] as any[]
+
+      vi.spyOn(db, 'getPageImage').mockResolvedValue(new Blob(['test']))
+      const queueSpy = vi.spyOn(service, 'queueOCR').mockResolvedValue()
+
+      await service.resumeBatchOCR(pages)
+
+      expect(queueSpy).toHaveBeenCalledTimes(2)
+      expect(queueSpy).toHaveBeenCalledWith('p1', expect.any(Blob), expect.objectContaining({ prompt_type: 'document' }))
+      expect(queueSpy).toHaveBeenCalledWith('p2', expect.any(Blob), expect.objectContaining({ prompt_type: 'document' }))
+      expect(queueSpy).not.toHaveBeenCalledWith('p3', expect.any(Blob))
+    })
+
+    it('should handle missing image data', async () => {
+      const service = new OCRService()
+      const pages = [{ id: 'p1', status: 'recognizing' }] as any[]
+
+      vi.spyOn(db, 'getPageImage').mockResolvedValue(undefined)
+      const queueSpy = vi.spyOn(service, 'queueOCR').mockResolvedValue()
+
+      await service.resumeBatchOCR(pages)
+
+      expect(queueSpy).not.toHaveBeenCalled()
+    })
+  })
 })

@@ -20,6 +20,7 @@ const IGNORED_PATTERNS = [
     'OCR task for page',
     'Failed to load resource: the server responded with a status of 500',
     'WebKit encountered an internal error',
+    '[DeepSeekOCRProvider] Process failed', // OCR error handling tests intentionally trigger this
 ];
 
 /**

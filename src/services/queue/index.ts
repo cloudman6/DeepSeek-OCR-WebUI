@@ -9,7 +9,7 @@ export class QueueManager {
 
     constructor() {
         this.ocrQueue = new PQueue({ concurrency: 2 })
-        this.generationQueue = new PQueue({ concurrency: 1 })
+        this.generationQueue = new PQueue({ concurrency: 2 })
         this.ocrControllers = new Map()
         this.genControllers = new Map()
 
