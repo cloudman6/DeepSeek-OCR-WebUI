@@ -4,6 +4,7 @@ import { db, generatePageId } from '@/db/index'
 import type { DBPage } from '@/db/index'
 import { enhancedPdfRenderer } from './enhancedPdfRenderer'
 import { queueLogger } from '@/utils/logger'
+import { getRandomId } from '@/utils/crypto'
 
 // PDF source data cache to avoid memory overhead of per-page copies
 export const pdfSourceCache = new Map<string, { data: ArrayBuffer; totalPages: number; processedCount: number }>()
@@ -499,7 +500,7 @@ export async function queuePDFPages(
 ): Promise<void> {
   try {
     // Generate a source ID for the cache (prefer fileId if available)
-    const sourceId = fileId || `src_${crypto.randomUUID().split('-')[0]}`
+    const sourceId = fileId || `src_${getRandomId()}`
 
     // Cache the PDF data once for all pages of this file
     pdfSourceCache.set(sourceId, {

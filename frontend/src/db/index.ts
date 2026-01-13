@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable, type Transaction } from 'dexie'
 import type { PageProcessingLog, PageOutput } from '@/stores/pages'
 import { isWebkit } from '@/utils/browser'
+import { getRandomId } from '@/utils/crypto'
 
 export interface DBFile {
   id?: string
@@ -492,12 +493,12 @@ function getSecureRandomPart(): string {
 
 export function generatePageId(): string {
   const randomPart = getSecureRandomPart()
-  return `page_${Date.now()}_${randomPart}_${crypto.randomUUID().split('-')[0]}`
+  return `page_${Date.now()}_${randomPart}_${getRandomId()}`
 }
 
 export function generateFileId(): string {
   const randomPart = getSecureRandomPart()
-  return `file_${Date.now()}_${randomPart}_${crypto.randomUUID().split('-')[0]}`
+  return `file_${Date.now()}_${randomPart}_${getRandomId()}`
 }
 
 function generateQueueId(): string {
