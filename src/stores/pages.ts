@@ -6,6 +6,7 @@ import fileAddService from '@/services/add'
 import { pdfEvents } from '@/services/pdf/events'
 import { ocrEvents } from '@/services/ocr/events'
 import { storeLogger } from '@/utils/logger'
+import { getRandomId } from '@/utils/crypto'
 
 export interface PageProcessingLog {
   id: string
@@ -166,7 +167,7 @@ export const usePagesStore = defineStore('pages', () => {
     if (index !== -1) {
       pages.value[index]!.logs.push({
         ...log,
-        id: `page_log_${Date.now()}_${crypto.randomUUID().split('-')[0]}`,
+        id: `page_log_${Date.now()}_${getRandomId()}`,
         timestamp: new Date()
       })
       pages.value[index]!.updatedAt = new Date()

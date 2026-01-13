@@ -38,8 +38,15 @@ Scan2Doc 旨在完全在浏览器内处理文档转换任务。通过利用 Web 
 
 ### 前置条件
 
-- Node.js (推荐最新的 LTS 版本)
-- npm 或 pnpm
+- **Node.js**: 需要 `^20.19.0`, `^22.13.0` 或 `>=24.0.0` 版本 (推荐使用最新的 LTS 版本)。
+  - 如果遇到 `EBADENGINE` 错误或 Node 版本过低 (例如 Node 18)，建议使用 [nvm](https://github.com/nvm-sh/nvm) 管理 Node.js 版本：
+    ```bash
+    # 安装/使用 Node 22 (LTS)
+    nvm install 22
+    nvm use 22
+    nvm alias default 22
+    ```
+- **npm**: 建议使用 v9 或更高版本。
 
 ### 安装
 

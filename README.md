@@ -38,8 +38,15 @@ Scan2Doc is designed to handle document conversion tasks entirely within the bro
 
 ### Prerequisites
 
-- Node.js (Latest LTS recommended)
-- npm or pnpm
+- **Node.js**: Required versions are `^20.19.0`, `^22.13.0`, or `>=24.0.0` (Latest LTS recommended).
+  - If you encounter `EBADENGINE` errors or are on an older version (e.g., Node 18), we recommend using [nvm](https://github.com/nvm-sh/nvm) to manage your Node.js versions:
+    ```bash
+    # Install/Use Node 22 (LTS)
+    nvm install 22
+    nvm use 22
+    nvm alias default 22
+    ```
+- **npm**: v9 or higher is recommended.
 
 ### Installation
 

@@ -1,5 +1,6 @@
 import { db } from '@/db'
 import type { OCRBox } from '@/services/ocr'
+import { getRandomId } from '@/utils/crypto'
 
 export class ImageProcessor {
     /**
@@ -56,7 +57,7 @@ export class ImageProcessor {
 
                 // Generate ID
                 // Format: pageId_index_uuid
-                const imageId = `${pageId}_${index}_${crypto.randomUUID().split('-')[0]}`
+                const imageId = `${pageId}_${index}_${getRandomId()}`
 
                 // Save to DB
                 await db.savePageExtractedImage({
