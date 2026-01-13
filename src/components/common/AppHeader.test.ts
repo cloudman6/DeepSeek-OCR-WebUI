@@ -81,7 +81,7 @@ describe('AppHeader', () => {
     it('renders branding correctly', () => {
         const wrapper = mount(AppHeader, createMountOptions())
 
-        expect(wrapper.text()).toContain('Scan2Doc')
+        expect(wrapper.text()).toContain('DeepSeek-OCR-WebUI')
         expect(wrapper.find('.header-brand').exists()).toBe(true)
     })
 

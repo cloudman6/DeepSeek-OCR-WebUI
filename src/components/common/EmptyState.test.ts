@@ -17,7 +17,7 @@ describe('EmptyState', () => {
     it('renders correctly', () => {
         const wrapper = mount(EmptyState, mountOptions)
 
-        expect(wrapper.text()).toContain('Scan2Doc')
+        expect(wrapper.text()).toContain('DeepSeek-OCR-WebUI')
         expect(wrapper.find('.empty-state-hero').exists()).toBe(true)
     })
 

@@ -1,10 +1,10 @@
-# Scan2Doc
+# DeepSeek-OCR-WebUI
 
 A pure frontend, browser-only document processing tool that converts scanned images and multi-page PDFs into various editable formats using OCR.
 
 ## 🚀 Overview
 
-Scan2Doc is designed to handle document conversion tasks entirely within the browser. By leveraging modern web technologies like Web Workers and IndexedDB, it provides a powerful, privacy-focused alternative to server-side document processing.
+DeepSeek-OCR-WebUI is designed to handle document conversion tasks entirely within the browser. By leveraging modern web technologies like Web Workers and IndexedDB, it provides a powerful, privacy-focused alternative to server-side document processing.
 
 - **Frontend Only**: No backend services required (except for optional third-party OCR APIs).
 - **Privacy First**: Documents never leave your browser for processing.

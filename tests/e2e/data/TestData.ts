@@ -27,7 +27,7 @@ export const TestData = {
   // 国际化翻译
   translations: {
     en: {
-      welcomeTitle: 'Scan2Doc',
+      welcomeTitle: 'DeepSeek-OCR-WebUI',
       welcomeDescription: 'Drop PDF or Images here to start',
       startImport: 'Select Files',
       importButton: 'Import Files',
@@ -42,7 +42,7 @@ export const TestData = {
       downloadMD: 'Download MD'
     },
     'zh-CN': {
-      welcomeTitle: 'Scan2Doc',
+      welcomeTitle: 'DeepSeek-OCR-WebUI',
       welcomeDescription: '拖放 PDF 或图片到此处开始',
       startImport: '选择文件',
       importButton: '导入文件',
