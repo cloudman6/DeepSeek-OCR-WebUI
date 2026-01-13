@@ -205,11 +205,7 @@ async def root():
     if index_file.exists():
         return FileResponse(index_file)
     
-    # Fallback to legacy UI if frontend/dist is not built
-    ui_file = Path(__file__).parent / "ocr_ui_modern.html"
-    if ui_file.exists():
-        return HTMLResponse(content=ui_file.read_text(encoding='utf-8'))
-    return HTMLResponse(content="<h1>DeepSeek-OCR</h1><p>Frontend dist not found and legacy UI missing.</p>")
+    return HTMLResponse(content="<h1>DeepSeek-OCR-WebUI</h1><p>Frontend dist not found.</p>")
 
 @app.get("/health")
 async def health_check():
