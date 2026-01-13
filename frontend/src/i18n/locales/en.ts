@@ -1,7 +1,7 @@
 export default {
   // App
   app: {
-    name: 'Scan2Doc',
+    name: 'DeepSeek-OCR-WebUI',
     expandPageList: 'Expand Page List',
     collapsePageList: 'Collapse Page List',
     expandViewer: 'Expand Viewer',
@@ -18,7 +18,7 @@ export default {
     pagesDeleted: '{0} pages deleted',
     deleteFailed: 'Failed to delete {0}',
     addFailed: 'Add failed. Please try again.',
-    welcomeTitle: 'Scan2Doc',
+    welcomeTitle: 'DeepSeek-OCR-WebUI',
     welcomeDescription: 'Drop PDF or Images here to start',
     startImport: 'Select Files'
   },
@@ -30,7 +30,7 @@ export default {
     pagesLoaded: '{0} Pages Loaded',
     pageLoaded: '{0} Page Loaded',
     importFiles: 'Import Files',
-    scan2Doc: 'Scan2Doc'
+    scan2Doc: 'DeepSeek-OCR-WebUI'
   },
 
   // Page List

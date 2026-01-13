@@ -38,17 +38,6 @@ export interface DBPage {
   createdAt: Date
   updatedAt: Date
   processedAt?: Date
-  // Store original PDF data for reliable re-rendering
-  originalPdfData?: ArrayBuffer
-  // Store PDF base64 for easier reconstruction
-  pdfBase64?: string
-}
-
-export interface DBProcessingQueue {
-  id?: string
-  pageId: string
-  priority: number
-  addedAt: Date
 }
 
 export interface PageImage {
@@ -89,7 +78,6 @@ export interface PageExtractedImage {
 export class Scan2DocDB extends Dexie {
   files!: EntityTable<DBFile, 'id'>
   pages!: EntityTable<DBPage, 'id'>
-  processingQueue!: EntityTable<DBProcessingQueue, 'id'>
   pageImages!: EntityTable<PageImage, 'pageId'>
   counters!: EntityTable<{ id: string; value: number }, 'id'>
 
@@ -102,13 +90,12 @@ export class Scan2DocDB extends Dexie {
   pageExtractedImages!: EntityTable<PageExtractedImage, 'id'>
 
   constructor() {
-    super('Scan2Doc_V1')
+    super('Scan2Doc')
 
-    // Define the final schema directly as Version 2
-    this.version(2).stores({
+    // Define the initial schema as Version 1
+    this.version(1).stores({
       files: 'id, name, type, createdAt',
       pages: 'id, fileName, fileId, status, order, createdAt',
-      processingQueue: 'id, pageId, priority, addedAt',
       pageImages: 'pageId',
       counters: 'id',
       // New tables
@@ -353,7 +340,6 @@ export class Scan2DocDB extends Dexie {
     await this.transaction('rw', [
       this.pages,
       this.pageImages,
-      this.processingQueue,
       this.pageOCRs,
       this.pageMarkdowns,
       this.pagePDFs,
@@ -362,7 +348,6 @@ export class Scan2DocDB extends Dexie {
     ], async () => {
       await this.pages.delete(id)
       await this.pageImages.delete(id)
-      await this.processingQueue.where('pageId').equals(id).delete()
       // Cleanup related data
       await this.pageOCRs.delete(id)
       await this.pageMarkdowns.delete(id)
@@ -376,7 +361,6 @@ export class Scan2DocDB extends Dexie {
     await this.transaction('rw', [
       this.pages,
       this.pageImages,
-      this.processingQueue,
       this.pageOCRs,
       this.pageMarkdowns,
       this.pagePDFs,
@@ -385,7 +369,6 @@ export class Scan2DocDB extends Dexie {
     ], async () => {
       await this.pages.bulkDelete(ids)
       await this.pageImages.bulkDelete(ids)
-      await this.processingQueue.where('pageId').anyOf(ids).delete()
       // Cleanup related data
       await this.pageOCRs.bulkDelete(ids)
       await this.pageMarkdowns.bulkDelete(ids)
@@ -396,45 +379,13 @@ export class Scan2DocDB extends Dexie {
   }
 
   async deleteAllPages(): Promise<void> {
-    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages, this.counters], async () => {
-      const pages = await this.pages.toArray()
-      const pageIds = pages.map(p => p.id!).filter(Boolean)
+    await this.transaction('rw', [this.pages, this.pageImages, this.counters], async () => {
       await this.pages.clear()
       await this.pageImages.clear()
       await this.counters.clear() // Clean up counters too
-      if (pageIds.length > 0) {
-        await this.processingQueue.where('pageId').anyOf(pageIds).delete()
-      }
     })
   }
 
-  // Processing queue methods
-  async addToQueue(pageId: string, priority: number = 0): Promise<string> {
-    const existing = await this.processingQueue.where('pageId').equals(pageId).first()
-    if (existing) return existing.id!.toString()
-
-    // Explicitly generate ID since schema is not auto-incrementing
-    const newEntry: DBProcessingQueue = {
-      id: generateQueueId(),
-      pageId,
-      priority,
-      addedAt: new Date()
-    }
-    await this.processingQueue.add(newEntry)
-    return newEntry.id!
-  }
-
-  async removeFromQueue(pageId: string): Promise<void> {
-    await this.processingQueue.where('pageId').equals(pageId).delete()
-  }
-
-  async getNextFromQueue(): Promise<DBProcessingQueue | undefined> {
-    return await this.processingQueue.orderBy('priority').reverse().first()
-  }
-
-  async getQueueCount(): Promise<number> {
-    return await this.processingQueue.count()
-  }
 
   async saveAddedPage(pageData: Omit<DBPage, 'id' | 'createdAt' | 'updatedAt' | 'order'>): Promise<string> {
     const order = await this.getNextOrder()
@@ -462,12 +413,7 @@ export class Scan2DocDB extends Dexie {
   }
 
   async clearAllData(): Promise<void> {
-    await this.transaction('rw', [this.pages, this.processingQueue, this.pageImages, this.counters], async () => {
-      await this.pages.clear()
-      await this.processingQueue.clear()
-      await this.pageImages.clear()
-      await this.counters.clear()
-    })
+    await this.deleteAllPages()
   }
 
   async updatePage(id: string, updates: Partial<DBPage>): Promise<number> {
@@ -499,9 +445,4 @@ export function generatePageId(): string {
 export function generateFileId(): string {
   const randomPart = getSecureRandomPart()
   return `file_${Date.now()}_${randomPart}_${getRandomId()}`
-}
-
-function generateQueueId(): string {
-  const randomPart = getSecureRandomPart()
-  return `queue_${Date.now()}_${randomPart}`
 }

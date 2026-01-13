@@ -1,7 +1,7 @@
 export default {
   // App
   app: {
-    name: 'Scan2Doc',
+    name: 'DeepSeek-OCR-WebUI',
     expandPageList: '展开页面列表',
     collapsePageList: '收起页面列表',
     expandViewer: '展开查看器',
@@ -18,7 +18,7 @@ export default {
     pagesDeleted: '已删除 {0} 个页面',
     deleteFailed: '删除{0}失败',
     addFailed: '添加失败，请重试。',
-    welcomeTitle: 'Scan2Doc',
+    welcomeTitle: 'DeepSeek-OCR-WebUI',
     welcomeDescription: '拖放 PDF 或图片到此处开始',
     startImport: '选择文件'
   },
@@ -30,7 +30,7 @@ export default {
     pagesLoaded: '已加载 {0} 个页面',
     pageLoaded: '已加载 {0} 个页面',
     importFiles: '导入文件',
-    scan2Doc: 'Scan2Doc'
+    scan2Doc: 'DeepSeek-OCR-WebUI'
   },
 
   // Page List

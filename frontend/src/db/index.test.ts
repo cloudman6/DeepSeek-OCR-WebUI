@@ -74,7 +74,6 @@ describe('Scan2DocDB', () => {
         await db.pages.clear()
         await db.files.clear()
         await db.pageImages.clear()
-        await db.processingQueue.clear()
         await db.counters.clear()
 
         // Clear new tables
@@ -200,13 +199,11 @@ describe('Scan2DocDB', () => {
             const pageId = 'p1'
             await db.savePage(createTestPage(pageId))
             await db.savePageImage(pageId, new Blob(['test']))
-            await db.addToQueue(pageId, 1)
 
             await db.deletePage(pageId)
 
             expect(await db.getPage(pageId)).toBeUndefined()
             expect(await db.getPageImage(pageId)).toBeUndefined()
-            expect(await db.getQueueCount()).toBe(0)
         })
 
         it('should save added page with defaults', async () => {
@@ -255,24 +252,6 @@ describe('Scan2DocDB', () => {
         })
     })
 
-    describe('Processing Queue Methods', () => {
-        it('should add to and remove from queue', async () => {
-            const pageId = 'p1'
-            const qid = await db.addToQueue(pageId, 10)
-            expect(qid).toBeDefined()
-
-            await db.removeFromQueue(pageId)
-            expect(await db.getQueueCount()).toBe(0)
-        })
-
-        it('should get next from queue based on priority', async () => {
-            await db.addToQueue('p1', 1)
-            await db.addToQueue('p2', 10)
-
-            const next = await db.getNextFromQueue()
-            expect(next?.pageId).toBe('p2')
-        })
-    })
 
     describe('Utility Methods', () => {
         it('should clear all data', async () => {
@@ -399,7 +378,6 @@ describe('Scan2DocDB', () => {
             // 1. Create records in all tables
             await db.savePage(createTestPage(pageId))
             await db.savePageImage(pageId, new Blob(['img']))
-            await db.addToQueue(pageId, 1)
             await db.savePageOCR({
                 pageId,
                 data: { success: true, text: 't', raw_text: 't', boxes: [], image_dims: { w: 1, h: 1 }, prompt_type: 'text' },
@@ -416,7 +394,6 @@ describe('Scan2DocDB', () => {
             // 3. Verify everything is gone
             expect(await db.getPage(pageId)).toBeUndefined()
             expect(await db.getPageImage(pageId)).toBeUndefined()
-            expect(await db.processingQueue.where('pageId').equals(pageId).count()).toBe(0)
             expect(await db.getPageOCR(pageId)).toBeUndefined()
             expect(await db.getPageMarkdown(pageId)).toBeUndefined()
             expect(await db.getPagePDF(pageId)).toBeUndefined()
@@ -438,8 +415,6 @@ describe('Scan2DocDB', () => {
                     data: { success: true, text: 't', raw_text: 't', boxes: [], image_dims: { w: 1, h: 1 }, prompt_type: 'text' },
                     createdAt: new Date()
                 })
-                // Add p1 to queue, p2 not (to vary it)
-                if (id === p1) await db.addToQueue(id, 1)
             }
 
             // 2. Perform batch deletion
@@ -451,7 +426,6 @@ describe('Scan2DocDB', () => {
                 expect(await db.getPageImage(id)).toBeUndefined()
                 expect(await db.getPageOCR(id)).toBeUndefined()
             }
-            expect(await db.processingQueue.where('pageId').anyOf(ids).count()).toBe(0)
         })
     })
 
@@ -461,14 +435,12 @@ describe('Full Coverage Scenarios', () => {
     it('should delete all pages and associated data', async () => {
         const pageId = 'p_del_all'
         await db.savePage(createTestPage(pageId))
-        await db.addToQueue(pageId, 1)
         await db.savePageImage(pageId, new Blob(['test']))
 
         await db.deleteAllPages()
 
         expect(await db.pages.count()).toBe(0)
         expect(await db.pageImages.count()).toBe(0)
-        expect(await db.processingQueue.count()).toBe(0)
     })
 
     it('should update pages order', async () => {

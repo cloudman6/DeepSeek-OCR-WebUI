@@ -1,10 +1,10 @@
-# Scan2Doc
+# DeepSeek-OCR-WebUI
 
 一个纯前端、仅限浏览器的文档处理工具，可利用 OCR 将扫描图像和多页 PDF 转换为 Markdown, DOCX, PDF等多种可编辑格式。
 
 ## 🚀 概览
 
-Scan2Doc 旨在完全在浏览器内处理文档转换任务。通过利用 Web Workers 和 IndexedDB 等现代 Web 技术，它提供了一个功能强大、注重隐私的替代方案，取代了服务器端文档处理。
+DeepSeek-OCR-WebUI 旨在完全在浏览器内处理文档转换任务。通过利用 Web Workers 和 IndexedDB 等现代 Web 技术，它提供了一个功能强大、注重隐私的替代方案，取代了服务器端文档处理。
 
 - **仅限前端**：无需后端服务（可选的第三方 OCR API 除外）。
 - **隐私至上**：文档处理过程中绝不会离开您的浏览器。
