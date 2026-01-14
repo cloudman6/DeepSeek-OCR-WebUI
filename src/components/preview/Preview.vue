@@ -61,7 +61,6 @@
         <NSwitch
           v-model:value="mdViewMode"
           size="small"
-          :round="false"
         >
           <template #checked-icon>
             <NIcon :component="Eye" />

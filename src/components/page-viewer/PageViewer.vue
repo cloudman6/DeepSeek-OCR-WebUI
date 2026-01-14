@@ -5,19 +5,19 @@
     class="page-viewer"
   >
     <!-- Header with page info and controls -->
-    <n-card
+    <NCard
       class="viewer-header"
       size="small"
       :bordered="false"
     >
-      <n-space
+      <NSpace
         justify="space-between"
         align="center"
       >
         <h3 class="page-title">
           {{ currentPage?.fileName || '---' }}
         </h3>
-        <n-space
+        <NSpace
           align="center"
           size="small"
         >
@@ -31,37 +31,55 @@
               @run="handleOCRRun"
             />
           </div>
-          <n-divider vertical />
-          <n-button-group size="small">
-            <n-button
-              :disabled="zoomLevel <= 0.25"
-              @click="zoomOut"
-            >
-              <template #icon>
-                −
-              </template>
-            </n-button>
-            <n-button disabled>
-              {{ Math.round(zoomLevel * 100) }}%
-            </n-button>
-            <n-button
-              :disabled="zoomLevel >= 3"
-              @click="zoomIn"
-            >
-              <template #icon>
-                +
-              </template>
-            </n-button>
-          </n-button-group>
-          <n-button
+          <NDivider vertical />
+          <NSpace
+            align="center"
             size="small"
-            @click="fitToScreen"
           >
-            {{ $t('pageViewer.fit') }}
-          </n-button>
-        </n-space>
-      </n-space>
-    </n-card>
+            <NSwitch 
+              :value="pagesStore.showOverlay" 
+              size="small"
+              @update:value="pagesStore.setShowOverlay"
+            >
+              <template #checked-icon>
+                <NIcon :component="ColorWand" />
+              </template>
+              <template #unchecked-icon>
+                <NIcon :component="ColorWandOutline" />
+              </template>
+            </NSwitch>
+            <NDivider vertical />
+            <NButtonGroup size="small">
+              <NButton
+                :disabled="zoomLevel <= 0.25"
+                @click="zoomOut"
+              >
+                <template #icon>
+                  −
+                </template>
+              </NButton>
+              <NButton disabled>
+                {{ Math.round(zoomLevel * 100) }}%
+              </NButton>
+              <NButton
+                :disabled="zoomLevel >= 3"
+                @click="zoomIn"
+              >
+                <template #icon>
+                  +
+                </template>
+              </NButton>
+            </NButtonGroup>
+            <NButton
+              size="small"
+              @click="fitToScreen"
+            >
+              {{ $t('pageViewer.fit') }}
+            </NButton>
+          </NSpace>
+        </NSpace>
+      </NSpace>
+    </NCard>
 
     <!-- Main image display area -->
     <div
@@ -90,7 +108,7 @@
           >
           <!-- OCR Result Overlay inside the scaled group -->
           <OCRResultOverlay
-            v-if="ocrResult?.raw_text && !imageLoading"
+            v-if="ocrResult?.raw_text && !imageLoading && pagesStore.showOverlay"
             :raw-text="ocrResult.raw_text"
             :image-dims="ocrResult.image_dims"
           />
@@ -238,10 +256,12 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { uiLogger } from '@/utils/logger'
-import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText } from 'naive-ui'
+import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText, NSwitch, NIcon, NDivider } from 'naive-ui'
+import { ColorWand, ColorWandOutline } from '@vicons/ionicons5'
 import { db } from '@/db'
 import { ocrService, type OCRResult, type OCRPromptType } from '@/services/ocr'
-import { useMessage, useNotification, NDivider } from 'naive-ui'
+import { useMessage, useNotification } from 'naive-ui'
+import { usePagesStore } from '@/stores/pages'
 import OCRModeSelector from '@/components/ocr/OCRModeSelector.vue'
 import OCRInputModal from '@/components/ocr/OCRInputModal.vue'
 import OCRResultOverlay from '@/components/ocr/OCRResultOverlay.vue'
@@ -260,6 +280,7 @@ const props = defineProps<{
 
 const message = useMessage()
 const notification = useNotification()
+const pagesStore = usePagesStore()
 const zoomLevel = ref(1)
 // const imageContainer = ref<HTMLElement>() // Unused ref removed
 const imageSize = ref<string>('')

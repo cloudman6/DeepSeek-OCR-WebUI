@@ -3,7 +3,7 @@ import { MarkdownAssembler } from './markdown'
 import type { OCRResult } from '@/services/ocr'
 import sample1 from '../../../tests/e2e/samples/sample1.json'
 import sample4 from '../../../tests/e2e/samples/sample4.json'
-import testJson from '../../../tests/e2e/samples/test.json'
+import sample5 from '../../../tests/e2e/samples/sample5.json'
 
 describe('MarkdownAssembler', () => {
     const assembler = new MarkdownAssembler()
@@ -238,7 +238,7 @@ describe('MarkdownAssembler', () => {
         expect(result).not.toContain('\\(100^{\\circ}\\mathrm{C}\\)')
     })
 
-    describe('Text-Image Layout (test.json scenario)', () => {
+    describe('Text-Image Layout (sample5.json scenario)', () => {
         it('should group vertically stacked text blocks in the same column', () => {
             /*
              * Layout: Two text blocks on the left, image on the right
@@ -347,9 +347,9 @@ describe('MarkdownAssembler', () => {
             expect(result).toContain('Body content')
         })
 
-        it('should correctly layout test.json with left-text and right-image using boxes coordinates', () => {
+        it('should correctly layout sample5.json with left-text and right-image using boxes coordinates', () => {
             /*
-             * test.json has:
+             * sample5.json has:
              * - Block 5 (text): X: 119-870, Y: 596-676 (left)
              * - Block 6 (text): X: 119-872, Y: 680-977 (left, below Block 5)
              * - Block 7 (image): X: 893-1250, Y: 596-943 (right, overlaps both texts in Y)
@@ -360,7 +360,7 @@ describe('MarkdownAssembler', () => {
              *   - Right column: image + caption merged
              */
             // @ts-expect-error -- importing json as any/unknown
-            const result = assembler.assemble(testJson as OCRResult, new Map([['7', 'test-image']]))
+            const result = assembler.assemble(sample5 as OCRResult, new Map([['7', 'test-image']]))
 
             // Should have table structure for the text+image section
             expect(result).toMatch(/<table\s/)
