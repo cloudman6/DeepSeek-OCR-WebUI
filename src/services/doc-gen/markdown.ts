@@ -9,8 +9,16 @@ interface Block {
     isImage: boolean
 }
 
-interface Row {
+
+interface Column {
     blocks: Block[]
+    left: number
+    right: number
+    centerX: number
+}
+
+interface VisualRow {
+    columns: Column[]
     top: number
     bottom: number
 }
@@ -41,15 +49,15 @@ export class MarkdownAssembler {
             return ocrResult.raw_text
         }
 
-        // 2. Layout Analysis: Group blocks into visual rows
-        const rows = this.groupIntoRows(blocks)
+        // 2. Layout Analysis: Analyze layout using column-based algorithm
+        const visualRows = this.analyzeLayout(blocks)
 
-        // 3. Render rows
+        // 3. Render visual rows
         // We need image width to calculate table percentages. 
         // Default to a reasonable width if missing (e.g. 1000)
         const pageW = ocrResult.image_dims?.w || 1000
 
-        let markdown = this.renderRows(rows, pageW)
+        let markdown = this.renderVisualRows(visualRows, pageW)
 
         // 4. Handle remaining/unmatched images (Legacy fallback support)
         // Check which images were used
@@ -97,37 +105,9 @@ export class MarkdownAssembler {
             }
 
             // 2. Process the match
-            const type = match[1]!.trim().toLowerCase()
-            const coordsStr = match[2]!
-            const rawContent = match[3]!
-            const coords = coordsStr.split(',').map(Number)
-
-            if (coords.length === 4) {
-                // Map to image
-                const matchedIndex = this.findMatchingBoxIndex(coords, ocrResult.boxes, ocrResult.image_dims)
-                const imageId = matchedIndex !== -1 ? imageMap.get(matchedIndex.toString()) : undefined
-
-                let isImage = (type === 'image' || type === 'figure')
-                let content = this.cleanContent(rawContent.trim())
-
-                // If we have an image ID, force treat as image and generate Markdown link
-                if (imageId) {
-                    isImage = true
-                    const caption = `Figure ${this.figureCount++}`
-                    content = `![${caption}](scan2doc-img:${imageId})`
-                }
-
-                // Normalize box to absolute coordinates
-
-                const absBox = normalizeBox(coords, ocrResult.image_dims!)
-
-                blocks.push({
-                    type,
-                    content,
-                    box: absBox,
-                    imageId,
-                    isImage
-                })
+            const block = this.processBlockMatch(match, ocrResult, imageMap)
+            if (block) {
+                blocks.push(block)
             }
 
             lastIndex = regex.lastIndex
@@ -150,6 +130,49 @@ export class MarkdownAssembler {
         return blocks
     }
 
+
+    private processBlockMatch(match: RegExpExecArray, ocrResult: OCRResult, imageMap: Map<string, string>): Block | null {
+        const type = match[1]!.trim().toLowerCase()
+        const coordsStr = match[2]!
+        const rawContent = match[3]!
+        const coords = coordsStr.split(',').map(Number)
+
+        if (coords.length !== 4) return null
+
+        // Map to image and find matching box for accurate coordinates
+        const matchedIndex = this.findMatchingBoxIndex(coords, ocrResult.boxes, ocrResult.image_dims)
+        const imageId = matchedIndex !== -1 ? imageMap.get(matchedIndex.toString()) : undefined
+
+        let isImage = (type === 'image' || type === 'figure')
+        let content = this.cleanContent(rawContent.trim())
+
+        // If we have an image ID, force treat as image and generate Markdown link
+        if (imageId) {
+            isImage = true
+            const caption = `Figure ${this.figureCount++}`
+            content = `![${caption}](scan2doc-img:${imageId})`
+        }
+
+        // Use boxes array coordinates if available (more accurate than normalized raw_text coords)
+        // Otherwise, normalize the raw_text coordinates
+        let absBox: number[]
+        if (matchedIndex !== -1 && ocrResult.boxes[matchedIndex]) {
+            // Use the accurate pixel coordinates from boxes array
+            absBox = ocrResult.boxes[matchedIndex]!.box
+        } else {
+            // Fallback: normalize the raw_text coordinates
+            absBox = normalizeBox(coords, ocrResult.image_dims!)
+        }
+
+        return {
+            type,
+            content,
+            box: absBox,
+            imageId,
+            isImage
+        }
+    }
+
     private cleanContent(text: string): string {
 
         // Normalize LaTeX delimiters
@@ -166,118 +189,290 @@ export class MarkdownAssembler {
         return cleaned
     }
 
-    private groupIntoRows(blocks: Block[]): Row[] {
-        if (blocks.length === 0) return []
+    /**
+     * Bind image blocks with their adjacent captions.
+     * Merges content of caption into image block and marks caption as consumed.
+     */
+    private bindImageCaptions(blocks: Block[]): Block[] {
+        const result: Block[] = []
+        const consumedIndices = new Set<number>()
 
-        // Sort by Y1 (top)
+        // Sort by Y position for proper adjacency detection
         const sorted = [...blocks].sort((a, b) => (a.box[1] || 0) - (b.box[1] || 0))
-        const rows: Row[] = []
 
-        let currentRow: Row | null = null
+        for (let i = 0; i < sorted.length; i++) {
+            if (consumedIndices.has(i)) continue
 
-        for (const block of sorted) {
-            // Ignore empty content blocks (e.g. just a placeholder ref with no text/image)
-            if (!block.content && !block.isImage) continue
+            const block = sorted[i]!
 
-            const bTop = block.box[1] || 0
-            const bBottom = block.box[3] || 0
+            // Check if this is an image block
+            if (block.isImage || block.type === 'image' || block.type === 'figure') {
+                const captionIndex = this.findAdjacentCaptionIndex(block, sorted, i + 1, consumedIndices)
+                if (captionIndex !== -1) {
+                    const candidate = sorted[captionIndex]!
+                    block.content = block.content + '<br/>' + candidate.content
+                    block.box[3] = Math.max(block.box[3] || 0, candidate.box[3] || 0)
+                    consumedIndices.add(captionIndex)
+                }
+            }
 
-            if (!currentRow) {
-                currentRow = { blocks: [block], top: bTop, bottom: bBottom }
+            result.push(block)
+        }
+
+        return result
+    }
+    private findAdjacentCaptionIndex(imageBlock: Block, sortedBlocks: Block[], startIndex: number, consumedIndices: Set<number>): number {
+        for (let j = startIndex; j < sortedBlocks.length; j++) {
+            if (consumedIndices.has(j)) continue
+            if (this.isAdjacentCaption(imageBlock, sortedBlocks[j]!)) {
+                return j
+            }
+        }
+        return -1
+    }
+
+    private isAdjacentCaption(imageBlock: Block, candidate: Block): boolean {
+        // Check if it's a caption type or text that looks like a caption
+        const isCaption = ['image_caption', 'caption', 'figure_caption'].includes(candidate.type)
+        if (!isCaption) return false
+
+        return this.isVerticallyAdjacent(imageBlock, candidate) &&
+            this.isHorizontallyAligned(imageBlock, candidate)
+    }
+
+    private isVerticallyAdjacent(imageBlock: Block, candidate: Block): boolean {
+        const imageBottom = imageBlock.box[3] || 0
+        const candidateTop = candidate.box[1] || 0
+        const verticalGap = candidateTop - imageBottom
+        return verticalGap >= -10 && verticalGap <= 100
+    }
+
+    private isHorizontallyAligned(imageBlock: Block, candidate: Block): boolean {
+        const imageLeft = imageBlock.box[0] || 0
+        const imageRight = imageBlock.box[2] || 0
+        const candidateLeft = candidate.box[0] || 0
+        const candidateRight = candidate.box[2] || 0
+        const candidateCenterX = (candidateLeft + candidateRight) / 2
+        return candidateCenterX >= imageLeft - 50 && candidateCenterX <= imageRight + 50
+    }
+
+    /**
+     * Check if a block is a heading/title type (should not be in layout tables)
+     */
+    private isHeadingType(block: Block): boolean {
+        const type = block.type.toLowerCase()
+        return type === 'sub_title' || type === 'title'
+    }
+
+    /**
+     * Analyze layout and identify visual rows from columns.
+     * A visual row contains blocks from different columns that have Y-axis overlap.
+     * 
+     * Strategy: For each potential visual row, find all blocks that overlap in Y,
+     * then cluster those blocks into columns based on X-axis separation.
+     * 
+     * Note: Heading blocks are always rendered as single-column rows and do not
+     * participate in multi-column layout detection.
+     */
+    private analyzeLayout(blocks: Block[]): VisualRow[] {
+        // First bind images with their captions
+        const boundBlocks = this.bindImageCaptions(blocks)
+
+        // Filter out empty blocks
+        const validBlocks = boundBlocks.filter(b => b.content || b.isImage)
+
+        if (validBlocks.length === 0) return []
+
+        // Sort all blocks by top Y
+        const sortedByY = [...validBlocks].sort((a, b) => (a.box[1] || 0) - (b.box[1] || 0))
+
+        const visualRows: VisualRow[] = []
+        const assignedBlocks = new Set<Block>()
+
+        for (const seedBlock of sortedByY) {
+            if (assignedBlocks.has(seedBlock)) continue
+
+            // Headings are always rendered as single-column rows
+            // They do not participate in multi-column layout
+            if (this.isHeadingType(seedBlock)) {
+                assignedBlocks.add(seedBlock)
+                visualRows.push(this.createHeadingVisualRow(seedBlock))
                 continue
             }
 
-            // Calculate Vertical Intersection over Union (or just Intersection check)
-            // Intersection
-            const y1 = Math.max(currentRow.top, bTop)
-            const y2 = Math.min(currentRow.bottom, bBottom)
-            const intersection = Math.max(0, y2 - y1)
+            // Create a multi-column visual row starting with this block
+            const rowBlocks = this.collectOverlappingBlocks(seedBlock, sortedByY, assignedBlocks)
+            const rowTop = Math.min(...rowBlocks.map(b => b.box[1] || 0))
+            const rowBottom = Math.max(...rowBlocks.map(b => b.box[3] || 0))
 
-            // Compare intersection to heights
-            const rowH = currentRow.bottom - currentRow.top
-            const blockH = bBottom - bTop
-            const minH = Math.min(rowH, blockH)
+            // Now we have all blocks in this visual row
+            // Cluster them into columns based on X-axis separation
+            const rowColumns = this.clusterBlocksIntoColumns(rowBlocks)
 
-            // Threshold: if they overlap significantly (e.g. > 50% of the smaller item's height)
-            // AND they don't overlap horizontally (which would mean they are layered?? shouldn't happen in OCR usually)
-            // OR if the block is essentially "inside" the row Y-range
-            if (intersection > minH * 0.5) {
-                // Add to row
-                currentRow.blocks.push(block)
-                // Expand row bounds
-                currentRow.top = Math.min(currentRow.top, bTop)
-                currentRow.bottom = Math.max(currentRow.bottom, bBottom)
-            } else {
-                // Finish old row
-                // Sort blocks in row by X1
-                currentRow.blocks.sort((a, b) => (a.box[0] || 0) - (b.box[0] || 0))
-                rows.push(currentRow)
-                // Start new row
-                currentRow = { blocks: [block], top: bTop, bottom: bBottom }
+            if (rowColumns.length > 0) {
+                visualRows.push({
+                    columns: rowColumns,
+                    top: rowTop,
+                    bottom: rowBottom
+                })
             }
         }
 
-        if (currentRow) {
-            currentRow.blocks.sort((a, b) => (a.box[0] || 0) - (b.box[0] || 0))
-            rows.push(currentRow)
-        }
+        // Sort visual rows by top Y
+        visualRows.sort((a, b) => a.top - b.top)
 
-        return rows
+        return visualRows
     }
 
-    private renderRows(rows: Row[], pageW: number): string {
+    private createHeadingVisualRow(block: Block): VisualRow {
+        return {
+            columns: [{
+                blocks: [block],
+                left: block.box[0] || 0,
+                right: block.box[2] || 0,
+                centerX: ((block.box[0] || 0) + (block.box[2] || 0)) / 2
+            }],
+            top: block.box[1] || 0,
+            bottom: block.box[3] || 0
+        }
+    }
+
+    private collectOverlappingBlocks(seedBlock: Block, allBlocks: Block[], assignedBlocks: Set<Block>): Block[] {
+        let rowTop = seedBlock.box[1] || 0
+        let rowBottom = seedBlock.box[3] || 0
+        const rowBlocks: Block[] = [seedBlock]
+        assignedBlocks.add(seedBlock)
+
+        while (true) {
+            const overlapping = allBlocks.find(block => {
+                if (assignedBlocks.has(block) || this.isHeadingType(block)) return false
+                const blockTop = block.box[1] || 0
+                const blockBottom = block.box[3] || 0
+                return blockTop < rowBottom && blockBottom > rowTop
+            })
+
+            if (!overlapping) break
+
+            rowBlocks.push(overlapping)
+            assignedBlocks.add(overlapping)
+            rowTop = Math.min(rowTop, overlapping.box[1] || 0)
+            rowBottom = Math.max(rowBottom, overlapping.box[3] || 0)
+        }
+        return rowBlocks
+    }
+
+    /**
+     * Cluster a set of blocks (already known to be in the same Y range) into columns.
+     * Blocks that don't overlap in X are placed in different columns.
+     */
+    private clusterBlocksIntoColumns(blocks: Block[]): Column[] {
+        if (blocks.length === 0) return []
+
+        // Sort by X center
+        const sorted = [...blocks].sort((a, b) => {
+            const aCenterX = ((a.box[0] || 0) + (a.box[2] || 0)) / 2
+            const bCenterX = ((b.box[0] || 0) + (b.box[2] || 0)) / 2
+            return aCenterX - bCenterX
+        })
+
+        const columns: Column[] = []
+
+        for (const block of sorted) {
+            const blockLeft = block.box[0] || 0
+            const blockRight = block.box[2] || 0
+            const blockCenterX = (blockLeft + blockRight) / 2
+            const blockWidth = blockRight - blockLeft
+
+            // Try to find an existing column this block belongs to
+            let bestColumn: Column | null = null
+            let bestOverlap = 0
+
+            for (const column of columns) {
+                // Calculate horizontal overlap
+                const overlapLeft = Math.max(column.left, blockLeft)
+                const overlapRight = Math.min(column.right, blockRight)
+                const overlap = Math.max(0, overlapRight - overlapLeft)
+
+                // Check if significant overlap exists (> 30% of smaller width)
+                const colWidth = column.right - column.left
+                const minWidth = Math.min(colWidth, blockWidth)
+
+                if (overlap > minWidth * 0.3 && overlap > bestOverlap) {
+                    bestColumn = column
+                    bestOverlap = overlap
+                }
+            }
+
+            if (bestColumn) {
+                // Add to existing column
+                bestColumn.blocks.push(block)
+                bestColumn.left = Math.min(bestColumn.left, blockLeft)
+                bestColumn.right = Math.max(bestColumn.right, blockRight)
+                bestColumn.centerX = (bestColumn.left + bestColumn.right) / 2
+            } else {
+                // Create new column
+                columns.push({
+                    blocks: [block],
+                    left: blockLeft,
+                    right: blockRight,
+                    centerX: blockCenterX
+                })
+            }
+        }
+
+        // Sort blocks within each column by Y position
+        for (const column of columns) {
+            column.blocks.sort((a, b) => (a.box[1] || 0) - (b.box[1] || 0))
+        }
+
+        // Sort columns by X position
+        columns.sort((a, b) => a.left - b.left)
+
+        return columns
+    }
+
+    /**
+     * Render visual rows into HTML/Markdown output.
+     */
+    private renderVisualRows(visualRows: VisualRow[], pageW: number): string {
         let output = ''
 
-        for (const row of rows) {
-            const blocks = row.blocks
-            if (blocks.length === 0) continue
+        for (const row of visualRows) {
+            if (row.columns.length === 0) continue
 
-            if (blocks.length === 1) {
-                // Normal paragraph
-                output += blocks[0]!.content + '\n\n'
+            if (row.columns.length === 1 && row.columns[0]!.blocks.length === 1) {
+                // Single block row - render as paragraph
+                const block = row.columns[0]!.blocks[0]!
+                output += block.content + '\n\n'
             } else {
-                // Multi-column layout -> HTML Table
-                // Calculate percentages
-                // We use spaces between blocks as well? 
-                // Simple approach: block width / pageW. Scaling to 100% total?
-                // Better: block width / sum(block widths)? Or relative to page?
-                // Relative to page is safer to preserve "gaps".
-
-                const cells = blocks.map(b => {
-                    const w = Math.max(1, (b.box[2] || 0) - (b.box[0] || 0))
+                // Multi-column or multi-block row - render as table
+                const cells = row.columns.map(column => {
+                    // Calculate column width
+                    const w = Math.max(1, column.right - column.left)
                     const pct = Math.round((w / pageW) * 100)
-                    return { content: b.content, width: pct }
+
+                    // Merge all blocks in this column with <br/><br/>
+                    let content = column.blocks.map(b => b.content).join('<br/><br/>')
+
+                    // Convert Markdown images to HTML for table cells
+                    content = content.replace(
+                        /!\[([^\]]*)\]\(scan2doc-img:([^)]+)\)/g,
+                        '<img src="scan2doc-img:$2" alt="$1" />'
+                    )
+
+                    return { content, width: pct }
                 })
 
-                // Normalize widths to always sum to 100%
+                // Normalize widths to sum to 100%
                 const totalPct = cells.reduce((sum, c) => sum + c.width, 0)
                 if (totalPct > 0) {
                     cells.forEach(c => c.width = Math.round(c.width / totalPct * 100))
                 }
 
-                // Convert Markdown images to HTML for table cells (HTML doesn't parse MD syntax)
+                // Use 'layout-table' class to distinguish from OCR data tables, and inline styles for safety
+                output += '<table class="layout-table" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; border: none;"><tr>'
                 cells.forEach(c => {
-                    c.content = c.content.replace(
-                        /!\[([^\]]*)\]\(scan2doc-img:([^)]+)\)/g,
-                        '<img src="scan2doc-img:$2" alt="$1" />'
-                    )
-                })
-
-                output += '<table><tr>'
-                cells.forEach(c => {
-                    // Convert content to HTML? No, Markdown inside HTML is tricky.
-                    // Common Markdown parsers support Markdown in block HTML if empty lines present?
-                    // Or we just output raw markdown and hope.
-                    // Standard: <td width="50%">...</td>
-                    // For best compatibility, usually we need a blank line before/after table? 
-                    // But inside TD? Markdown-it might not parse markdown inside HTML tags by default.
-                    // User requirement: "尽量还原". HTML table is acceptable.
-                    // If content is simple text, it's fine. If it's `![img](...)`, it's Markdown.
-                    // Many viewers render MD inside TD.
-
-                    // We can also use "display: flex" div? But user accepted Table plan.
-
-                    output += `<td width="${c.width}%">${c.content}</td>`
+                    output += `<td width="${c.width}%" style="border: none; vertical-align: top;">${c.content}</td>`
                 })
                 output += '</tr></table>\n\n'
             }
@@ -285,7 +480,6 @@ export class MarkdownAssembler {
 
         return output
     }
-
 
 
     // eslint-disable-next-line complexity

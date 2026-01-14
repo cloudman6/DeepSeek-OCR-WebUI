@@ -692,21 +692,34 @@ onUnmounted(() => {
   color: #24292f;
 }
 
-:deep(.markdown-render-area table) {
+:deep(.markdown-render-area table:not(.layout-table)) {
   border-collapse: collapse !important;
   margin-bottom: 1rem !important;
   border: 1px solid #d1d5db !important;
 }
 
-:deep(.markdown-render-area th),
-:deep(.markdown-render-area td) {
+:deep(.markdown-render-area table:not(.layout-table) th),
+:deep(.markdown-render-area table:not(.layout-table) td) {
   border: 1px solid #d1d5db !important;
   padding: 8px !important;
 }
 
-:deep(.markdown-render-area th) {
+:deep(.markdown-render-area table:not(.layout-table) th) {
   background-color: #f3f4f6 !important;
   font-weight: 600 !important;
+}
+
+/* Layout tables (generated for side-by-side content) should have no borders */
+:deep(.markdown-render-area table.layout-table) {
+  border: none !important;
+  border-collapse: collapse !important;
+  margin-bottom: 1rem !important;
+}
+
+:deep(.markdown-render-area table.layout-table td) {
+  border: none !important;
+  padding: 0 8px !important;
+  vertical-align: top !important;
 }
 
 /* Ensure KaTeX superscript layout is not messed up by global resets */

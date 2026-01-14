@@ -7,7 +7,7 @@ test('Smoke Verification', async ({ page }) => {
   await app.waitForAppReady();
 
   // Verify title
-  expect(await app.getTitle()).toMatch(/scan2doc/i);
+  expect(await app.getTitle()).toMatch(/DeepSeek-OCR-WebUI/i);
 
   // Verify main layout elements
   await expect(page.getByTestId('app-container')).toBeVisible();

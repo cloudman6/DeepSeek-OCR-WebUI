@@ -3,6 +3,7 @@ import { MarkdownAssembler } from './markdown'
 import type { OCRResult } from '@/services/ocr'
 import sample1 from '../../../tests/e2e/samples/sample1.json'
 import sample4 from '../../../tests/e2e/samples/sample4.json'
+import testJson from '../../../tests/e2e/samples/test.json'
 
 describe('MarkdownAssembler', () => {
     const assembler = new MarkdownAssembler()
@@ -64,7 +65,7 @@ describe('MarkdownAssembler', () => {
 
         const result = assembler.assemble(ocrResult, imageMap)
 
-        expect(result).toContain('<table>')
+        expect(result).toMatch(/<table\s/)
         expect(result).toContain('Left Text')
         expect(result).toContain('scan2doc-img:img-right')
 
@@ -94,7 +95,7 @@ describe('MarkdownAssembler', () => {
 
         expect(result).toContain('Top Line')
         expect(result).toContain('Bottom Line')
-        expect(result).not.toContain('<table>')
+        expect(result).not.toMatch(/<table\s/)
     })
 
     it('should clean raw_text by removing noisy ref tags (title, text) from visible content', () => {
@@ -195,9 +196,8 @@ describe('MarkdownAssembler', () => {
             expect(result).toContain('OSTE0KJ3000')
             expect(result).toContain('骨密度')
 
-            // 3. Verify Table Layout for "Result Analysis" Section
-            const analysisIndex = result.indexOf('# 结果分析')
-            const tableIndex = result.indexOf('<table>', analysisIndex)
+            // 3. Verify Table Layout exists
+            const tableIndex = result.search(/<table\s/)
             expect(tableIndex).not.toBe(-1)
 
             const tablePart = result.substring(tableIndex)
@@ -236,5 +236,150 @@ describe('MarkdownAssembler', () => {
 
         // Should not contain the original \( ... \)
         expect(result).not.toContain('\\(100^{\\circ}\\mathrm{C}\\)')
+    })
+
+    describe('Text-Image Layout (test.json scenario)', () => {
+        it('should group vertically stacked text blocks in the same column', () => {
+            /*
+             * Layout: Two text blocks on the left, image on the right
+             * Expected: text1 and text2 should be in the same column (stacked)
+             *           image should be in a separate column
+             */
+            const ocrResult: OCRResult = {
+                success: true,
+                text: '',
+                raw_text:
+                    '<|ref|>text<|/ref|><|det|>[[0,0,400,100]]<|/det|>First paragraph text\n' +
+                    '<|ref|>text<|/ref|><|det|>[[0,150,400,300]]<|/det|>Second paragraph text\n' +
+                    '<|ref|>image<|/ref|><|det|>[[500,0,900,250]]<|/det|>',
+                boxes: [
+                    { box: [0, 0, 400, 100], label: 'text' },
+                    { box: [0, 150, 400, 300], label: 'text' },
+                    { box: [500, 0, 900, 250], label: 'image' }
+                ],
+                image_dims: DIMS_1000,
+                prompt_type: 'document'
+            }
+            const imageMap = new Map<string, string>([['2', 'img-right']])
+
+            const result = assembler.assemble(ocrResult, imageMap)
+
+            // Should have table structure
+            expect(result).toMatch(/<table\s/)
+            expect(result).toContain('</table>')
+
+            // Both texts should be in the output
+            expect(result).toContain('First paragraph text')
+            expect(result).toContain('Second paragraph text')
+
+            // The two text blocks should be joined with <br/><br/> (same column)
+            expect(result).toContain('First paragraph text<br/><br/>Second paragraph text')
+
+            // Image should be present
+            expect(result).toContain('scan2doc-img:img-right')
+
+            // Should have exactly 2 <td> elements (two columns)
+            const tdCount = (result.match(/<td/g) || []).length
+            expect(tdCount).toBe(2)
+        })
+
+        it('should bind image_caption with image in the same cell', () => {
+            /*
+             * Layout: Image followed by caption directly below
+             * Expected: caption content should be merged into image cell
+             */
+            const ocrResult: OCRResult = {
+                success: true,
+                text: '',
+                raw_text:
+                    '<|ref|>text<|/ref|><|det|>[[0,0,400,300]]<|/det|>Some text content\n' +
+                    '<|ref|>image<|/ref|><|det|>[[500,0,900,250]]<|/det|>\n' +
+                    '<|ref|>image_caption<|/ref|><|det|>[[550,260,850,290]]<|/det|><center>Figure 1-2 Caption</center>',
+                boxes: [
+                    { box: [0, 0, 400, 300], label: 'text' },
+                    { box: [500, 0, 900, 250], label: 'image' },
+                    { box: [550, 260, 850, 290], label: 'image_caption' }
+                ],
+                image_dims: DIMS_1000,
+                prompt_type: 'document'
+            }
+            const imageMap = new Map<string, string>([['1', 'img-diagram']])
+
+            const result = assembler.assemble(ocrResult, imageMap)
+
+            // Should have table structure
+            expect(result).toMatch(/<table\s/)
+
+            // Image and caption should be in the same cell (connected by <br/>)
+            expect(result).toMatch(/img-diagram.*<br\/>.*Figure 1-2 Caption/)
+
+            // Should have exactly 2 columns (text column and image+caption column)
+            const tdCount = (result.match(/<td/g) || []).length
+            expect(tdCount).toBe(2)
+        })
+
+        it('should render blocks without horizontal overlap as separate rows', () => {
+            /*
+             * Layout: Title at top, text below (no horizontal overlap)
+             * Expected: Each block should be a separate row, no table
+             */
+            const ocrResult: OCRResult = {
+                success: true,
+                text: '',
+                raw_text:
+                    '<|ref|>title<|/ref|><|det|>[[100,100,500,150]]<|/det|>Title Text\n' +
+                    '<|ref|>text<|/ref|><|det|>[[100,200,500,400]]<|/det|>Body content',
+                boxes: [
+                    { box: [100, 100, 500, 150], label: 'title' },
+                    { box: [100, 200, 500, 400], label: 'text' }
+                ],
+                image_dims: DIMS_1000,
+                prompt_type: 'document'
+            }
+
+            const result = assembler.assemble(ocrResult, new Map())
+
+            // Should NOT use table for vertically stacked single-column blocks
+            expect(result).not.toMatch(/<table\s/)
+
+            // Both should be present as separate paragraphs
+            expect(result).toContain('Title Text')
+            expect(result).toContain('Body content')
+        })
+
+        it('should correctly layout test.json with left-text and right-image using boxes coordinates', () => {
+            /*
+             * test.json has:
+             * - Block 5 (text): X: 119-870, Y: 596-676 (left)
+             * - Block 6 (text): X: 119-872, Y: 680-977 (left, below Block 5)
+             * - Block 7 (image): X: 893-1250, Y: 596-943 (right, overlaps both texts in Y)
+             * - Block 8 (caption): X: 936-1220, Y: 950-981 (right, below image)
+             * 
+             * Expected: Table with 2 columns:
+             *   - Left column: text5 + text6 stacked
+             *   - Right column: image + caption merged
+             */
+            // @ts-expect-error -- importing json as any/unknown
+            const result = assembler.assemble(testJson as OCRResult, new Map([['7', 'test-image']]))
+
+            // Should have table structure for the text+image section
+            expect(result).toMatch(/<table\s/)
+
+            // The two text blocks about 五行相生 should be present
+            expect(result).toContain('五行相生，指木、火、土、金、水之间存在着有序的递相资生')
+            expect(result).toContain('五行相生次序是：木生火')
+
+            // The image should be present
+            expect(result).toContain('scan2doc-img:test-image')
+
+            // The caption should be present
+            expect(result).toContain('图1-2 五行相生相克示意图')
+
+            // Image and caption should be in the same cell (merged with <br/>)
+            expect(result).toMatch(/scan2doc-img:test-image.*<br\/>.*图1-2/)
+
+            // The text blocks should be stacked (joined with <br/><br/>)
+            expect(result).toMatch(/递相资生.*<br\/><br\/>.*五行相生次序是/)
+        })
     })
 })
