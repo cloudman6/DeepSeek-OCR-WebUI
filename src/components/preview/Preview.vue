@@ -11,8 +11,19 @@
           v-for="view in views"
           :key="view.key"
           :name="view.key"
-          :tab="view.label"
-        />
+        >
+          <template #tab>
+            <div class="tab-label">
+              <NIcon
+                size="18"
+                :color="view.color"
+              >
+                <component :is="view.icon" />
+              </NIcon>
+              <span>{{ view.label }}</span>
+            </div>
+          </template>
+        </NTabPane>
       </NTabs>
       <div
         v-if="currentView !== 'md'"
@@ -157,6 +168,9 @@ import { ref, watch, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NTabs, NTabPane, NEmpty, NButton, NSpin, NSwitch, NIcon } from 'naive-ui'
 import { Eye, CodeSlash, DownloadOutline, Download } from '@vicons/ionicons5'
+import IconMarkdown from '@/components/icons/IconMarkdown.vue'
+import IconWord from '@/components/icons/IconWord.vue'
+import IconPDF from '@/components/icons/IconPDF.vue'
 import { renderAsync } from 'docx-preview'
 import MarkdownIt from 'markdown-it'
 // @ts-expect-error -- @iktakahiro/markdown-it-katex does not have type definitions currently
@@ -279,9 +293,9 @@ const processMarkdownImages = async (markdown: string): Promise<string> => {
 const previewObjectUrls: string[] = []
 
 const views = computed(() => [
-  { key: 'md' as const, label: t('preview.markdown') },
-  { key: 'docx' as const, label: t('preview.word') },
-  { key: 'pdf' as const, label: t('preview.pdf') }
+  { key: 'md' as const, label: t('preview.markdown'), icon: IconMarkdown, color: '#24292e' },
+  { key: 'docx' as const, label: t('preview.word'), icon: IconWord, color: '#2b579a' },
+  { key: 'pdf' as const, label: t('preview.pdf'), icon: IconPDF, color: '#b30b00' }
 ])
 
 const pdfPreviewUrl = ref<string>('')
@@ -785,5 +799,12 @@ onUnmounted(() => {
   gap: 12px;
   margin-left: 16px;
 }
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 
 </style>

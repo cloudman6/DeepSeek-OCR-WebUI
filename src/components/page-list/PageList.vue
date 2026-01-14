@@ -169,7 +169,7 @@ import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
-import type { Page, PageStatus } from '@/stores/pages'
+import type { Page } from '@/stores/pages'
 import { TrashOutline, DownloadOutline, DocumentTextOutline, Trash, DocumentText, Download } from '@vicons/ionicons5'
 import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon, NDropdown, useMessage, useNotification, useDialog } from 'naive-ui'
 import IconWord from '@/components/icons/IconWord.vue'
@@ -415,7 +415,7 @@ async function showExportConfirmDialog(
         },
           invalidPages.map(p =>
             h('div', { style: 'font-size: 13px; color: #666; padding: 2px 0' },
-              `• ${p.fileName} - ${getStatusLabel(p.status)}`
+              `• ${p.fileName}`
             )
           )
         ),
@@ -464,26 +464,7 @@ async function performExport(pages: Page[], format: ExportFormat) {
   }
 }
 
-function getStatusLabel(status: PageStatus): string {
-  const labelMap: Record<PageStatus, string> = {
-    'pending_render': 'status.rendering',
-    'rendering': 'status.rendering',
-    'pending_ocr': 'status.ocrQueued',
-    'recognizing': 'status.recognizing',
-    'ocr_success': 'status.ocrDone',
-    'pending_gen': 'status.waitingForGen',
-    'generating_markdown': 'status.generatingMarkdown',
-    'markdown_success': 'status.markdownReady',
-    'generating_docx': 'status.generatingDOCX',
-    'generating_pdf': 'status.generatingPDF',
-    'pdf_success': 'status.pdfReady',
-    'ready': 'status.ready',
-    'completed': 'status.completed',
-    'error': 'status.error'
-  }
-  const key = labelMap[status] || 'status.unknown'
-  return t(key)
-}
+
 
 interface DragEndEvent {
   oldIndex: number
