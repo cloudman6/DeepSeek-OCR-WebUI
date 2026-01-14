@@ -36,7 +36,7 @@
           <template #icon>
             <NIcon
               size="18"
-              color="#18a058"
+              :color="PRIMARY_COLOR"
             >
               <Download v-if="isExportHovered" />
               <DownloadOutline v-else />
@@ -178,6 +178,7 @@ import IconMarkdown from '@/components/icons/IconMarkdown.vue'
 import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 import { uiLogger } from '@/utils/logger'
 

@@ -52,6 +52,26 @@
         v-if="currentView === 'md'"
         class="header-actions"
       >
+        <!-- Copy Source Button -->
+        <NButton
+          size="large"
+          text
+          :disabled="!mdContent || isLoadingMd"
+          :title="t('preview.copy')"
+          @click="handleCopyMarkdown"
+          @mouseenter="isCopyHovered = true"
+          @mouseleave="isCopyHovered = false"
+        >
+          <template #icon>
+            <NIcon :color="PRIMARY_COLOR">
+              <Checkmark v-if="isCopied" />
+              <template v-else>
+                <Copy v-if="isCopyHovered" />
+                <CopyOutline v-else />
+              </template>
+            </NIcon>
+          </template>
+        </NButton>
         <NButton
           size="large"
           text
@@ -63,7 +83,7 @@
           @mouseleave="isHeaderDownloadHovered = false"
         >
           <template #icon>
-            <NIcon color="#18a058">
+            <NIcon :color="PRIMARY_COLOR">
               <Download v-if="isHeaderDownloadHovered" />
               <DownloadOutline v-else />
             </NIcon>
@@ -166,8 +186,8 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NTabs, NTabPane, NEmpty, NButton, NSpin, NSwitch, NIcon } from 'naive-ui'
-import { Eye, CodeSlash, DownloadOutline, Download } from '@vicons/ionicons5'
+import { NTabs, NTabPane, NEmpty, NButton, NSpin, NSwitch, NIcon, useMessage } from 'naive-ui'
+import { Eye, CodeSlash, DownloadOutline, Download, Copy, CopyOutline, Checkmark } from '@vicons/ionicons5'
 import IconMarkdown from '@/components/icons/IconMarkdown.vue'
 import IconWord from '@/components/icons/IconWord.vue'
 import IconPDF from '@/components/icons/IconPDF.vue'
@@ -180,17 +200,19 @@ import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
 import 'github-markdown-css/github-markdown.css'
 import { exportService } from '@/services/export'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 import type { Page } from '@/stores/pages'
 
 const { t } = useI18n()
+const message = useMessage()
 
+// Props
 const props = defineProps<{
-  currentPage?: Page | null
+  currentPage: Page | null
 }>()
 
-
-
+// State
 const currentView = ref<'md' | 'docx' | 'pdf'>('md')
 const mdContent = ref<string>('')
 const isLoadingMd = ref(false)
@@ -200,7 +222,27 @@ const wordPreviewContainer = ref<HTMLElement | null>(null)
 const docxBlob = ref<Blob | null>(null)
 const mdViewMode = ref<boolean>(true) // true for preview, false for source
 const isHeaderDownloadHovered = ref(false)
+const isCopyHovered = ref(false)
+const isCopied = ref(false)
 const renderedMd = ref<string>('')
+
+async function handleCopyMarkdown() {
+  if (!mdContent.value || isCopied.value) return
+
+  try {
+    await navigator.clipboard.writeText(mdContent.value)
+    // message.success(t('preview.copied')) -- Removed per request
+    isCopied.value = true
+    setTimeout(() => {
+        isCopied.value = false
+    }, 2000)
+  } catch (err) {
+    uiLogger.error('Copy markdown failed', err)
+    message.error(t('ocrRawTextPanel.copyFailed'))
+  }
+}
+
+
 const mdRenderer = new MarkdownIt({
     html: true,
     linkify: true,
@@ -792,6 +834,17 @@ onUnmounted(() => {
 .word-container:not(.spacing-zh) :deep(.docx-preview-output) {
     letter-spacing: normal !important;
     font-family: Arial, sans-serif !important;
+}
+.preview-toggle {
+  display: flex;
+  align-items: center;
+}
+
+.copy-section {
+  display: flex;
+  align-items: center;
+  margin-left: 8px;
+  margin-right: 8px;
 }
 .header-actions {
   display: flex;

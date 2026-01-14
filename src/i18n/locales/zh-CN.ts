@@ -118,7 +118,9 @@ export default {
     pdfNotReady: 'Sandwich PDF 尚未生成',
     checkingPDF: '检查 PDF 状态...',
     loadingDOCX: '加载 DOCX 中...',
-    failedToLoad: '加载内容失败。'
+    failedToLoad: '加载内容失败。',
+    copy: '复制',
+    copied: '已复制！'
   },
 
   // Page Viewer

@@ -45,7 +45,7 @@
         <template #icon>
           <NIcon
             size="18"
-            :color="isScanHovered ? '#18a058' : '#18a058'"
+            :color="PRIMARY_COLOR"
           >
             <DocumentText v-if="isScanHovered" />
             <DocumentTextOutline v-else />
@@ -68,7 +68,7 @@
         <template #icon>
           <NIcon
             size="18"
-            :color="isDeleteHovered ? '#d03050' : '#d03050'"
+            color="#d03050"
           >
             <Trash v-if="isDeleteHovered" />
             <TrashOutline v-else />
@@ -157,6 +157,7 @@ import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
 import { db } from '@/db'
 import { ocrService } from '@/services/ocr'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 interface Props {
   page: Page
@@ -324,7 +325,7 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
 .page-item.active,
 .page-item.selected {
   background: #ffffff;
-  border-left-color: #18A058; /* Highlight color */
+  border-left-color: var(--primary-color); /* Highlight color */
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); /* Soft blue shadow */
 }
 

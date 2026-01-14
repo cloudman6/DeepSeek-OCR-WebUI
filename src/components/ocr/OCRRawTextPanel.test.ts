@@ -83,7 +83,8 @@ describe('OCRRawTextPanel.vue', () => {
         await copyButton.trigger('click')
 
         expect(writeTextMock).toHaveBeenCalledWith('Sample OCR Text')
-        expect(messageMock.success).toHaveBeenCalledWith('Copied!')
+        expect(messageMock.success).not.toHaveBeenCalled()
+        expect((wrapper.vm as any).isCopied).toBe(true)
     })
 
     it('handles empty text copy gracefully', async () => {
@@ -132,6 +133,67 @@ describe('OCRRawTextPanel.vue', () => {
         await copyButton.trigger('click')
 
         expect(execCommandMock).toHaveBeenCalledWith('copy')
-        expect(messageMock.success).toHaveBeenCalledWith('Copied!')
+        expect(messageMock.success).not.toHaveBeenCalled()
+        expect((wrapper.vm as any).isCopied).toBe(true)
+    })
+
+    it('updates copy icon on hover', async () => {
+        const wrapper = mount(OCRRawTextPanel, {
+            props: defaultProps,
+            global: { plugins: [i18n] }
+        })
+
+        const copyButton = wrapper.find('.panel-header .n-button')
+
+        await copyButton.trigger('mouseenter')
+        expect((wrapper.vm as any).isCopyHovered).toBe(true)
+
+        await copyButton.trigger('mouseleave')
+        expect((wrapper.vm as any).isCopyHovered).toBe(false)
+    })
+
+    it('handles fallback copy error', async () => {
+        // Mock clipboard unavailable
+        Object.defineProperty(navigator, 'clipboard', {
+            value: undefined,
+            writable: true
+        })
+
+        const error = new Error('ExecCommand failed')
+        const execCommandMock = vi.fn().mockImplementation(() => {
+            throw error
+        })
+        document.execCommand = execCommandMock
+
+        const wrapper = mount(OCRRawTextPanel, {
+            props: defaultProps,
+            global: { plugins: [i18n] }
+        })
+
+        const copyButton = wrapper.find('.panel-header .n-button')
+        await copyButton.trigger('click')
+
+        expect(messageMock.error).toHaveBeenCalledWith('Copy failed')
+    })
+
+    it('resets isCopied state after timeout', async () => {
+        vi.useFakeTimers()
+        writeTextMock.mockResolvedValue(undefined)
+
+        const wrapper = mount(OCRRawTextPanel, {
+            props: defaultProps,
+            global: { plugins: [i18n] }
+        })
+
+        const copyButton = wrapper.find('.panel-header .n-button')
+        await copyButton.trigger('click')
+
+        expect((wrapper.vm as any).isCopied).toBe(true)
+
+        vi.advanceTimersByTime(2000)
+        await wrapper.vm.$nextTick()
+
+        expect((wrapper.vm as any).isCopied).toBe(false)
+        vi.useRealTimers()
     })
 })

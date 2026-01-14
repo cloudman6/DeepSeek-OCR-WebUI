@@ -8,7 +8,7 @@
     <div class="header-brand">
       <NIcon
         size="24"
-        color="#18a058"
+        :color="PRIMARY_COLOR"
         class="brand-icon"
       >
         <DocumentText />
@@ -92,6 +92,7 @@ import { DocumentText, CloudUpload } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import OCRQueuePopover from '@/components/common/OCRQueuePopover.vue'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 const props = defineProps<{
   pageCount: number

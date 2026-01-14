@@ -4,7 +4,7 @@
       <div class="empty-icon-container">
         <NIcon
           size="64"
-          color="#18a058"
+          :color="PRIMARY_COLOR"
         >
           <CloudUploadOutline />
         </NIcon>
@@ -42,6 +42,7 @@
 <script setup lang="ts">
 import { NIcon, NButton } from 'naive-ui'
 import { CloudUploadOutline, AddOutline } from '@vicons/ionicons5'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 defineEmits<{
   (e: 'add-files'): void

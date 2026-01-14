@@ -4,7 +4,7 @@
       class="panel-header"
       @click="expanded = !expanded"
     >
-      <div class="title-section">
+      <div class="title-row">
         <NIcon :class="{ rotated: expanded }">
           <ChevronForward />
         </NIcon>
@@ -12,13 +12,23 @@
       </div>
       <NButton
         size="tiny"
-        quaternary
+        text
         circle
+        :title="t('ocrRawTextPanel.copy')"
         @click.stop="handleCopy"
+        @mouseenter="isCopyHovered = true"
+        @mouseleave="isCopyHovered = false"
       >
         <template #icon>
-          <NIcon>
-            <CopyOutline />
+          <NIcon
+            size="16"
+            :color="PRIMARY_COLOR"
+          >
+            <Checkmark v-if="isCopied" />
+            <template v-else>
+              <Copy v-if="isCopyHovered" />
+              <CopyOutline v-else />
+            </template>
           </NIcon>
         </template>
       </NButton>
@@ -41,8 +51,9 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { NButton, NIcon, NCollapseTransition, NScrollbar, useMessage } from 'naive-ui'
-import { CopyOutline, ChevronForward } from '@vicons/ionicons5'
+import { CopyOutline, Copy, ChevronForward, Checkmark } from '@vicons/ionicons5'
 import { uiLogger } from '@/utils/logger'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 interface Props {
   text: string
@@ -52,14 +63,17 @@ const props = defineProps<Props>()
 const { t } = useI18n()
 const expanded = ref(true)
 const message = useMessage()
+const isCopyHovered = ref(false)
+const isCopied = ref(false)
 
 async function handleCopy() {
-  if (!props.text) return
+  if (!props.text || isCopied.value) return
 
   try {
+    let success = false
     if (navigator.clipboard && navigator.clipboard.writeText) {
        await navigator.clipboard.writeText(props.text)
-       message.success(t('ocrRawTextPanel.copied'))
+       success = true
     } else {
        // Fallback for older browsers or non-secure contexts
        const textArea = document.createElement('textarea')
@@ -68,12 +82,19 @@ async function handleCopy() {
        textArea.select()
        try {
          document.execCommand('copy')
-         message.success(t('ocrRawTextPanel.copied'))
+         success = true
        } catch (err) {
          uiLogger.error('document.execCommand copy failed', err)
          message.error(t('ocrRawTextPanel.copyFailed'))
        }
        document.body.removeChild(textArea)
+    }
+
+    if (success) {
+      isCopied.value = true
+      setTimeout(() => {
+        isCopied.value = false
+      }, 2000)
     }
   } catch (err) {
     uiLogger.error('handleCopy failed', err)

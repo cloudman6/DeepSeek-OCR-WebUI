@@ -118,7 +118,9 @@ export default {
     pdfNotReady: 'Sandwich PDF not generated yet',
     checkingPDF: 'Checking PDF status...',
     loadingDOCX: 'Loading DOCX...',
-    failedToLoad: 'Failed to load content.'
+    failedToLoad: 'Failed to load content.',
+    copy: 'Copy',
+    copied: 'Copied!'
   },
 
   // Page Viewer
