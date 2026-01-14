@@ -61,6 +61,7 @@
         <NSwitch
           v-model:value="mdViewMode"
           size="small"
+          :title="mdViewMode ? $t('preview.showSource') : $t('preview.showPreview')"
         >
           <template #checked-icon>
             <NIcon :component="Eye" />

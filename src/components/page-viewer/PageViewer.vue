@@ -39,6 +39,7 @@
             <NSwitch 
               :value="pagesStore.showOverlay" 
               size="small"
+              :title="pagesStore.showOverlay ? $t('pageViewer.hideOverlay') : $t('pageViewer.showOverlayTooltip')"
               @update:value="pagesStore.setShowOverlay"
             >
               <template #checked-icon>
