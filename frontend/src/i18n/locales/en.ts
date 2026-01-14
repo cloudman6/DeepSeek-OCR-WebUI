@@ -106,6 +106,8 @@ export default {
     pdf: 'PDF',
     preview: 'Preview',
     source: 'Source',
+    showSource: 'Show Source Code',
+    showPreview: 'Show Rendered Preview',
     download: 'Download {0}',
     downloadMD: 'Download MD',
     downloadDOCX: 'Download DOCX',
@@ -133,7 +135,9 @@ export default {
     fullImageNotFound: 'Full image not found in storage',
     failedToLoadFromStorage: 'Failed to load image from storage',
     fit: 'Fit',
-    showOverlay: 'Show Overlay'
+    showOverlay: 'Show Overlay',
+    hideOverlay: 'Hide OCR Overlay',
+    showOverlayTooltip: 'Show OCR Overlay'
   },
 
 

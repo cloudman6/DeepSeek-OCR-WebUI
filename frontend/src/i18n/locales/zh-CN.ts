@@ -106,6 +106,8 @@ export default {
     pdf: 'PDF',
     preview: '预览',
     source: '源码',
+    showSource: '显示源码',
+    showPreview: '显示预览',
     download: '下载 {0}',
     downloadMD: '下载 MD',
     downloadDOCX: '下载 DOCX',
@@ -133,7 +135,9 @@ export default {
     fullImageNotFound: '存储中未找到完整图像',
     failedToLoadFromStorage: '从存储加载图像失败',
     fit: '适应',
-    showOverlay: '显示高亮'
+    showOverlay: '显示/隐藏高亮',
+    hideOverlay: '隐藏 OCR 高亮',
+    showOverlayTooltip: '显示 OCR 高亮'
   },
 
 
