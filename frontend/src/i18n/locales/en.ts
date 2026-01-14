@@ -132,7 +132,8 @@ export default {
     failedToLoadImage: 'Failed to load image',
     fullImageNotFound: 'Full image not found in storage',
     failedToLoadFromStorage: 'Failed to load image from storage',
-    fit: 'Fit'
+    fit: 'Fit',
+    showOverlay: 'Show Overlay'
   },
 
 

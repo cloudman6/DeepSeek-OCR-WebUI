@@ -29,6 +29,8 @@ export type PageStatus =
   | 'generating_pdf' | 'pdf_success' | 'generating_docx'
   | 'ready' | 'completed' | 'error'
 
+const STORAGE_KEY_SHOW_OVERLAY = 'scan2doc_show_overlay'
+
 export interface Page {
   id: string
   fileName: string
@@ -77,6 +79,7 @@ export const usePagesStore = defineStore('pages', () => {
     completed: 0,
     currentFile: undefined as string | undefined
   })
+  const showOverlay = ref(localStorage.getItem('scan2doc_show_overlay') !== 'false')
 
   // Queue to serialize file addition operations (prevents order race conditions)
   let fileAdditionQueue = Promise.resolve()
@@ -210,6 +213,11 @@ export const usePagesStore = defineStore('pages', () => {
 
   function clearSelection() {
     selectedPageIds.value = []
+  }
+
+  function setShowOverlay(value: boolean) {
+    showOverlay.value = value
+    localStorage.setItem(STORAGE_KEY_SHOW_OVERLAY, String(value))
   }
 
   // Unified deletion function for both single and batch deletions
@@ -711,6 +719,7 @@ export const usePagesStore = defineStore('pages', () => {
     selectedPageIds,
     processingQueue,
     pdfProcessing,
+    showOverlay,
     pagesByStatus,
     selectedPages,
     processingPages,
@@ -729,6 +738,7 @@ export const usePagesStore = defineStore('pages', () => {
     togglePageSelection,
     selectAllPages,
     clearSelection,
+    setShowOverlay,
     deletePage,
     deletePages,
     deleteAllPages,

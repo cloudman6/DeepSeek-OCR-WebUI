@@ -150,7 +150,7 @@ describe('SandwichPDFBuilder', () => {
         // Coordinates are scaled from pixels to PDF points (100px / 150dpi * 72pt = 48pt)
         // Original x=10 becomes 10 * (48/100) = 4.8
         expect(mockPage.drawText).toHaveBeenCalledWith('Hello World', expect.objectContaining({
-            opacity: 1 // Visible debug layer
+            opacity: 0 // Invisible text layer for sandwich PDF
         }))
     })
 
@@ -177,7 +177,7 @@ describe('SandwichPDFBuilder', () => {
         // LatexToUnicodeConverter preserves text but trims result.
         // ' E=mc^2 ' -> 'E=mc²'
         expect(mockPage.drawText).toHaveBeenCalledWith('Start E=mc² Middle F=ma End', expect.objectContaining({
-            opacity: 1
+            opacity: 0 // Invisible text layer for sandwich PDF
         }))
     })
 

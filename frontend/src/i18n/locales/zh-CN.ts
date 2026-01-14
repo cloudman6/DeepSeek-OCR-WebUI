@@ -132,7 +132,8 @@ export default {
     failedToLoadImage: '图像加载失败',
     fullImageNotFound: '存储中未找到完整图像',
     failedToLoadFromStorage: '从存储加载图像失败',
-    fit: '适应'
+    fit: '适应',
+    showOverlay: '显示高亮'
   },
 
 

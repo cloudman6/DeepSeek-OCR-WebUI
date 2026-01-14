@@ -1,6 +1,6 @@
 /**
- * 架构验证测试
- * 用于验证新的 Page Object Models 和工具函数是否正常工作
+ * Architecture Verification Tests
+ * Used to verify if new Page Object Models and utility functions work correctly
  */
 
 import { test, expect } from '../fixtures/base-test';
@@ -9,48 +9,48 @@ import { PageListPage } from '../pages/PageListPage';
 import { TestData } from '../data/TestData';
 import { APIMocks } from '../mocks/APIMocks';
 
-test.describe('架构验证测试', () => {
-  test('应该成功初始化所有 Page Objects', async ({ page }) => {
-    // 初始化 Page Objects
+test.describe('Architecture Verification Tests', () => {
+  test('should successfully initialize all Page Objects', async ({ page }) => {
+    // Initialize Page Objects
     const app = new AppPage(page);
     const pageList = new PageListPage(page);
 
-    // 验证 Page Objects 可以正常使用
+    // Verify Page Objects can be used normally
     await app.goto();
     await app.waitForAppReady();
 
-    // 验证应用标题
+    // Verify application title
     const title = await app.getTitle();
-    expect(title.toLowerCase()).toContain('scan2doc');
+    expect(title.toLowerCase()).toContain('deepseek-ocr-webui');
 
-    // 验证页面数量初始为 0
+    // Verify initial page count is 0
     const count = await pageList.getPageCount();
     expect(count).toBe(0);
   });
 
-  test('应该成功使用 TestData', async ({ page }) => {
+  test('should successfully use TestData', async ({ page }) => {
     const app = new AppPage(page);
     await app.goto();
 
-    // 验证 TestData 可以正常使用
+    // Verify TestData can be used normally
     expect(TestData.files.samplePDF()).toContain('sample.pdf');
     expect(TestData.translations.en.welcomeDescription).toBeDefined();
     expect(TestData.exportFormats).toHaveLength(3);
     expect(TestData.pageStatuses.ready).toEqual(['ready']);
   });
 
-  test('应该成功使用 APIMocks', async ({ page }) => {
+  test('should successfully use APIMocks', async ({ page }) => {
     const apiMocks = new APIMocks(page);
 
     // Mock OCR API
     await apiMocks.mockOCR();
 
-    // 验证 mock 已设置（通过导航验证路由已配置）
+    // Verify mock is set (verify routes are configured by navigation)
     await page.goto('/');
     await page.waitForLoadState('networkidle');
   });
 
-  test('应该成功使用 PageListPage 上传文件', async ({ page }) => {
+  test('should successfully upload files using PageListPage', async ({ page }) => {
     const app = new AppPage(page);
     const pageList = new PageListPage(page);
     const apiMocks = new APIMocks(page);
@@ -58,15 +58,15 @@ test.describe('架构验证测试', () => {
     await apiMocks.mockOCR();
     await app.goto();
 
-    // 上传单个文件
+    // Upload a single file
     await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
-    // 验证文件已上传
+    // Verify file is uploaded
     const count = await pageList.getPageCount();
     expect(count).toBe(1);
   });
 
-  test.skip('应该成功使用智能等待函数', async ({ page }) => {
+  test.skip('should successfully use smart wait functions', async ({ page }) => {
     const app = new AppPage(page);
     const pageList = new PageListPage(page);
     const apiMocks = new APIMocks(page);
@@ -75,10 +75,10 @@ test.describe('架构验证测试', () => {
     await app.goto();
     await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
-    // 触发操作产生通知
+    // Trigger action to produce notification
     await pageList.selectAll();
 
-    // 使用智能等待（此测试可能需要实际触发通知才能通过）
+    // Use smart wait (this test may need actual notification to pass)
     // await waitForNotification(page, /selected/i, 5000);
   });
 });

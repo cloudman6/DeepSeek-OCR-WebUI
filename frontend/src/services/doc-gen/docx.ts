@@ -140,6 +140,9 @@ export class DocxGenerator {
         const content = token.content
         if (!content.includes('<table')) return null
 
+        // Check if this is a layout table (no visible borders) vs a data table
+        const isLayoutTable = content.includes('class="layout-table"')
+
         const rows: TableRow[] = []
         const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g
         let rowMatch
@@ -152,30 +155,8 @@ export class DocxGenerator {
             const cellRegex = /<(td|th)([^>]*)>([\s\S]*?)<\/\1>/g
             let cellMatch
             while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
-                const tagName = cellMatch[1]!
-                const attributes = cellMatch[2]!
-                const cellContent = cellMatch[3]!.trim()
-                const isHeader = tagName.toLowerCase() === 'th'
-
-                // Parse width attribute
-                const widthMatch = attributes.match(/width="(\d+)%?"/)
-                const cellWidth = (widthMatch && widthMatch[1]) ? parseInt(widthMatch[1]) : null
-
-                // Parse cell content as Markdown to support images and formatting
-                const children = await this.parseCellContent(cellContent, isHeader)
-
-                cells.push(new TableCell({
-                    children: children,
-                    width: cellWidth
-                        ? { size: cellWidth, type: WidthType.PERCENTAGE }
-                        : { size: 0, type: WidthType.AUTO },
-                    borders: {
-                        top: { style: BorderStyle.SINGLE, size: 1 },
-                        bottom: { style: BorderStyle.SINGLE, size: 1 },
-                        left: { style: BorderStyle.SINGLE, size: 1 },
-                        right: { style: BorderStyle.SINGLE, size: 1 },
-                    }
-                }))
+                const cellsResult = await this.processHtmlTableCell(cellMatch, isLayoutTable)
+                cells.push(cellsResult)
             }
             if (cells.length > 0) {
                 rows.push(new TableRow({ children: cells }))
@@ -187,6 +168,10 @@ export class DocxGenerator {
             return null
         }
 
+        // Use no border for layout tables, single border for data tables
+        const borderStyle = isLayoutTable ? BorderStyle.NONE : BorderStyle.SINGLE
+        const borderSize = isLayoutTable ? 0 : 1
+
         return new Table({
             rows: rows,
             width: {
@@ -194,12 +179,43 @@ export class DocxGenerator {
                 type: WidthType.PERCENTAGE
             },
             borders: {
-                top: { style: BorderStyle.SINGLE, size: 1 },
-                bottom: { style: BorderStyle.SINGLE, size: 1 },
-                left: { style: BorderStyle.SINGLE, size: 1 },
-                right: { style: BorderStyle.SINGLE, size: 1 },
-                insideHorizontal: { style: BorderStyle.SINGLE, size: 1 },
-                insideVertical: { style: BorderStyle.SINGLE, size: 1 },
+                top: { style: borderStyle, size: borderSize },
+                bottom: { style: borderStyle, size: borderSize },
+                left: { style: borderStyle, size: borderSize },
+                right: { style: borderStyle, size: borderSize },
+                insideHorizontal: { style: borderStyle, size: borderSize },
+                insideVertical: { style: borderStyle, size: borderSize },
+            }
+        })
+    }
+
+    private async processHtmlTableCell(cellMatch: RegExpExecArray, isLayoutTable: boolean): Promise<TableCell> {
+        const tagName = cellMatch[1]!
+        const attributes = cellMatch[2]!
+        const cellContent = cellMatch[3]!.trim()
+        const isHeader = tagName.toLowerCase() === 'th'
+
+        // Parse width attribute
+        const widthMatch = attributes.match(/width="(\d+)%?"/)
+        const cellWidth = (widthMatch && widthMatch[1]) ? parseInt(widthMatch[1]) : null
+
+        // Parse cell content as Markdown to support images and formatting
+        const children = await this.parseCellContent(cellContent, isHeader)
+
+        // Use no border for layout tables, single border for data tables
+        const borderStyle = isLayoutTable ? BorderStyle.NONE : BorderStyle.SINGLE
+        const borderSize = isLayoutTable ? 0 : 1
+
+        return new TableCell({
+            children: children,
+            width: cellWidth
+                ? { size: cellWidth, type: WidthType.PERCENTAGE }
+                : { size: 0, type: WidthType.AUTO },
+            borders: {
+                top: { style: borderStyle, size: borderSize },
+                bottom: { style: borderStyle, size: borderSize },
+                left: { style: borderStyle, size: borderSize },
+                right: { style: borderStyle, size: borderSize },
             }
         })
     }
@@ -413,13 +429,20 @@ export class DocxGenerator {
     private async parseCellContent(content: string, isHeader: boolean): Promise<Paragraph[]> {
         // Convert HTML img tags back to Markdown syntax for parsing
         // This handles images that were converted to HTML in markdown.ts for preview compatibility
-        const markdownContent = content.replace(
+        let markdownContent = content.replace(
             /<img\s+src="scan2doc-img:([a-zA-Z0-9_-]+)"[^>]*alt="([^"]*)"[^>]*>/g,
             '![$2](scan2doc-img:$1)'
         ).replace(
             /<img\s+src="scan2doc-img:([a-zA-Z0-9_-]+)"[^>]*>/g,
             '![Figure](scan2doc-img:$1)'
         )
+
+        // Convert <br/> and <br> to double newlines for paragraph breaks
+        // This ensures image and caption have proper line breaks in DOCX
+        markdownContent = markdownContent.replace(/<br\s*\/?>/g, '\n\n')
+
+        // Remove <center> tags but keep content
+        markdownContent = markdownContent.replace(/<\/?center>/g, '')
 
         // Parse the cell content as Markdown to support images and formatting
         const tokens = this.md.parse(markdownContent, {})

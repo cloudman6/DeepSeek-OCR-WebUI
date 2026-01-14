@@ -5,6 +5,8 @@ import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
 import { i18n } from '../../../tests/setup'
 
+import { createTestingPinia } from '@pinia/testing'
+
 // Mock logger
 vi.mock('@/utils/logger', () => ({
   uiLogger: {
@@ -99,6 +101,11 @@ vi.mock('naive-ui', () => ({
     props: ['value', 'type', 'placeholder', 'rows'],
     template: '<input :value="value" />'
   },
+  NSwitch: {
+    name: 'NSwitch',
+    props: ['value', 'size'],
+    template: '<input type="checkbox" :checked="value" />'
+  },
   useMessage: vi.fn(() => ({
     error: vi.fn(),
     success: vi.fn(),
@@ -130,10 +137,21 @@ describe('PageViewer.vue', () => {
   let mockPage: import("@/stores/pages").Page
 
   // Helper function to mount PageViewer with i18n
-  function mountPageViewer(props = {}) {
+  function mountPageViewer(props = {}, piniaInitialState = {}) {
     return mount(PageViewer, {
       global: {
-        plugins: [i18n]
+        plugins: [
+          i18n,
+          createTestingPinia({
+            initialState: {
+              pages: {
+                showOverlay: true,
+                ...piniaInitialState
+              }
+            },
+            stubActions: false
+          })
+        ]
       },
       props
     })

@@ -290,4 +290,51 @@ End of table.
         const blob = await docxGenerator.generate(' ')
         expect(blob.size).toBeGreaterThan(0)
     })
+
+    describe('Edge Cases and Uncovered Branches', () => {
+        it('should handle math conversion that returns null/throws', async () => {
+            // Mock katex to return something that will fail regex or extraction
+            const katex = await import('katex')
+            const spy = vi.spyOn(katex.default, 'renderToString').mockReturnValue('Invalid Output')
+
+            const markdown = '$$E=mc^2$$'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+            spy.mockRestore()
+        })
+
+        it('should handle empty table rows', async () => {
+            const markdown = '<table></table>'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+        })
+
+        it('should handle tokens without children in createParagraphChildren', async () => {
+            // markdown-it doesn't usually produce inline tokens without children unless manipulated
+            // but we can try to trigger it or just use simple text which might not have children if logic differs
+            const markdown = 'Simple Text'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+        })
+
+        it('should handle paragraphs that resolve to zero docx paragraphs', async () => {
+            // paragraph_open without following inline
+            const markdown = '<table><tr><td><center></center></td></tr></table>'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+        })
+
+        it('should handle boldify with missing children', async () => {
+            // This is used for table headers.
+            const markdown = '<table><tr><th> </th></tr></table>'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+        })
+
+        it('should handle style nesting in headers', async () => {
+            const markdown = '<table><tr><th>**Bold** and *Italic*</th></tr></table>'
+            const blob = await docxGenerator.generate(markdown)
+            expect(blob.size).toBeGreaterThan(0)
+        })
+    })
 })

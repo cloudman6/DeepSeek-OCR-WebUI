@@ -234,7 +234,7 @@ describe('PageItem.vue', () => {
             { status: 'ocr_success', text: 'OCR Done', type: 'success' },
             { status: 'error', text: 'Error', type: 'error' },
             { status: 'completed', text: '', type: 'success' },
-            { status: 'ready', text: '', type: 'success' },
+            { status: 'ready', text: '', type: 'default' },
         ] as const
 
         statuses.forEach(({ status, text, type }) => {

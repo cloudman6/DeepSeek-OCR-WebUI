@@ -268,7 +268,7 @@ function formatFileSize(bytes: number): string {
 
 const STATUS_TYPE_MAP: Record<Page['status'], 'success' | 'info' | 'warning' | 'error' | 'default'> = {
   'completed': 'success',
-  'ready': 'success',
+  'ready': 'default',
   'ocr_success': 'success',
   'markdown_success': 'success',
   'pdf_success': 'success',
