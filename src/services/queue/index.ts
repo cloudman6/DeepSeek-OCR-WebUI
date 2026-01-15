@@ -6,12 +6,16 @@ export class QueueManager {
     private generationQueue: PQueue
     private ocrControllers: Map<string, AbortController>
     private genControllers: Map<string, AbortController>
+    private pendingOCRControllers: Map<string, AbortController>
+    private pendingGenControllers: Map<string, AbortController>
 
     constructor() {
         this.ocrQueue = new PQueue({ concurrency: 2 })
         this.generationQueue = new PQueue({ concurrency: 2 })
         this.ocrControllers = new Map()
         this.genControllers = new Map()
+        this.pendingOCRControllers = new Map()
+        this.pendingGenControllers = new Map()
 
         this.ocrQueue.on('active', () => {
             queueLogger.debug(`[OCR Queue] Size: ${this.ocrQueue.size}  Pending: ${this.ocrQueue.pending}`)
@@ -28,18 +32,24 @@ export class QueueManager {
      * @param taskFn The task function that accepts an AbortSignal
      */
     async addOCRTask(pageId: string, taskFn: (signal: AbortSignal) => Promise<void>) {
-        if (this.ocrControllers.has(pageId)) {
+        if (this.ocrControllers.has(pageId) || this.pendingOCRControllers.has(pageId)) {
             queueLogger.info(`[QueueManager] Existing OCR task for ${pageId} found. Canceling.`)
             this.cancelOCR(pageId)
         }
 
         const controller = new AbortController()
-        this.ocrControllers.set(pageId, controller)
+        // Add to pending controllers map first
+        this.pendingOCRControllers.set(pageId, controller)
 
         // We don't await the queue.add here because we want to return immediately after queuing
         this.ocrQueue.add(async () => {
+            // Move from pending to active controllers when task starts
+            this.pendingOCRControllers.delete(pageId)
+            this.ocrControllers.set(pageId, controller)
+
             if (controller.signal.aborted) {
                 queueLogger.info(`[QueueManager] OCR task for page ${pageId} was aborted before start.`)
+                this.ocrControllers.delete(pageId)
                 return
             }
 
@@ -65,16 +75,24 @@ export class QueueManager {
       * Add a generation task (e.g. Markdown, PDF generation)
       */
     async addGenerationTask(pageId: string, taskFn: (signal: AbortSignal) => Promise<void>) {
-        if (this.genControllers.has(pageId)) {
+        if (this.genControllers.has(pageId) || this.pendingGenControllers.has(pageId)) {
             queueLogger.info(`[QueueManager] Existing Gen task for ${pageId} found. Canceling.`)
             this.cancelGeneration(pageId)
         }
 
         const controller = new AbortController()
-        this.genControllers.set(pageId, controller)
+        // Add to pending controllers map first
+        this.pendingGenControllers.set(pageId, controller)
 
         this.generationQueue.add(async () => {
-            if (controller.signal.aborted) return
+            // Move from pending to active controllers when task starts
+            this.pendingGenControllers.delete(pageId)
+            this.genControllers.set(pageId, controller)
+
+            if (controller.signal.aborted) {
+                this.genControllers.delete(pageId)
+                return
+            }
 
             try {
                 await taskFn(controller.signal)
@@ -96,10 +114,20 @@ export class QueueManager {
      * Cancel OCR task for a specific page
      */
     cancelOCR(pageId: string) {
-        const controller = this.ocrControllers.get(pageId)
-        if (controller) {
-            controller.abort()
+        // 1. Cancel active (running) task
+        const activeController = this.ocrControllers.get(pageId)
+        if (activeController) {
+            activeController.abort()
             this.ocrControllers.delete(pageId)
+            queueLogger.info(`[QueueManager] Cancelled OCR task for page ${pageId}`)
+            return
+        }
+
+        // 2. Cancel pending (waiting) task
+        const pendingController = this.pendingOCRControllers.get(pageId)
+        if (pendingController) {
+            pendingController.abort()
+            this.pendingOCRControllers.delete(pageId)
             queueLogger.info(`[QueueManager] Cancelled OCR task for page ${pageId}`)
         }
     }
@@ -108,10 +136,20 @@ export class QueueManager {
      * Cancel Generation task for a specific page
      */
     cancelGeneration(pageId: string) {
-        const controller = this.genControllers.get(pageId)
-        if (controller) {
-            controller.abort()
+        // 1. Cancel active (running) task
+        const activeController = this.genControllers.get(pageId)
+        if (activeController) {
+            activeController.abort()
             this.genControllers.delete(pageId)
+            queueLogger.info(`[QueueManager] Cancelled Generation task for page ${pageId}`)
+            return
+        }
+
+        // 2. Cancel pending (waiting) task
+        const pendingController = this.pendingGenControllers.get(pageId)
+        if (pendingController) {
+            pendingController.abort()
+            this.pendingGenControllers.delete(pageId)
             queueLogger.info(`[QueueManager] Cancelled Generation task for page ${pageId}`)
         }
     }
@@ -131,10 +169,19 @@ export class QueueManager {
         this.ocrQueue.clear()
         this.generationQueue.clear()
 
+        // Cancel all active tasks
         for (const [pageId] of this.ocrControllers) {
             this.cancelOCR(pageId)
         }
         for (const [pageId] of this.genControllers) {
+            this.cancelGeneration(pageId)
+        }
+
+        // Cancel all pending tasks
+        for (const [pageId] of this.pendingOCRControllers) {
+            this.cancelOCR(pageId)
+        }
+        for (const [pageId] of this.pendingGenControllers) {
             this.cancelGeneration(pageId)
         }
 
@@ -144,13 +191,17 @@ export class QueueManager {
     getStats() {
         return {
             ocr: {
-                effectiveSize: this.ocrControllers.size,
+                effectiveSize: this.ocrControllers.size + this.pendingOCRControllers.size,
+                activeSize: this.ocrControllers.size,
+                pendingSize: this.pendingOCRControllers.size,
                 size: this.ocrQueue.size,
                 pending: this.ocrQueue.pending,
                 isPaused: this.ocrQueue.isPaused
             },
             generation: {
-                effectiveSize: this.genControllers.size,
+                effectiveSize: this.genControllers.size + this.pendingGenControllers.size,
+                activeSize: this.genControllers.size,
+                pendingSize: this.pendingGenControllers.size,
                 size: this.generationQueue.size,
                 pending: this.generationQueue.pending,
                 isPaused: this.generationQueue.isPaused

@@ -167,4 +167,41 @@ describe('QueueManager', () => {
 
         consoleSpy.mockRestore()
     })
+
+    it('should cancel both running and pending tasks (mixed state)', async () => {
+        const runningTaskAborted = vi.fn()
+        const pending1Executed = vi.fn()
+        const pending2Executed = vi.fn()
+
+        // Add two running tasks (concurrency is 2)
+        await queueManager.addOCRTask('running1', async (signal) => {
+            signal.addEventListener('abort', runningTaskAborted)
+            await new Promise(resolve => setTimeout(resolve, 200))
+        })
+        await queueManager.addOCRTask('running2', async () => {
+            await new Promise(resolve => setTimeout(resolve, 200))
+        })
+
+        // Add two pending tasks (will wait in queue)
+        await queueManager.addOCRTask('pending1', pending1Executed)
+        await queueManager.addOCRTask('pending2', pending2Executed)
+
+        // Wait for running tasks to start
+        await new Promise(r => setTimeout(r, 50))
+        expect(queueManager.getStats().ocr.pending).toBe(2)
+
+        // Cancel both running1 and pending1
+        queueManager.cancelOCR('running1')
+        queueManager.cancelOCR('pending1')
+
+        // Wait for all tasks to finish
+        await vi.waitFor(() => {
+            if (queueManager.getStats().ocr.pending !== 0) throw new Error('Not finished')
+        }, { timeout: 1000 })
+
+        // Verify: running task was aborted, pending1 was not executed, pending2 was executed
+        expect(runningTaskAborted).toHaveBeenCalled()
+        expect(pending1Executed).not.toHaveBeenCalled()
+        expect(pending2Executed).toHaveBeenCalled()
+    })
 })
