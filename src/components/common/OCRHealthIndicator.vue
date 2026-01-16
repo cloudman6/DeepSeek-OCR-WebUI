@@ -54,11 +54,10 @@ import { HeartOutline, AlertCircleOutline } from '@vicons/ionicons5'
 import { useHealthStore } from '@/stores/health'
 import { PRIMARY_COLOR } from '@/theme/vars'
 
-const props = withDefaults(defineProps<{
+// No props needed
+defineProps<{
   compact?: boolean
-}>(), {
-  compact: false
-})
+}>()
 
 const { t } = useI18n()
 const healthStore = useHealthStore()

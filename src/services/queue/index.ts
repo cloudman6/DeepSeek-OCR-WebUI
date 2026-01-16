@@ -181,7 +181,7 @@ export class QueueManager {
         queueLogger.warn(`[QueueManager] OCR service unavailable for page ${pageId}, waiting...`)
 
         // Wait for service to become healthy, checking every 2 seconds (shorter in tests)
-        const checkInterval = (globalThis as any).__HEALTH_CHECK_INTERVAL__ || 2000
+        const checkInterval = (globalThis as unknown as { __HEALTH_CHECK_INTERVAL__?: number }).__HEALTH_CHECK_INTERVAL__ || 2000
         while (!healthStore.isHealthy && !signal.aborted) {
             await new Promise(resolve => setTimeout(resolve, checkInterval))
         }

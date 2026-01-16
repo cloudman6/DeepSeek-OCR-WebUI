@@ -23,7 +23,7 @@ test.describe('OCR Health Check & Queue Recovery', () => {
         await app.waitForAppReady();
     });
 
-    test('should reflect health status in UI indicator', async ({ page }) => {
+    test('should reflect health status in UI indicator', async ({ page: _page }) => {
         // 1. 验证初始状态为健康 (success)
         expect(await app.getHealthStatusType()).toBe('success');
 

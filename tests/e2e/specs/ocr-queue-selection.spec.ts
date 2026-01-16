@@ -27,7 +27,7 @@ test.describe('OCR Queue Selection State', () => {
         await apiMocks.unmockOCR();
     });
 
-    test('should keep "Select All" checked when a selected task completes', async ({ page }) => {
+    test('should keep "Select All" checked when a selected task completes', async ({ page: _page }) => {
         // 1. Upload 3 files
         await pageList.uploadAndWaitReady([
             TestData.files.samplePNG(),
