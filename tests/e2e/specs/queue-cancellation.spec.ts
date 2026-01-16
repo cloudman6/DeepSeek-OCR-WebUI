@@ -57,7 +57,8 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
       await queuePopover.waitForVisible();
 
       expect(await queuePopover.getTaskCount()).toBe(2);
-      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(2);
+      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(1);
+      expect(await queuePopover.getTaskCountByStatus('queued')).toBe(1);
 
       // Select all tasks in queue
       await queuePopover.selectAllTasks();
@@ -108,8 +109,8 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
       await queuePopover.waitForVisible();
 
       expect(await queuePopover.getTaskCount()).toBe(3);
-      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(2); // Max concurrency
-      expect(await queuePopover.getTaskCountByStatus('queued')).toBe(1);
+      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(1); // Max concurrency 1
+      expect(await queuePopover.getTaskCountByStatus('queued')).toBe(2);
     });
 
     // Step 4: Cancel only the queued task
@@ -120,8 +121,8 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
 
       // Verify count drops to 2
       await queuePopover.waitForTaskCount(2);
-      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(2);
-      expect(await queuePopover.getTaskCountByStatus('queued')).toBe(0);
+      expect(await queuePopover.getTaskCountByStatus('processing')).toBe(1);
+      expect(await queuePopover.getTaskCountByStatus('queued')).toBe(1);
     });
   });
 

@@ -34,6 +34,7 @@ export interface OCRProvider {
 import { db } from '@/db'
 import { ocrEvents } from './events'
 import { queueManager } from '@/services/queue'
+import { useHealthStore } from '@/stores/health'
 
 export class OCRService {
   private providers: Map<string, OCRProvider> = new Map()
@@ -54,6 +55,14 @@ export class OCRService {
     imageData: Blob | string,
     options?: OCROptions
   ): Promise<void> {
+    // Check if OCR service is healthy before queuing
+    const healthStore = useHealthStore()
+    if (!healthStore.isHealthy) {
+      const error = new Error('OCR service is currently unavailable. Please try again later.')
+      ocrEvents.emit('ocr:error', { pageId, error })
+      throw error
+    }
+
     ocrEvents.emit('ocr:queued', { pageId })
 
     // Fire and forget - processing happens in queue

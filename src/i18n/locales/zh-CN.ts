@@ -23,6 +23,23 @@ export default {
     startImport: '选择文件'
   },
 
+  // Health
+  health: {
+    ocrService: 'OCR 服务',
+    status: '状态',
+    backend: '后端',
+    platform: '运行平台',
+    modelLoaded: '模型加载',
+    yes: '是',
+    no: '否',
+    lastCheck: '上次检查',
+    healthy: '健康',
+    unavailable: '不可用',
+    justNow: '刚刚',
+    ago: '{0}秒前',
+    minutesAgo: '{0}分钟前'
+  },
+
   // Header
   header: {
     processing: '处理中',
@@ -222,6 +239,8 @@ export default {
     noFilesSelected: '未选择文件',
     unsupportedFileType: '不支持的文件类型',
     failedToLoadMarkdown: '加载 Markdown 失败',
-    failedToExportMarkdown: '导出 Markdown 失败'
+    failedToExportMarkdown: '导出 Markdown 失败',
+    ocrServiceUnavailable: 'OCR 服务目前不可用，请稍后再试。',
+    ocrServiceUnavailableTitle: '服务不可用'
   }
 } as const

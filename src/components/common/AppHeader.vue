@@ -21,8 +21,12 @@
       </span>
     </div>
 
-    <!-- Center: OCR Queue Status -->
+    <!-- Center: OCR Status & Queue -->
     <div class="header-center">
+      <template v-if="store.ocrTaskCount === 0 && !showQueue">
+        <OCRHealthIndicator />
+      </template>
+
       <NPopover
         v-if="store.ocrTaskCount > 0 || showQueue"
         v-model:show="showQueue"
@@ -45,6 +49,8 @@
             <span class="status-text">
               {{ $t('header.processing') }}: {{ store.activeOCRTasks.length }} | {{ $t('header.waiting') }}: {{ store.queuedOCRTasks.length }}
             </span>
+            <NDivider vertical />
+            <OCRHealthIndicator compact />
           </div>
         </template>
         <OCRQueuePopover @close="showQueue = false" />
@@ -91,10 +97,11 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NLayoutHeader, NButton, NIcon, NTag, NPopover, NSpin } from 'naive-ui'
+import { NLayoutHeader, NButton, NIcon, NTag, NPopover, NSpin, NDivider } from 'naive-ui'
 import { DocumentText, CloudUpload } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import OCRQueuePopover from '@/components/common/OCRQueuePopover.vue'
+import OCRHealthIndicator from '@/components/common/OCRHealthIndicator.vue'
 import LanguageSelector from '@/components/common/LanguageSelector.vue'
 import { PRIMARY_COLOR } from '@/theme/vars'
 

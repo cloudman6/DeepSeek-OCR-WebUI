@@ -20,6 +20,14 @@ vi.mock('@/components/common/LanguageSelector.vue', () => ({
     }
 }))
 
+// Mock OCRHealthIndicator
+vi.mock('@/components/common/OCRHealthIndicator.vue', () => ({
+    default: {
+        name: 'OCRHealthIndicator',
+        template: '<div class="ocr-health-indicator-stub">Health</div>'
+    }
+}))
+
 // Manual store mock
 const mockStore = reactive({
     activeOCRTasks: [] as any[],
@@ -59,6 +67,10 @@ describe('AppHeader', () => {
                 LanguageSelector: {
                     name: 'LanguageSelector',
                     template: '<div class="language-selector-stub">Language</div>'
+                },
+                OCRHealthIndicator: {
+                    name: 'OCRHealthIndicator',
+                    template: '<div class="ocr-health-indicator-stub">Health</div>'
                 },
                 OCRQueuePopover: {
                     name: 'OCRQueuePopover',

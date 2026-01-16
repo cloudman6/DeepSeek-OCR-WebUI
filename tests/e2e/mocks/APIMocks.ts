@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 
 export class APIMocks {
-  constructor(private page: Page) {}
+  constructor(private page: Page) { }
 
   /**
    * Mock OCR API
@@ -49,6 +49,44 @@ export class APIMocks {
   }
 
   /**
+   * Mock Health API
+   * @param options - Health Mock 配置
+   */
+  async mockHealth(options: {
+    status: 'healthy' | 'unhealthy';
+    delay?: number;
+    shouldFail?: boolean;
+  } = { status: 'healthy' }) {
+    const { status, delay = 0, shouldFail = false } = options;
+
+    await this.page.route('**/health', async (route: Route) => {
+      if (delay > 0) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+      }
+
+      if (shouldFail) {
+        await route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: 'Internal Server Error' })
+        });
+        return;
+      }
+
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          status: status,
+          backend: 'mock-backend',
+          platform: 'mock-platform',
+          model_loaded: true
+        })
+      });
+    });
+  }
+
+  /**
    * Mock OCR API 带延迟控制(用于复杂测试场景)
    * @param completeFlag - 控制 Mock 完成的标志对象
    */
@@ -83,7 +121,7 @@ export class APIMocks {
     if (fs.existsSync(responsePath)) {
       return JSON.parse(fs.readFileSync(responsePath, 'utf-8'));
     }
-    
+
     // 返回默认的 OCR 响应结构
     return {
       regions: [
@@ -107,7 +145,7 @@ export class APIMocks {
     await this.page.route('**/standard_fonts/**', async (route) => {
       const url = new URL(route.request().url());
       const filePath = path.join(process.cwd(), 'public', url.pathname);
-      
+
       if (fs.existsSync(filePath)) {
         await route.fulfill({
           status: 200,

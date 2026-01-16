@@ -1,5 +1,6 @@
 import PQueue from 'p-queue'
 import { queueLogger } from '@/utils/logger'
+import { useHealthStore } from '@/stores/health'
 
 export class QueueManager {
     private ocrQueue: PQueue
@@ -10,8 +11,8 @@ export class QueueManager {
     private pendingGenControllers: Map<string, AbortController>
 
     constructor() {
-        this.ocrQueue = new PQueue({ concurrency: 2 })
-        this.generationQueue = new PQueue({ concurrency: 2 })
+        this.ocrQueue = new PQueue({ concurrency: 1 })
+        this.generationQueue = new PQueue({ concurrency: 1 })
         this.ocrControllers = new Map()
         this.genControllers = new Map()
         this.pendingOCRControllers = new Map()
@@ -49,6 +50,16 @@ export class QueueManager {
 
             if (controller.signal.aborted) {
                 queueLogger.info(`[QueueManager] OCR task for page ${pageId} was aborted before start.`)
+                this.ocrControllers.delete(pageId)
+                return
+            }
+
+            // Wait for OCR service to be healthy before executing task
+            await this.waitForHealthyService(controller.signal, pageId)
+
+            // Check again if aborted during wait
+            if (controller.signal.aborted) {
+                queueLogger.info(`[QueueManager] OCR task for page ${pageId} was aborted during health wait.`)
                 this.ocrControllers.delete(pageId)
                 return
             }
@@ -151,6 +162,32 @@ export class QueueManager {
             pendingController.abort()
             this.pendingGenControllers.delete(pageId)
             queueLogger.info(`[QueueManager] Cancelled Generation task for page ${pageId}`)
+        }
+    }
+
+    /**
+     * Wait for OCR service to be healthy before proceeding
+     * @param signal AbortSignal to cancel the wait
+     * @param pageId Page ID for logging
+     */
+    private async waitForHealthyService(signal: AbortSignal, pageId: string): Promise<void> {
+        const healthStore = useHealthStore()
+
+        // If already healthy, return immediately
+        if (healthStore.isHealthy) {
+            return
+        }
+
+        queueLogger.warn(`[QueueManager] OCR service unavailable for page ${pageId}, waiting...`)
+
+        // Wait for service to become healthy, checking every 2 seconds (shorter in tests)
+        const checkInterval = (globalThis as any).__HEALTH_CHECK_INTERVAL__ || 2000
+        while (!healthStore.isHealthy && !signal.aborted) {
+            await new Promise(resolve => setTimeout(resolve, checkInterval))
+        }
+
+        if (!signal.aborted) {
+            queueLogger.info(`[QueueManager] OCR service recovered, proceeding with page ${pageId}`)
         }
     }
 

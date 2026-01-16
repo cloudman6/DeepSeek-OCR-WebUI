@@ -179,6 +179,7 @@ import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
 import { PRIMARY_COLOR } from '@/theme/vars'
+import { useHealthStore } from '@/stores/health'
 
 import { uiLogger } from '@/utils/logger'
 
@@ -251,6 +252,17 @@ function handleBatchDelete() {
 async function handleBatchOCR() {
   const selectedPages = pagesStore.selectedPages
   if (selectedPages.length === 0) return
+
+  // Check health before queuing
+  const healthStore = useHealthStore()
+  if (!healthStore.isHealthy) {
+    dialog.error({
+      title: t('errors.ocrServiceUnavailableTitle'),
+      content: t('errors.ocrServiceUnavailable'),
+      positiveText: t('common.ok')
+    })
+    return
+  }
 
   // Call batch OCR service
   const result = await ocrService.queueBatchOCR(selectedPages)

@@ -2,10 +2,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { queueManager } from './index'
 import { queueLogger } from '@/utils/logger'
 
+// Mock health store
+const mockHealthStore = {
+    isHealthy: true
+}
+vi.mock('@/stores/health', () => ({
+    useHealthStore: () => mockHealthStore
+}))
+
 describe('QueueManager', () => {
     beforeEach(() => {
         queueManager.clear()
-        // Using real timers to avoid p-queue/fake-timer issues
+            // Using real timers to avoid p-queue/fake-timer issues
+            ; (globalThis as any).__HEALTH_CHECK_INTERVAL__ = 10
     })
 
     it('should process OCR tasks', async () => {
@@ -28,7 +37,7 @@ describe('QueueManager', () => {
     })
 
     it('should support concurrency limit', async () => {
-        // OCR queue has concurrency 2
+        // OCR queue has concurrency 1 (updated)
         const slowTask = async () => new Promise<void>(resolve => setTimeout(resolve, 100))
 
         await queueManager.addOCRTask('p1', slowTask)
@@ -38,8 +47,11 @@ describe('QueueManager', () => {
         // Wait for start
         await new Promise(r => setTimeout(r, 10))
 
-        expect(queueManager.getStats().ocr.pending).toBe(2)
-        // Size = pending + queued = 2 + 1 = 3
+        // Only 1 task should be running (pending count in p-queue means running + waiting)
+        // Wait, in our getStats implementation:
+        // pending: this.ocrQueue.pending (running tasks)
+        // size: this.ocrQueue.size (running + waiting)
+        expect(queueManager.getStats().ocr.pending).toBe(1)
         expect(queueManager.getStats().ocr.size).toBe(3)
 
         await vi.waitFor(() => {
@@ -50,9 +62,8 @@ describe('QueueManager', () => {
     it('should cancel pending task', async () => {
         const taskFn = vi.fn()
 
-        // Fill the queue first
+        // Fill the queue first (concurrency 1, so p1 starts p2 waits)
         await queueManager.addOCRTask('p1', async () => new Promise(resolve => setTimeout(resolve, 50)))
-        await queueManager.addOCRTask('p2', async () => new Promise(resolve => setTimeout(resolve, 50)))
 
         // Add waiting task
         await queueManager.addOCRTask('p3', taskFn)
@@ -124,9 +135,8 @@ describe('QueueManager', () => {
     it('should cancel generation task', async () => {
         const genFn = vi.fn()
 
-        // Fill the queue to its concurrency limit (2)
+        // Fill the queue to its concurrency limit (1 for generation now too)
         await queueManager.addGenerationTask('g1', async () => new Promise(r => setTimeout(r, 100)))
-        await queueManager.addGenerationTask('g2', async () => new Promise(r => setTimeout(r, 100)))
 
         // Add a third task that should wait in queue
         await queueManager.addGenerationTask('g3', genFn)
@@ -173,12 +183,9 @@ describe('QueueManager', () => {
         const pending1Executed = vi.fn()
         const pending2Executed = vi.fn()
 
-        // Add two running tasks (concurrency is 2)
+        // Add one running task (concurrency is 1)
         await queueManager.addOCRTask('running1', async (signal) => {
             signal.addEventListener('abort', runningTaskAborted)
-            await new Promise(resolve => setTimeout(resolve, 200))
-        })
-        await queueManager.addOCRTask('running2', async () => {
             await new Promise(resolve => setTimeout(resolve, 200))
         })
 
@@ -188,7 +195,7 @@ describe('QueueManager', () => {
 
         // Wait for running tasks to start
         await new Promise(r => setTimeout(r, 50))
-        expect(queueManager.getStats().ocr.pending).toBe(2)
+        expect(queueManager.getStats().ocr.pending).toBe(1)
 
         // Cancel both running1 and pending1
         queueManager.cancelOCR('running1')
@@ -203,5 +210,27 @@ describe('QueueManager', () => {
         expect(runningTaskAborted).toHaveBeenCalled()
         expect(pending1Executed).not.toHaveBeenCalled()
         expect(pending2Executed).toHaveBeenCalled()
+    })
+
+    it('should wait for healthy service', async () => {
+        // Mock unhealthy
+        mockHealthStore.isHealthy = false
+
+        const taskFn = vi.fn()
+
+        // Add task
+        queueManager.addOCRTask('p-health', taskFn)
+
+        // Wait a bit, task should not have started
+        await new Promise(r => setTimeout(r, 50))
+        expect(taskFn).not.toHaveBeenCalled()
+
+        // Make healthy
+        mockHealthStore.isHealthy = true
+
+        // Should finish now
+        await vi.waitFor(() => {
+            expect(taskFn).toHaveBeenCalled()
+        }, { timeout: 1000 })
     })
 })

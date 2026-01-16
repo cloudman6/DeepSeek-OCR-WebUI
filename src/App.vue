@@ -225,6 +225,7 @@ import { ChevronForwardOutline, ChevronBackOutline } from '@vicons/ionicons5'
 import { ocrEvents } from '@/services/ocr/events'
 import { ocrService } from '@/services/ocr'
 import { queueManager } from '@/services/queue'
+import { useHealthStore } from '@/stores/health'
 
 
 const { t } = useI18n()
@@ -455,6 +456,10 @@ let resumeTimer: ReturnType<typeof setTimeout> | null = null
 
 // Load pages from database on mount and resume PDF processing
 onMounted(async () => {
+  // Start health check
+  const healthStore = useHealthStore()
+  healthStore.startHealthCheck()
+
   await pagesStore.loadPagesFromDB()
   
   // Resume any interrupted OCR tasks with a delay to avoid server concurrency issues
@@ -477,9 +482,14 @@ onMounted(async () => {
 
   // Add global error notifications for OCR and DocGen
   ocrEvents.on('ocr:error', ({ pageId, error }) => {
+    // Skip toast if it is a service unavailable error, as components will handle this with dialogs
+    const errorMsg = error?.message || 'Unknown error'
+    if (errorMsg.toLowerCase().includes('unavailable')) {
+      return
+    }
+
     const page = pagesStore.pages.find(p => p.id === pageId)
     const name = page ? page.fileName : pageId
-    const errorMsg = error?.message || 'Unknown error'
     // 注意: Naive UI 的 message API 不支持 class 选项
     message.error(`${t('ocr.ocrFailed', [errorMsg])} (${name})`)
   })
@@ -514,7 +524,11 @@ onMounted(async () => {
 })
 
 // Clean up on normal component unmount (SPA navigation, not page refresh)
-onBeforeUnmount(() => {  
+onBeforeUnmount(() => {
+  // Stop health check
+  const healthStore = useHealthStore()
+  healthStore.stopHealthCheck()
+  
   if (resumeTimer !== null) {
     clearTimeout(resumeTimer)
   }
