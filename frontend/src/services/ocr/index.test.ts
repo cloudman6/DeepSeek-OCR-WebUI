@@ -24,6 +24,13 @@ vi.mock('@/services/queue', () => ({
   }
 }))
 
+// Mock health store to always return healthy
+vi.mock('@/stores/health', () => ({
+  useHealthStore: () => ({
+    isHealthy: true
+  })
+}))
+
 describe('OCRService', () => {
   const mockResult: OCRResult = {
     success: true,
@@ -178,6 +185,22 @@ describe('OCRService', () => {
       // If aborted at start, it returns.
       expect(emitSpy).not.toHaveBeenCalledWith('ocr:start', expect.anything())
       expect(saveSpy).not.toHaveBeenCalled()
+    })
+    it('should catch error if adding to queue fails', async () => {
+      const service = new OCRService()
+      const pageId = 'queue-fail-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      vi.spyOn(queueManager, 'addOCRTask').mockRejectedValue(new Error('Queue Error'))
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+      await service.queueOCR(pageId, blob)
+
+      // We need to wait a tick since the catch block is in a promise chain that is not awaited by queueOCR
+      await new Promise(resolve => setTimeout(resolve, 0))
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Task error'), expect.any(Error))
+      consoleSpy.mockRestore()
     })
   })
 
@@ -344,6 +367,19 @@ describe('OCRService', () => {
       await service.resumeBatchOCR(pages)
 
       expect(queueSpy).not.toHaveBeenCalled()
+    })
+
+    it('should catch error if resume task fails', async () => {
+      const service = new OCRService()
+      const pages = [{ id: 'p1', status: 'recognizing' }] as any[]
+
+      vi.spyOn(db, 'getPageImage').mockRejectedValue(new Error('Resume Error'))
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => { })
+
+      await service.resumeBatchOCR(pages)
+
+      expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Failed to resume task'), expect.any(Error))
+      consoleSpy.mockRestore()
     })
   })
 })

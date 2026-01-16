@@ -28,7 +28,7 @@
           text
           size="tiny"
           circle
-          :title="$t('pageList.exportAs', [$t('common.export')])"
+          :title="$t('common.export')"
           class="export-selected-btn"
           @mouseenter="isExportHovered = true"
           @mouseleave="isExportHovered = false"
@@ -36,7 +36,7 @@
           <template #icon>
             <NIcon
               size="18"
-              color="#18a058"
+              :color="PRIMARY_COLOR"
             >
               <Download v-if="isExportHovered" />
               <DownloadOutline v-else />
@@ -169,7 +169,7 @@ import { useI18n } from 'vue-i18n'
 import draggable from 'vuedraggable'
 import { usePagesStore } from '@/stores/pages'
 import PageItem from '@/components/page-item/PageItem.vue'
-import type { Page, PageStatus } from '@/stores/pages'
+import type { Page } from '@/stores/pages'
 import { TrashOutline, DownloadOutline, DocumentTextOutline, Trash, DocumentText, Download } from '@vicons/ionicons5'
 import { NScrollbar, NEmpty, NCheckbox, NButton, NIcon, NDropdown, useMessage, useNotification, useDialog } from 'naive-ui'
 import IconWord from '@/components/icons/IconWord.vue'
@@ -178,6 +178,8 @@ import IconMarkdown from '@/components/icons/IconMarkdown.vue'
 import { exportService } from '@/services/export'
 import { ocrService } from '@/services/ocr'
 import { db } from '@/db'
+import { PRIMARY_COLOR } from '@/theme/vars'
+import { useHealthStore } from '@/stores/health'
 
 import { uiLogger } from '@/utils/logger'
 
@@ -250,6 +252,17 @@ function handleBatchDelete() {
 async function handleBatchOCR() {
   const selectedPages = pagesStore.selectedPages
   if (selectedPages.length === 0) return
+
+  // Check health before queuing
+  const healthStore = useHealthStore()
+  if (!healthStore.isHealthy) {
+    dialog.error({
+      title: t('errors.ocrServiceUnavailableTitle'),
+      content: t('errors.ocrServiceUnavailable'),
+      positiveText: t('common.ok')
+    })
+    return
+  }
 
   // Call batch OCR service
   const result = await ocrService.queueBatchOCR(selectedPages)
@@ -415,7 +428,7 @@ async function showExportConfirmDialog(
         },
           invalidPages.map(p =>
             h('div', { style: 'font-size: 13px; color: #666; padding: 2px 0' },
-              `• ${p.fileName} - ${getStatusLabel(p.status)}`
+              `• ${p.fileName}`
             )
           )
         ),
@@ -464,26 +477,7 @@ async function performExport(pages: Page[], format: ExportFormat) {
   }
 }
 
-function getStatusLabel(status: PageStatus): string {
-  const labelMap: Record<PageStatus, string> = {
-    'pending_render': 'status.rendering',
-    'rendering': 'status.rendering',
-    'pending_ocr': 'status.ocrQueued',
-    'recognizing': 'status.recognizing',
-    'ocr_success': 'status.ocrDone',
-    'pending_gen': 'status.waitingForGen',
-    'generating_markdown': 'status.generatingMarkdown',
-    'markdown_success': 'status.markdownReady',
-    'generating_docx': 'status.generatingDOCX',
-    'generating_pdf': 'status.generatingPDF',
-    'pdf_success': 'status.pdfReady',
-    'ready': 'status.ready',
-    'completed': 'status.completed',
-    'error': 'status.error'
-  }
-  const key = labelMap[status] || 'status.unknown'
-  return t(key)
-}
+
 
 interface DragEndEvent {
   oldIndex: number

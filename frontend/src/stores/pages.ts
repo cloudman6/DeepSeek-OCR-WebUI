@@ -302,17 +302,16 @@ export const usePagesStore = defineStore('pages', () => {
 
   // Queue Management Actions
   async function cancelOCRTasks(pageIds: string[]) {
-    // 1. Cancel in QueueManager (Logic Layer)
+    // 1. Import queueManager (do it once, not in loop)
+    const { queueManager } = await import('@/services/queue')
+
+    // 2. Cancel in QueueManager (Logic Layer)
     // This stops the processing if running, or prevents it from starting if queued
     pageIds.forEach(id => {
-      // Import queueManager dynamically or use the imported instance
-      // Using the one imported at module level
-      import('@/services/queue').then(({ queueManager }) => {
-        queueManager.cancelOCR(id)
-      })
+      queueManager.cancelOCR(id)
     })
 
-    // 2. Update Store Status (UI Layer)
+    // 3. Update Store Status (UI Layer)
     // We revert status to 'ready' so user can try again
     const updates = pageIds.map(id => ({
       id,
@@ -334,7 +333,7 @@ export const usePagesStore = defineStore('pages', () => {
       })
     }
 
-    // 3. Update Database (Persistence Layer)
+    // 4. Update Database (Persistence Layer)
     try {
       // We can use a loop for now, or add a batch update method to DB later if needed
       await Promise.all(updates.map(u => db.updatePage(u.id, {

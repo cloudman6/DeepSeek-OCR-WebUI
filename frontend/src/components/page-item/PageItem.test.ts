@@ -60,6 +60,13 @@ vi.mock('naive-ui', () => ({
         error: vi.fn(),
         warning: vi.fn(),
         info: vi.fn()
+    }),
+    useDialog: () => ({
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn(),
+        create: vi.fn()
     })
 }))
 

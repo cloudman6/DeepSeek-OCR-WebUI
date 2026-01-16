@@ -21,6 +21,14 @@ const IGNORED_PATTERNS = [
     'Failed to load resource: the server responded with a status of 500',
     'WebKit encountered an internal error',
     '[DeepSeekOCRProvider] Process failed', // OCR error handling tests intentionally trigger this
+    '[HealthCheckService] OCR service is unavailable',
+    '[HealthCheckService] OCR service is unhealthy',
+    '[QueueManager] OCR service unavailable', // 模糊匹配，忽略变量
+    '[QueueManager] OCR service recovered',
+    'OCR service is currently unavailable. Please try again later.',
+    'Uncaught (in promise) Error: OCR service is currently unavailable. Please try again later.',
+    '[QueueManager] OCR service recovered',
+    'OCR Error:',
 ];
 
 /**

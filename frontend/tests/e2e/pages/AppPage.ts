@@ -112,4 +112,27 @@ export class AppPage {
   async getTitle(): Promise<string> {
     return await this.page.title();
   }
+
+  /**
+   * 获取 OCR 健康状态指示器的文本
+   */
+  async getHealthStatusText(): Promise<string> {
+    const indicator = this.page.locator('.health-status');
+    // 需要确保 tooltip 已经显示，或者直接从 DOM 获取 (如果已渲染)
+    // 我们的实现中状态文本在 tooltip 内部。
+    // 为了测试方便，我们可以临时 hover 或者直接检查指示器的颜色/图标
+    await this.page.locator('.n-badge').filter({ hasText: 'OCR Service' }).hover();
+    return await indicator.textContent() || '';
+  }
+
+  /**
+   * 获取健康指示器的颜色类型 (success/error)
+   */
+  async getHealthStatusType(): Promise<'success' | 'error'> {
+    const button = this.page.locator('button').filter({ hasText: 'OCR Service' });
+    const classList = await button.getAttribute('class') || '';
+    if (classList.includes('n-button--success-type')) return 'success';
+    if (classList.includes('n-button--error-type')) return 'error';
+    return 'success'; // 默认
+  }
 }

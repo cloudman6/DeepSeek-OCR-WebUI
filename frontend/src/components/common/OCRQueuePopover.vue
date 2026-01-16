@@ -1,5 +1,8 @@
 <template>
-  <div class="ocr-queue-container">
+  <div 
+    class="ocr-queue-container"
+    data-testid="ocr-queue-popover"
+  >
     <!-- Header -->
     <div class="queue-header">
       <div class="header-title">
@@ -10,6 +13,41 @@
         />
       </div>
       <div class="header-actions" />
+    </div>
+
+    <!-- Toolbar (Check All) - Fixed at top -->
+    <div
+      v-if="store.ocrTaskCount > 0"
+      class="list-toolbar"
+      data-testid="ocr-queue-toolbar"
+    >
+      <NCheckbox
+        data-testid="ocr-queue-select-all"
+        :checked="isAllSelected"
+        :indeterminate="isPartiallySelected"
+        size="small"
+        @update:checked="handleSelectAll"
+      />
+
+      <!-- Remove Selected -->
+      <NButton
+        v-if="hasSelection"
+        data-testid="ocr-queue-batch-cancel-btn"
+        size="medium"
+        text
+        :title="t('ocrQueuePopover.cancelSelected')"
+        class="action-btn"
+        @click="handleStopSelected"
+        @mouseenter="hoveredBtnId = 'batch'"
+        @mouseleave="hoveredBtnId = null"
+      >
+        <template #icon>
+          <NIcon color="#d03050">
+            <CloseCircle v-if="hoveredBtnId === 'batch'" />
+            <CloseCircleOutline v-else />
+          </NIcon>
+        </template>
+      </NButton>
     </div>
 
     <!-- Task List -->
@@ -28,42 +66,16 @@
         v-else
         class="task-list"
       >
-        <!-- Toolbar (Check All) -->
-        <div class="list-toolbar">
-          <NCheckbox
-            :checked="isAllSelected"
-            :indeterminate="isPartiallySelected"
-            size="small"
-            @update:checked="handleSelectAll"
-          />
-
-          <!-- Remove Selected -->
-          <NButton
-            v-if="hasSelection"
-            size="medium"
-            text
-            :title="t('ocrQueuePopover.cancelSelected')"
-            class="action-btn"
-            @click="handleStopSelected"
-            @mouseenter="hoveredBtnId = 'batch'"
-            @mouseleave="hoveredBtnId = null"
-          >
-            <template #icon>
-              <NIcon color="#d03050">
-                <CloseCircle v-if="hoveredBtnId === 'batch'" />
-                <CloseCircleOutline v-else />
-              </NIcon>
-            </template>
-          </NButton>
-        </div>
-
         <!-- Processing Tasks -->
         <div
           v-for="page in store.activeOCRTasks"
           :key="page.id"
           class="task-item processing"
+          :data-testid="`ocr-queue-item-${page.id}`"
+          data-status="processing"
         >
           <NCheckbox 
+            data-testid="ocr-queue-task-checkbox"
             size="small"
             :checked="selectedIds.has(page.id)"
             @update:checked="(v) => handleItemSelect(page.id, v)"
@@ -79,6 +91,7 @@
             size="medium"
             circle
             text
+            data-testid="ocr-queue-task-cancel-btn"
             class="cancel-btn"
             :title="t('ocrQueuePopover.cancelTask')"
             @click="handleStopSingle(page.id)"
@@ -99,8 +112,11 @@
           v-for="page in store.queuedOCRTasks"
           :key="page.id"
           class="task-item queued"
+          :data-testid="`ocr-queue-item-${page.id}`"
+          data-status="queued"
         >
           <NCheckbox 
+            data-testid="ocr-queue-task-checkbox"
             :checked="selectedIds.has(page.id)"
             @update:checked="(v) => handleItemSelect(page.id, v)"
           />
@@ -120,6 +136,7 @@
             size="medium"
             circle
             text
+            data-testid="ocr-queue-task-cancel-btn"
             class="cancel-btn"
             :title="t('ocrQueuePopover.cancelTask')"
             @click="handleStopSingle(page.id)"
@@ -140,6 +157,7 @@
     <!-- Footer -->
     <div class="queue-footer">
       <NButton
+        data-testid="ocr-queue-close-btn"
         type="primary"
         size="medium"
         block
@@ -185,6 +203,25 @@ const allTaskIds = computed(() => [
 const hasSelection = computed(() => selectedIds.value.size > 0)
 const isAllSelected = computed(() => allTaskIds.value.length > 0 && selectedIds.value.size === allTaskIds.value.length)
 const isPartiallySelected = computed(() => selectedIds.value.size > 0 && selectedIds.value.size < allTaskIds.value.length)
+
+// Watcher to prune selectedIds when tasks are removed (e.g. completed)
+import { watch } from 'vue'
+watch(allTaskIds, (newIds) => {
+  const newIdSet = new Set(newIds)
+  const idsToRemove: string[] = []
+  
+  // Find IDs that are no longer in the list
+  selectedIds.value.forEach(id => {
+    if (!newIdSet.has(id)) {
+      idsToRemove.push(id)
+    }
+  })
+  
+  // Remove them
+  if (idsToRemove.length > 0) {
+    idsToRemove.forEach(id => selectedIds.value.delete(id))
+  }
+}, { deep: true })
 
 // Actions
 function handleItemSelect(id: string, checked: boolean) {

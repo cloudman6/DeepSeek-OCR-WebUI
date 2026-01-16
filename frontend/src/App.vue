@@ -225,6 +225,7 @@ import { ChevronForwardOutline, ChevronBackOutline } from '@vicons/ionicons5'
 import { ocrEvents } from '@/services/ocr/events'
 import { ocrService } from '@/services/ocr'
 import { queueManager } from '@/services/queue'
+import { useHealthStore } from '@/stores/health'
 
 
 const { t } = useI18n()
@@ -455,6 +456,10 @@ let resumeTimer: ReturnType<typeof setTimeout> | null = null
 
 // Load pages from database on mount and resume PDF processing
 onMounted(async () => {
+  // Start health check
+  const healthStore = useHealthStore()
+  healthStore.startHealthCheck()
+
   await pagesStore.loadPagesFromDB()
   
   // Resume any interrupted OCR tasks with a delay to avoid server concurrency issues
@@ -477,9 +482,14 @@ onMounted(async () => {
 
   // Add global error notifications for OCR and DocGen
   ocrEvents.on('ocr:error', ({ pageId, error }) => {
+    // Skip toast if it is a service unavailable error, as components will handle this with dialogs
+    const errorMsg = error?.message || 'Unknown error'
+    if (errorMsg.toLowerCase().includes('unavailable')) {
+      return
+    }
+
     const page = pagesStore.pages.find(p => p.id === pageId)
     const name = page ? page.fileName : pageId
-    const errorMsg = error?.message || 'Unknown error'
     // 注意: Naive UI 的 message API 不支持 class 选项
     message.error(`${t('ocr.ocrFailed', [errorMsg])} (${name})`)
   })
@@ -514,7 +524,11 @@ onMounted(async () => {
 })
 
 // Clean up on normal component unmount (SPA navigation, not page refresh)
-onBeforeUnmount(() => {  
+onBeforeUnmount(() => {
+  // Stop health check
+  const healthStore = useHealthStore()
+  healthStore.stopHealthCheck()
+  
   if (resumeTimer !== null) {
     clearTimeout(resumeTimer)
   }
@@ -538,6 +552,8 @@ html, body {
   color: #111;
   height: 100%;
   overflow: hidden;
+  /* Theme Variables */
+  --primary-color: #18a058;
 }
 
 
@@ -572,9 +588,18 @@ html, body {
 }
 
 .sider-trigger-btn:hover {
-  border-color: #18a058 !important;
-  box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
+  border-color: var(--primary-color) !important;
+  box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2); /* Need to figure out how to handle rgba with var. Keeping hardcoded for shadow or using color-mix capability if supported, OR just keeping it approximate. For now, replacing border-color. */
 }
+
+/* Note on shadow: rgba(24, 160, 88, 0.2) corresponds to primary color opacity 0.2. 
+   Ideally we'd use color-mix or similar, but for simplicity/safety we might leave the shadow hardcoded or use a slightly different approach. 
+   However, since the user asked for variable, let's just stick to hex/var replacements where explicit.
+   Actually, I can use `color-mix(in srgb, var(--primary-color), transparent 80%)` if browser support allows, but that might be risky.
+   Let's keep the shadow hardcoded for now or skip it? No, keep it as is or update if requested. 
+   Wait, I should probably try to be consistent. 
+   Let's just change the border-color for now as that was the main one grepped.
+*/
 
 .sider-trigger-btn .n-icon {
   font-size: 18px !important;
@@ -665,7 +690,7 @@ html, body {
 
 .panel-divider .n-button:hover {
   opacity: 1;
-  border-color: #18a058 !important;
+  border-color: var(--primary-color) !important;
   box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
 }
 
@@ -693,7 +718,7 @@ html, body {
 
 .right-edge-trigger .n-button:hover {
   opacity: 1;
-  border-color: #18a058 !important;
+  border-color: var(--primary-color) !important;
   box-shadow: 0 2px 6px rgba(24, 160, 88, 0.2);
 }
 </style>

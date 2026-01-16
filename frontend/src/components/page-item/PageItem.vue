@@ -45,7 +45,7 @@
         <template #icon>
           <NIcon
             size="18"
-            :color="isScanHovered ? '#18a058' : '#18a058'"
+            :color="PRIMARY_COLOR"
           >
             <DocumentText v-if="isScanHovered" />
             <DocumentTextOutline v-else />
@@ -68,7 +68,7 @@
         <template #icon>
           <NIcon
             size="18"
-            :color="isDeleteHovered ? '#d03050' : '#d03050'"
+            color="#d03050"
           >
             <Trash v-if="isDeleteHovered" />
             <TrashOutline v-else />
@@ -140,6 +140,7 @@
         <NTag
           :type="getStatusType(page.status)"
           size="small"
+          data-testid="ocr-status-tag"
         >
           OCR
         </NTag>
@@ -151,12 +152,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { NButton, NTag, NCheckbox, NSpin, NIcon, useMessage, useNotification } from 'naive-ui'
+import { NButton, NTag, NCheckbox, NSpin, NIcon, useMessage, useNotification, useDialog } from 'naive-ui'
 import { TrashOutline, DocumentTextOutline, Trash, DocumentText } from '@vicons/ionicons5'
 import { usePagesStore } from '@/stores/pages'
 import type { Page } from '@/stores/pages'
 import { db } from '@/db'
 import { ocrService } from '@/services/ocr'
+import { PRIMARY_COLOR } from '@/theme/vars'
+import { useHealthStore } from '@/stores/health'
 
 interface Props {
   page: Page
@@ -181,6 +184,7 @@ const { t } = useI18n()
 const pagesStore = usePagesStore()
 const message = useMessage() // Access Naive UI message
 const notification = useNotification()
+const dialog = useDialog()
 const isDeleteHovered = ref(false)
 const isScanHovered = ref(false)
 const isPageHovered = ref(false)
@@ -218,18 +222,30 @@ async function handleScan() {
       return
     }
 
+    await ocrService.queueOCR(props.page.id, imageBlob)
+    
     // 注意: Naive UI 的 notification API 不支持 class 选项
     notification.success({
-      content: 'Added to OCR Queue',
+      content: t('ocr.addedToQueue'),
       duration: 2500,
-      closable: false
+        closable: false
     })
-    await ocrService.queueOCR(props.page.id, imageBlob)
 
   } catch (error) {
     console.error('OCR Error:', error)
-    // 注意: Naive UI 的 message API 不支持 class 选项
-    message.error('OCR Failed: ' + (error instanceof Error ? error.message : String(error)))
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    const healthStore = useHealthStore()
+    
+    if (errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy) {
+      dialog.error({
+        title: t('errors.ocrServiceUnavailableTitle'),
+        content: t('errors.ocrServiceUnavailable'),
+        positiveText: t('common.ok')
+      })
+    } else {
+      // 注意: Naive UI 的 message API 不支持 class 选项
+      message.error(t('ocr.ocrFailed', [errorMsg]))
+    }
   }
 }
 
@@ -324,7 +340,7 @@ function getStatusType(status: Page['status']): 'success' | 'info' | 'warning' |
 .page-item.active,
 .page-item.selected {
   background: #ffffff;
-  border-left-color: #18A058; /* Highlight color */
+  border-left-color: var(--primary-color); /* Highlight color */
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15); /* Soft blue shadow */
 }
 

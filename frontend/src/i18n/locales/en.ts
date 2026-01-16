@@ -23,6 +23,23 @@ export default {
     startImport: 'Select Files'
   },
 
+  // Health
+  health: {
+    ocrService: 'OCR Service',
+    status: 'Status',
+    backend: 'Backend',
+    platform: 'Platform',
+    modelLoaded: 'Model Loaded',
+    yes: 'Yes',
+    no: 'No',
+    lastCheck: 'Last check',
+    healthy: 'Healthy',
+    unavailable: 'Unavailable',
+    justNow: 'just now',
+    ago: '{0}s ago',
+    minutesAgo: '{0}m ago'
+  },
+
   // Header
   header: {
     processing: 'Processing',
@@ -118,7 +135,9 @@ export default {
     pdfNotReady: 'Sandwich PDF not generated yet',
     checkingPDF: 'Checking PDF status...',
     loadingDOCX: 'Loading DOCX...',
-    failedToLoad: 'Failed to load content.'
+    failedToLoad: 'Failed to load content.',
+    copy: 'Copy',
+    copied: 'Copied!'
   },
 
   // Page Viewer
@@ -220,6 +239,8 @@ export default {
     noFilesSelected: 'No files selected',
     unsupportedFileType: 'Unsupported file type',
     failedToLoadMarkdown: 'Failed to load markdown',
-    failedToExportMarkdown: 'Failed to export markdown'
+    failedToExportMarkdown: 'Failed to export markdown',
+    ocrServiceUnavailable: 'OCR service is currently unavailable. Please try again later.',
+    ocrServiceUnavailableTitle: 'Service Unavailable'
   }
 } as const

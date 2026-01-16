@@ -19,7 +19,11 @@ vi.mock('naive-ui', () => ({
   NSwitch: { template: '<div class="n-switch"><slot name="checked-icon"></slot><slot name="unchecked-icon"></slot></div>', props: ['value'] },
   NIcon: { template: '<div><slot></slot></div>' },
   NSpace: { template: '<div><slot></slot></div>' },
-  NTooltip: { template: '<span><slot name="trigger"></slot></span>', props: ['trigger'] }
+  NTooltip: { template: '<span><slot name="trigger"></slot></span>', props: ['trigger'] },
+  useMessage: () => ({
+    success: vi.fn(),
+    error: vi.fn()
+  })
 }))
 
 // Mock docx-preview
@@ -64,7 +68,10 @@ describe('Preview.vue', () => {
       global: {
         plugins: [i18n]
       },
-      props
+      props: {
+        currentPage: null,
+        ...props
+      }
     })
   }
   const mockPage = {

@@ -261,8 +261,9 @@ import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText, NS
 import { ColorWand, ColorWandOutline } from '@vicons/ionicons5'
 import { db } from '@/db'
 import { ocrService, type OCRResult, type OCRPromptType } from '@/services/ocr'
-import { useMessage, useNotification } from 'naive-ui'
+import { useMessage, useNotification, useDialog } from 'naive-ui'
 import { usePagesStore } from '@/stores/pages'
+import { useHealthStore } from '@/stores/health'
 import OCRModeSelector from '@/components/ocr/OCRModeSelector.vue'
 import OCRInputModal from '@/components/ocr/OCRInputModal.vue'
 import OCRResultOverlay from '@/components/ocr/OCRResultOverlay.vue'
@@ -281,7 +282,9 @@ const props = defineProps<{
 
 const message = useMessage()
 const notification = useNotification()
+const dialog = useDialog()
 const pagesStore = usePagesStore()
+const healthStore = useHealthStore()
 const zoomLevel = ref(1)
 // const imageContainer = ref<HTMLElement>() // Unused ref removed
 const imageSize = ref<string>('')
@@ -568,22 +571,33 @@ async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: st
     }
 
     uiLogger.info(`Adding page to OCR Queue (${mode}):`, props.currentPage.id)
-    // 注意: Naive UI 的 notification API 不支持 class 选项
-    notification.success({
-      content: t('ocr.addedToQueue'),
-      duration: 2500,
-      closable: false
-    })
     
     await ocrService.queueOCR(props.currentPage.id, imageBlob, {
       prompt_type: mode,
       ...extraOptions
     })
 
+    // 注意: Naive UI 的 notification API 不支持 class 选项
+    notification.success({
+      content: t('ocr.addedToQueue'),
+      duration: 2500,
+      closable: false
+    })
+
   } catch (error) {
     uiLogger.error('OCR Error:', error)
-    // 注意: Naive UI 的 message API 不支持 class 选项
-    message.error(t('ocr.ocrFailed', [(error instanceof Error ? error.message : String(error))]))
+    const errorMsg = error instanceof Error ? error.message : String(error)
+    
+    if (errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy) {
+      dialog.error({
+        title: t('errors.ocrServiceUnavailableTitle'),
+        content: t('errors.ocrServiceUnavailable'),
+        positiveText: t('common.ok')
+      })
+    } else {
+      // 注意: Naive UI 的 message API 不支持 class 选项
+      message.error(t('ocr.ocrFailed', [errorMsg]))
+    }
   }
 }
 // Removed old runOCR function in place of new handlers
