@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeepSeek OCR - 智能图像识别</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -1216,6 +1217,26 @@
                 <!-- Title -->
                 <div style="flex: 1; text-align: center;">
                     <h1>🔍 DeepSeek OCR</h1>
+        
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85em; opacity: 0.8;">首次识别</div>
+                        <div style="font-size: 1.2em; font-weight: 700;">20-30s</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85em; opacity: 0.8;">后续识别</div>
+                        <div style="font-size: 1.2em; font-weight: 700;">2-5s</div>
+                    </div>
+                    <div style="text-align: center;">
+                        <div style="font-size: 0.85em; opacity: 0.8;">显存节省</div>
+                        <div style="font-size: 1.2em; font-weight: 700;">~85%</div>
+                    </div>
+                </div>
+            </div>
+            <div style="margin-top: 10px; font-size: 0.85em; opacity: 0.9;">
+                💡 首次使用需加载模型，请耐心等待。后续识别会自动从 CPU 快速恢复，大幅节省显存。
+            </div>
+        </div>
                 </div>
                 
                 <!-- Language Switcher -->
@@ -1468,9 +1489,13 @@
                         <button class="btn btn-primary" id="downloadBtn">
                             <span>⬇️</span> 下载文本
                         </button>
+                        <button class="btn btn-secondary" id="mdPreviewBtn" style="display:none;">
+                            <span>👁️</span> <span id="mdPreviewText">预览 Markdown</span>
+                        </button>
                     </div>
                 </div>
                 <div class="result-text" id="resultText"></div>
+                <div class="result-text" id="resultMarkdown" style="display:none; padding: 20px; background: white; border-radius: 8px;"></div>
             </div>
 
             <!-- Log Section -->
@@ -2506,7 +2531,9 @@
                     <button class="image-remove" onclick="removeImage('${img.id}')">×</button>
                     <img src="${img.preview}" alt="${img.name}" class="image-preview">
                     <div class="image-info">
-                        <div class="image-name" title="${img.name}">${img.name}</div>
+                        <div class="image-name" title="${img.name}">
+                        ${img.pageNumber ? `📄 第 ${img.pageNumber} 页` : img.name}
+                    </div>
                         <div class="image-size">${img.size}</div>
                     </div>
                     ${img.status !== 'pending' ? `<div class="image-status status-${img.status}">${getStatusText(img.status)}</div>` : ''}
@@ -2585,8 +2612,14 @@
             // 保存旧顺序用于对比
             const oldOrder = state.images.map(img => img.name);
             
+            // 按页码或添加顺序排序
             state.images.sort((a, b) => {
-                return newOrder.indexOf(a.id.toString()) - newOrder.indexOf(b.id.toString());
+                // 如果有 pageNumber，按页码排序
+                if (a.pageNumber !== undefined && b.pageNumber !== undefined) {
+                    return a.pageNumber - b.pageNumber;
+                }
+                // 否则按 ID 排序（保持添加顺序）
+                return a.id - b.id;
             });
             
             const newOrderNames = state.images.map(img => img.name);
@@ -3056,6 +3089,14 @@
             }).join('\n');
 
             elements.resultText.textContent = mergedText;
+            
+            // Show Markdown preview button if mode is doc_to_markdown
+            const mdBtn = document.getElementById('mdPreviewBtn');
+            if (state.mode === 'doc_to_markdown') {
+                mdBtn.style.display = 'inline-flex';
+            } else {
+                mdBtn.style.display = 'none';
+            }
         }
 
         // Copy Result
@@ -3124,6 +3165,28 @@
                 '包含图片': `${state.results.length} 张`,
                 '保存位置': '浏览器默认下载文件夹'
             });
+        }
+
+        // Toggle Markdown Preview
+        let isMarkdownPreview = false;
+        function toggleMarkdownPreview() {
+            const textDiv = document.getElementById('resultText');
+            const mdDiv = document.getElementById('resultMarkdown');
+            const btnText = document.getElementById('mdPreviewText');
+            
+            isMarkdownPreview = !isMarkdownPreview;
+            
+            if (isMarkdownPreview) {
+                const text = textDiv.textContent;
+                mdDiv.innerHTML = marked.parse(text);
+                textDiv.style.display = 'none';
+                mdDiv.style.display = 'block';
+                btnText.textContent = '查看原文';
+            } else {
+                textDiv.style.display = 'block';
+                mdDiv.style.display = 'none';
+                btnText.textContent = '预览 Markdown';
+            }
         }
 
         // Clear All
@@ -3697,5 +3760,47 @@
         // Apply initial language
         updateUILanguage();
     </script>
+
+    
+    <!-- GPU 管理说明 - 页面底部 -->
+    <div style="max-width: 1400px; margin: 40px auto 30px; padding: 0 20px;">
+        <div style="background: white; padding: 30px 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08); border: 1px solid rgba(102, 126, 234, 0.1);">
+            <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 25px; padding-bottom: 20px; border-bottom: 2px solid #f0f0f0;">
+                <div style="width: 50px; height: 50px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px;">⚡</div>
+                <div>
+                    <div style="font-size: 1.4em; font-weight: 700; color: #1f2937; margin-bottom: 3px;">GPU 智能管理</div>
+                    <div style="font-size: 0.95em; color: #6b7280;">懒加载 + 即用即卸 · 节省显存 85%</div>
+                </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%); border-radius: 12px; border: 1px solid #c7d2fe;">
+                    <div style="font-size: 0.9em; color: #6366f1; font-weight: 600; margin-bottom: 8px;">首次识别</div>
+                    <div style="font-size: 2em; font-weight: 700; color: #4f46e5;">20-30s</div>
+                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">从磁盘加载模型</div>
+                </div>
+                <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-radius: 12px; border: 1px solid #bbf7d0;">
+                    <div style="font-size: 0.9em; color: #10b981; font-weight: 600; margin-bottom: 8px;">后续识别</div>
+                    <div style="font-size: 2em; font-weight: 700; color: #059669;">2-5s</div>
+                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">从 CPU 快速恢复</div>
+                </div>
+                <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px; border: 1px solid #fcd34d;">
+                    <div style="font-size: 0.9em; color: #f59e0b; font-weight: 600; margin-bottom: 8px;">显存节省</div>
+                    <div style="font-size: 2em; font-weight: 700; color: #d97706;">~85%</div>
+                    <div style="font-size: 0.85em; color: #6b7280; margin-top: 5px;">空闲时释放显存</div>
+                </div>
+            </div>
+            
+            <div style="background: #f9fafb; padding: 20px 25px; border-radius: 12px; border-left: 4px solid #6366f1;">
+                <div style="font-size: 1em; font-weight: 600; color: #1f2937; margin-bottom: 12px;">💡 工作原理</div>
+                <div style="color: #4b5563; line-height: 1.8; font-size: 0.95em;">
+                    <div style="margin-bottom: 8px;">• <strong>首次使用：</strong>从磁盘加载模型到 GPU（约 20-30 秒）</div>
+                    <div style="margin-bottom: 8px;">• <strong>识别完成：</strong>自动卸载到 CPU，释放显存（约 2 秒）</div>
+                    <div>• <strong>后续识别：</strong>从 CPU 快速恢复到 GPU（约 2-5 秒），大幅节省显存</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>

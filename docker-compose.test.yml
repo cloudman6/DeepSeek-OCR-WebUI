@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  deepseek-ocr:
+    image: neosun/deepseek-ocr:latest
+    container_name: deepseek-ocr-test
+    ports:
+      - "8001:8001"
+    shm_size: 8g
+    volumes:
+      # 挂载新的前端 dist 目录
+      - ./frontend/dist:/app/frontend/dist:ro
+      # 挂载更新后的 web_service_unified.py
+      - ./web_service_unified.py:/app/web_service_unified.py:ro
+      - ./backends:/app/backends:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 5m
+    command: ["python", "web_service_unified.py"]

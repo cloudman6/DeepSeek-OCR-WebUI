@@ -1,0 +1,30 @@
+# DeepSeek-OCR v3.4 - Vue 3 Frontend Update
+# 基于现有 all-in-one 镜像，添加 Vue 3 前端
+# PR #34: New Vue 3 Frontend by cloudman6
+
+FROM neosun/deepseek-ocr:latest
+
+LABEL version="3.4.0" \
+      description="DeepSeek-OCR with Vue 3 Frontend" \
+      maintainer="neosun100" \
+      features="vue3-frontend,pdf-processing,multi-export"
+
+WORKDIR /app
+
+# 复制更新后的后端代码 (支持 Vue 3 前端静态文件服务)
+COPY web_service_unified.py .
+COPY backends ./backends
+
+# 复制 Vue 3 前端 (PR #34 新增)
+# 包含: PDF处理、OCR集成、多格式导出 (Markdown/DOCX/PDF)
+COPY frontend/dist ./frontend/dist
+
+# 暴露端口
+EXPOSE 8001
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5m --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+# 启动服务 (使用 unified 版本支持 Vue 3 前端)
+CMD ["python", "web_service_unified.py"]
