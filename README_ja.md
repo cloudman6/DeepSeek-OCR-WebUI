@@ -1,611 +1,372 @@
 # 🔍 DeepSeek-OCR-WebUI
-[アプリケーションにアクセス →](https://deepseek-ocr.aws.xin/)
+
+[アプリにアクセス →](https://deepseek-ocr.aws.xin/)
 
 <div align="center">
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/version-v3.3.3-blue.svg)](./CHANGELOG.md)
-[![Docker](https://img.shields.io/badge/docker-supported-brightgreen.svg)](./docker-compose.yml)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
-[![Language](https://img.shields.io/badge/languages-4-orange.svg)](#多言語サポート)
+[![Version](https://img.shields.io/badge/バージョン-v3.5-blue.svg)](./CHANGELOG.md)
+[![Docker](https://img.shields.io/badge/docker-neosun/deepseek--ocr-brightgreen.svg)](https://hub.docker.com/r/neosun/deepseek-ocr)
+[![License](https://img.shields.io/badge/ライセンス-MIT-green.svg)](./LICENSE)
+[![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6.svg)](https://www.typescriptlang.org/)
 
-インテリジェントOCRシステム · バッチ処理 · マルチモードサポート · バウンディングボックス可視化
+**インテリジェント OCR システム · Vue 3 モダン UI · バッチ処理 · マルチモード対応**
 
-[機能](#機能) • [クイックスタート](#クイックスタート) • [バージョン履歴](#バージョン履歴) • [ドキュメント](#ドキュメント) • [貢献](#貢献)
+[機能](#-機能) • [クイックスタート](#-クイックスタート) • [スクリーンショット](#-スクリーンショット) • [コントリビューター](#-コントリビューター)
 
 </div>
 
 ---
 
-## 🎉 重要なアップデート：Apple Silicon対応！
+## 🎉 v3.5 メジャーアップデート：全く新しい Vue 3 フロントエンド！
 
-**🍎 Mac M1/M2/M3/M4をネイティブMPSアクセラレーションで完全サポート！**
+**🚀 モダンな Vue 3 + TypeScript アーキテクチャによる完全な UI 刷新！**
 
-DeepSeek-OCR-WebUI v3.3はネイティブApple Siliconサポートを提供し、Macユーザーがローカルで高性能OCRを実行できるようになりました：
-- ✅ **ネイティブMPSバックエンド** - Metal Performance Shadersアクセラレーション
-- ✅ **簡単セットアップ** - ワンコマンドconda環境インストール
-- ✅ **プライベートデプロイ** - 完全オフライン実行
-- ✅ **高速推論** - M3 Proで約3秒/画像
+<div align="center">
 
-👉 [Macデプロイガイドへジャンプ](#-オプション2macネイティブデプロイapple-silicon)
+| ホームページ | 処理ページ |
+|:------------:|:----------:|
+| ![Vue3 ホーム](./assets/vue3_home.png) | ![Vue3 処理](./assets/vue3_processing.png) |
+
+</div>
+
+### ✨ v3.5 の新機能
+
+- 🎨 **全く新しい Vue 3 UI** - Naive UI コンポーネントによるモダンでレスポンシブなデザイン
+- ⚡ **TypeScript サポート** - 完全な型安全性と優れた開発体験
+- 📦 **Dexie.js データベース** - オフラインページ管理のためのローカル IndexedDB
+- 🔄 **リアルタイム処理キュー** - キュー管理付きの視覚的 OCR 進捗
+- 🏥 **ヘルスチェックシステム** - 視覚的インジケーター付きのバックエンド状態監視
+- 📄 **強化された PDF サポート** - ページごとの処理によるスムーズな PDF レンダリング
+- 🌐 **i18n 対応** - 組み込みの国際化（EN/CN/TW/JP）
+- 🧪 **E2E テスト** - 包括的な Playwright テストカバレッジ
 
 ---
 
-## 📚 完全な API ドキュメントが利用可能！
+## 👥 コントリビューター
 
-**新機能：本番環境対応の例を含む包括的な API ガイド**
+<div align="center">
 
-- 🔌 **[完全な API ドキュメントを見る →](./API.md)**
-- 4つの実践的なシナリオ（請求書抽出、バッチ処理、PDF処理、表認識）
-- 多言語クライアント例（Python、JavaScript、Go、TypeScript）
-- ベストプラクティスとパフォーマンス最適化
-- 8つ以上の一般的なトラブルシューティング解決策
+### 🌟 素晴らしいコントリビューターに特別な感謝を！🌟
 
-アプリケーションに OCR を統合するのに最適！
+</div>
+
+このプロジェクトは優れたコラボレーションの成果です。Vue 3 フロントエンドは [PR #34](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/34) の成功したマージを通じて開発されました。
+
+<table>
+<tr>
+<td align="center">
+<a href="https://github.com/cloudman6">
+<img src="https://avatars.githubusercontent.com/u/23329721?v=4" width="100px;" alt="CloudMan"/>
+<br />
+<sub><b>CloudMan</b></sub>
+</a>
+<br />
+<sub>🏆 Vue 3 フロントエンドリード開発者</sub>
+<br />
+<sub>164 コミット · 完全な UI 書き換え</sub>
+</td>
+<td align="center">
+<a href="https://github.com/neosun100">
+<img src="https://avatars.githubusercontent.com/u/neosun100" width="100px;" alt="neosun100"/>
+<br />
+<sub><b>neosun100</b></sub>
+</a>
+<br />
+<sub>🎯 プロジェクトメンテナー</sub>
+<br />
+<sub>バックエンド · Docker · 統合</sub>
+</td>
+</tr>
+</table>
+
+> 💡 **Vue 3 フロントエンドについて**：[@cloudman6](https://github.com/cloudman6) は、包括的な E2E テスト、モダンな UI コンポーネント、本番環境対応のアーキテクチャを含む 164 コミットで、優れた Vue 3 + TypeScript フロントエンドを貢献しました。このコラボレーションにより、DeepSeek-OCR-WebUI はプロフェッショナルグレードのアプリケーションに変貌しました！
 
 ---
 
 ## 📖 はじめに
 
-DeepSeek-OCR-WebUIは、DeepSeek-OCRモデルに基づくインテリジェントな画像認識Webアプリケーションで、直感的なユーザーインターフェースと強力な認識機能を提供します。
-
-### 🖼️ UIプレビュー
-
-<div align="center">
-
-![DeepSeek-OCR-WebUI インターフェース](./assets/ui_screenshot.3.3.3.png)
-
-**多言語サポート、バッチ処理、バウンディングボックス可視化を備えたモダンなユーザーインターフェース**
-
-</div>
-
-### 📈 Star履歴
-
-<div align="center">
-
-![Star History Chart](https://api.star-history.com/svg?repos=neosun100/DeepSeek-OCR-WebUI&type=Date)
-
-**Star成長曲線 - 成長を支援してください！⭐**
-
-</div>
+DeepSeek-OCR-WebUI は、DeepSeek-OCR モデルを搭載したインテリジェントな文書認識 Web アプリケーションです。画像や PDF を高精度で構造化テキストに変換するための、モダンで直感的なインターフェースを提供します。
 
 ### ✨ コアハイライト
 
-- 🎯 **7つの認識モード** - ドキュメント、OCR、チャート、検索、カスタムなど
-- 🖼️ **バウンディングボックス可視化** - Findモードで位置を自動アノテーション
-- 📦 **バッチ処理** - 複数画像の順次認識をサポート
-- 📄 **PDFサポート** - PDFファイルをアップロードし、自動的に画像に変換
-- 🎨 **モダンUI** - クールなグラデーション背景とアニメーション効果
-- 🌐 **多言語サポート** - 簡体字中国語、繁体字中国語、英語、日本語
-- 🍎 **Apple Siliconサポート** - Mac M1/M2/M3/M4ネイティブMPSアクセラレーション
-- 🐳 **Dockerデプロイ** - ワンクリック起動、すぐに使用可能
-- ⚡ **GPUアクセラレーション** - NVIDIA GPUベースの高性能推論
-- 🌏 **ModelScope自動切り替え** - HuggingFaceが利用できない場合に自動切り替え
+| 機能 | 説明 |
+|------|------|
+| 🎯 **7 つの認識モード** | ドキュメント、OCR、チャート、検索、フリーフォームなど |
+| 🖼️ **バウンディングボックス可視化** | 自動位置注釈付きの検索モード |
+| 📦 **バッチ処理** | 複数の画像/ページを順次処理 |
+| 📄 **PDF サポート** | PDF をアップロードし、自動的に画像に変換 |
+| 🎨 **モダンな Vue 3 UI** | Naive UI によるレスポンシブデザイン |
+| 🌐 **多言語** | EN、简体中文、繁體中文、日本語 |
+| 🍎 **Apple Silicon** | M1/M2/M3/M4 のネイティブ MPS アクセラレーション |
+| 🐳 **Docker 対応** | ワンコマンドデプロイ |
+| ⚡ **GPU アクセラレーション** | NVIDIA CUDA サポート |
 
 ---
 
 ## 🚀 機能
 
-### 7つの認識モード
+### 7 つの認識モード
 
-| モード | アイコン | 説明 | 使用例 |
-|------|------|------|---------|
-| **ドキュメントからMarkdown** | 📄 | フォーマットとレイアウトを保持 | 契約書、論文、レポート |
-| **一般OCR** | 📝 | すべての可視テキストを抽出 | 画像テキスト抽出 |
+| モード | アイコン | 説明 | ユースケース |
+|--------|:--------:|------|--------------|
+| **Doc to Markdown** | 📄 | フォーマットとレイアウトを保持 | 契約書、論文、レポート |
+| **一般 OCR** | 📝 | すべての可視テキストを抽出 | 画像テキスト抽出 |
 | **プレーンテキスト** | 📋 | フォーマットなしの純粋なテキスト | シンプルなテキスト認識 |
-| **チャートパーサー** | 📊 | チャートと数式を認識 | データチャート、数式 |
-| **画像説明** | 🖼️ | 詳細な説明を生成 | 画像理解、アクセシビリティ |
-| **検索と位置特定** ⭐ | 🔍 | 検索して位置をアノテーション | 請求書フィールドの位置特定 |
-| **カスタムプロンプト** ⭐ | ✨ | 認識ニーズをカスタマイズ | 柔軟な認識タスク |
+| **チャートパーサー** | 📊 | チャートと数式を認識 | データチャート、数学公式 |
+| **画像説明** | 🖼️ | 詳細な説明を生成 | 画像理解 |
+| **検索＆位置特定** | 🔍 | 位置を検索して注釈 | 請求書フィールドの位置特定 |
+| **カスタムプロンプト** | ✨ | 認識ニーズをカスタマイズ | 柔軟なタスク |
 
-### 📄 PDFサポート（v3.2の新機能）
+### 🆕 Vue 3 フロントエンド機能
 
-DeepSeek-OCR-WebUIはPDFファイルのアップロードをサポートするようになりました！PDFファイルをアップロードすると、システムは各ページを個別の画像に自動変換し、後続のすべての処理ロジック（OCR認識、バッチ処理など）を維持します。
-
-<div align="center">
-
-![PDF処理スクリーンショット](./images/pdf_processing_screenshot.png)
-
-**PDFアップロードと自動画像変換 - 各ページが個別の画像として処理されます**
-
-</div>
-
-**主な機能**：
-- **複数ページPDF変換**：各ページを自動的に個別の画像に変換
-- **リアルタイム進行状況**：ページごとに変換進行状況を表示
-- **ドラッグ＆ドロップ**：PDFファイルのドラッグ＆ドロップアップロードをサポート
-- **Findモードサポート**：FindモードでPDFをサポート（最初のページを自動使用）
-- **フォーマット検証**：自動ファイルタイプ検出とエラープロンプト
-- **シームレスな統合**：変換された画像は通常の画像と同じ処理パイプラインに従います
-
-### 🌏 ModelScope自動切り替え（v3.2の新機能）
-
-- **自動切り替え**：HuggingFaceが利用できない場合、ModelScopeに自動切り替え
-- **スマート検出**：ネットワークエラーとタイムアウトをインテリジェントに検出
-- **中国フレンドリー**：中国本土のユーザーにシームレスな体験を提供
-- **5分タイムアウト**：設定可能なモデル読み込みタイムアウト
-
-### 🎨 Findモードの特徴
-
-**左右分割レイアウト**：
 ```
-┌──────────────────────┬─────────────────────────────┐
-│   左：コントロールパネル │    右：結果表示              │
-├──────────────────────┼─────────────────────────────┤
-│ 📤 画像アップロード    │ 🖼️ 結果画像（ボックス付き）  │
-│ 🎯 検索入力          │ 📊 統計情報                  │
-│ 🚀 アクションボタン   │ 📝 認識テキスト              │
-│                      │ 📦 マッチリスト               │
-└──────────────────────┴─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│  📁 ページサイドバー      │  📄 ドキュメントビューア        │
+│  ├─ サムネイルリスト      │  ├─ 高解像度画像表示            │
+│  ├─ ドラッグ＆ドロップ    │  ├─ OCR オーバーレイ切替        │
+│  ├─ バッチ選択            │  ├─ ズームコントロール          │
+│  └─ クイックアクション    │  └─ ステータスインジケーター    │
+├─────────────────────────────────────────────────────────────┤
+│  🔄 処理キュー            │  📝 結果パネル                  │
+│  ├─ リアルタイム進捗      │  ├─ Markdown プレビュー         │
+│  ├─ キャンセル/リトライ   │  ├─ Word/PDF エクスポート       │
+│  └─ ヘルス監視            │  └─ クリップボードにコピー      │
+└─────────────────────────────────────────────────────────────┘
 ```
-
-**バウンディングボックス可視化**：
-- 🟢 カラフルなネオンボーダー自動アノテーション
-- 🎨 6色のローテーション
-- 📍 正確な座標位置
-- 🔄 レスポンシブ自動再描画
-
-**機能デモ**：
-
-<div align="center">
-
-![Findモードデモ](./assets/find_mode_screenshot.png)
-
-**検索と位置特定モードの実際の効果：左側でアップロード操作、右側で自動アノテーション結果**
-
-</div>
 
 ---
 
-## 🌐 多言語サポート
+## 🖼️ スクリーンショット
 
-### サポートされている言語
+### ホームページ
+<div align="center">
 
-- 🇨🇳 **簡体字中国語** (zh-CN)
-- 🇹🇼 **繁体字中国語** (zh-TW)
-- 🇺🇸 **English** (en-US) - デフォルト
-- 🇯🇵 **日本語** (ja-JP)
+![Vue3 ホームページ](./assets/vue3_home.png)
 
-### 言語の切り替え方法
+*すべての機能にすばやくアクセスできるクリーンでモダンなランディングページ*
 
-**Web UI**：
-1. 右上隅の言語セレクターをクリック
-2. 希望の言語を選択
-3. インターフェースが即座に切り替わり、設定が自動保存されます
+</div>
+
+### 処理インターフェース
+<div align="center">
+
+![Vue3 処理ページ](./assets/vue3_processing.png)
+
+*サイドバー、ビューア、結果パネルを備えたフル機能のドキュメント処理*
+
+</div>
 
 ---
 
 ## 📦 クイックスタート
 
-### 前提条件
-
-**Dockerデプロイ（推奨）**：
-- Docker & Docker Compose
-- NVIDIA GPU + ドライバー（GPUアクセラレーション用）
-- 8GB以上のRAM
-- 20GB以上のディスク容量
-
-**Mac（Apple Silicon）**：
-- macOS、Apple Siliconチップ（M1/M2/M3/M4）
-- Python 3.11以上
-- 16GB以上のRAM（推奨）
-- 20GB以上のディスク容量
-
-**Linux（ネイティブデプロイ）**：
-- Python 3.11以上
-- NVIDIA GPU + CUDA（オプション、アクセラレーション用）
-- 8GB以上のRAM
-- 20GB以上のディスク容量
-
----
-
-### 🐳 オプション1：Dockerデプロイ（Linux/Windows）
-
-**最適な用途**：NVIDIA GPUを搭載したLinuxサーバー、本番環境
+### 🐳 Docker（推奨）
 
 ```bash
-# 1. リポジトリをクローン
-git clone https://github.com/neosun100/DeepSeek-OCR-WebUI.git
-cd DeepSeek-OCR-WebUI
+# プルして実行
+docker pull neosun/deepseek-ocr:v3.5
+docker run -d \
+  --name deepseek-ocr \
+  --gpus all \
+  -p 8001:8001 \
+  --shm-size=8g \
+  neosun/deepseek-ocr:v3.5
 
-# 2. サービスを起動
-docker compose up -d
-
-# 3. モデルの読み込みを待つ（約1〜2分）
-docker logs -f deepseek-ocr-webui
-
-# 4. Web UIにアクセス
-# http://localhost:8001
+# アクセス：http://localhost:8001
 ```
 
----
+### 利用可能な Docker タグ
 
-### 🍎 オプション2：Macネイティブデプロイ（Apple Silicon）
+| タグ | 説明 |
+|------|------|
+| `latest` | 最新安定版 (= v3.5) |
+| `v3.5` | Vue 3 フロントエンドバージョン |
+| `v3.5-vue3-frontend` | Vue 3 フロントエンド（明示的） |
+| `v3.3.1-fix-bfloat16` | BFloat16 互換性修正 |
 
-**最適な用途**：Mac M1/M2/M3/M4ユーザー、ローカル開発
-
-**⚠️ 重要**：依存関係の競合を避けるため、必ずconda仮想環境を使用してください。
-
-#### ステップ1：依存関係のインストール
+### 🍎 Mac（Apple Silicon）
 
 ```bash
-# リポジトリをクローン
+# クローンとセットアップ
 git clone https://github.com/neosun100/DeepSeek-OCR-WebUI.git
 cd DeepSeek-OCR-WebUI
 
-# conda環境を作成してアクティブ化（必須）
-conda create -n deepseek-ocr-mlx python=3.11
-conda activate deepseek-ocr-mlx
+# conda 環境を作成
+conda create -n deepseek-ocr python=3.11
+conda activate deepseek-ocr
 
-# PyTorch（MPSサポート）をインストール
-pip install torch torchvision
-
-# 必要なパッケージをインストール
-pip install transformers==4.46.3 tokenizers==0.20.3
-pip install fastapi uvicorn PyMuPDF Pillow
-pip install einops addict easydict matplotlib
-
-# または一括で依存関係をインストール
+# 依存関係をインストール
 pip install -r requirements-mac.txt
 
-# インストールを確認（オプション）
-./verify_mac_env.sh
-```
-
-#### ステップ2：サービスの起動
-
-```bash
-# 重要：起動前に必ずconda環境をアクティブ化してください
-conda activate deepseek-ocr-mlx
-
-# サービスを起動（MPSバックエンドを自動検出）
+# サービスを開始
 ./start.sh
-
-# または手動で起動
-python web_service_unified.py
+# アクセス：http://localhost:8001
 ```
 
-#### ステップ3：Web UIにアクセス
-
-ブラウザで開く：`http://localhost:8001`
-
-**注意**：初回実行時は約7GBのモデルをダウンロードしますので、しばらくお待ちください。
-
----
-
-### 🐧 オプション3：Linuxネイティブデプロイ
-
-**最適な用途**：Linuxサーバー、カスタム構成
-
-#### NVIDIA GPUあり：
+### 🐧 Linux（ネイティブ）
 
 ```bash
-# PyTorch（CUDA版）をインストール
+# NVIDIA GPU を使用
 pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118
-
-# 依存関係をインストール
-pip install transformers==4.46.3 tokenizers==0.20.3
-pip install fastapi uvicorn PyMuPDF Pillow
-pip install einops addict easydict matplotlib
-
-# サービスを起動（CUDAバックエンドを自動検出）
-./start.sh
-```
-
-#### GPUなし（CPUのみ）：
-
-```bash
-# PyTorch（CPU版）をインストール
-pip install torch torchvision
-
-# 依存関係をインストール
-pip install transformers==4.46.3 tokenizers==0.20.3
-pip install fastapi uvicorn PyMuPDF Pillow
-pip install einops addict easydict matplotlib
-
-# サービスを起動（CPUバックエンドを自動検出）
+pip install -r requirements.txt
 ./start.sh
 ```
 
 ---
 
-### ✅ インストールの確認
+## 🔌 API と統合
 
-```bash
-# コンテナステータスを確認（Docker）
-docker compose ps
+### REST API
 
-# ヘルスステータスを確認
-curl http://localhost:8001/health
+```python
+import requests
 
-# 期待される応答：
-# {
-#   "status": "healthy",
-#   "backend": "mps",  # または "cuda" または "cpu"
-#   "platform": "Darwin",  # または "Linux"
-#   "model_loaded": true
-# }
+# 単一画像 OCR
+with open("image.png", "rb") as f:
+    response = requests.post(
+        "http://localhost:8001/ocr",
+        files={"file": f},
+        data={"prompt_type": "ocr"}
+    )
+    print(response.json()["text"])
+
+# PDF OCR（全ページ）
+with open("document.pdf", "rb") as f:
+    response = requests.post(
+        "http://localhost:8001/ocr-pdf",
+        files={"file": f},
+        data={"prompt_type": "document"}
+    )
+    print(response.json()["merged_text"])
 ```
+
+**エンドポイント：**
+- `GET /health` - ヘルスチェック
+- `POST /ocr` - 単一画像 OCR
+- `POST /ocr-pdf` - PDF OCR（全ページ）
+- `POST /pdf-to-images` - PDF を画像に変換
+
+📖 **完全な API ドキュメント**：[API.md](./API.md)
+
+### MCP（モデルコンテキストプロトコル）
+
+Claude Desktop などの AI アシスタントで OCR を使用可能に：
+
+```json
+{
+  "mcpServers": {
+    "deepseek-ocr": {
+      "command": "python",
+      "args": ["/path/to/mcp_server.py"]
+    }
+  }
+}
+```
+
+📖 **MCP セットアップガイド**：[MCP_SETUP.md](./MCP_SETUP.md)
 
 ---
 
-### 🔧 プラットフォーム検出
+## 🌐 多言語サポート
 
-サービスはプラットフォームを自動検出し、最適なバックエンドを使用します：
+| 言語 | コード | ステータス |
+|------|--------|------------|
+| 🇺🇸 English | en-US | ✅ デフォルト |
+| 🇨🇳 简体中文 | zh-CN | ✅ |
+| 🇹🇼 繁體中文 | zh-TW | ✅ |
+| 🇯🇵 日本語 | ja-JP | ✅ |
 
-| プラットフォーム | バックエンド | アクセラレーション | 自動検出 |
-|----------|---------|--------------|---------------|
-| Mac M1/M2/M3/M4 | MPS | Metal GPU | ✅ はい |
-| Linux + NVIDIA GPU | CUDA | CUDA GPU | ✅ はい |
-| Linux（CPUのみ） | CPU | なし | ✅ はい |
-| Docker | CUDA | CUDA GPU | ✅ はい |
-
-**特定のバックエンドを強制**（オプション）：
-```bash
-FORCE_BACKEND=mps ./start.sh   # MPSを強制（Macのみ）
-FORCE_BACKEND=cuda ./start.sh  # CUDAを強制（Linux+GPU）
-FORCE_BACKEND=cpu ./start.sh   # CPUを強制（任意のプラットフォーム）
-```
+右上隅の言語セレクターで言語を切り替えます。
 
 ---
 
 ## 📊 バージョン履歴
 
-### v3.3.1 (2025-12-16) - BFloat16互換性修正
+### v3.5 (2026-01-17) - Vue 3 フロントエンド
 
-**🐛 バグ修正**：
-- ✅ "Input type (c10::BFloat16) and bias type (float) should be the same" エラーを修正 ([#30](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues/30))
-- ✅ GPU計算能力を自動検出し、最適なデータ型を選択
-- ✅ 古いGPU（RTX 20xx、GTX 10xxなど）は自動的にfloat16にフォールバック
+**🎨 完全な UI 刷新：**
+- ✅ Vue 3 + TypeScript + Naive UI
+- ✅ Dexie.js ローカルデータベース
+- ✅ リアルタイム処理キュー
+- ✅ ヘルスチェック監視
+- ✅ E2E テストカバレッジ（Playwright）
+- ✅ GitHub リンク統合
 
-**🔧 技術的詳細**：
-- 計算能力 >= 8.0のGPU（RTX 30xx、A100など）はbfloat16を使用
-- 古いGPUは互換性のために自動的にfloat16を使用
-- 手動設定不要 - 完全自動
+**🙏 コントリビューター：** [@cloudman6](https://github.com/cloudman6)（164 コミット）
 
----
+### v3.3.1 (2025-12-16) - BFloat16 修正
 
-### v3.3 (2025-11-05) - Apple Siliconサポートとマルチプラットフォーム
+- ✅ RTX 20xx、GTX 10xx の GPU 互換性を修正
+- ✅ 計算能力の自動検出
 
-**🍎 Apple Siliconサポート**：
-- ✅ Mac M1/M2/M3/M4ネイティブMPS（Metal Performance Shaders）バックエンド
-- ✅ 自動プラットフォーム検出とバックエンド選択
-- ✅ MPS互換性のために最適化されたfloat32精度
-- ✅ 約7GBのモデル、自動ダウンロードとキャッシュをサポート
+### v3.3 (2025-11-05) - Apple Silicon
 
-**🌍 マルチプラットフォームアーキテクチャ**：
-- ✅ 統一されたバックエンドインターフェース（MPS/CUDA/CPU）
-- ✅ スマートプラットフォーム検出（Mac/Linux/Docker）
-- ✅ 独立したバックエンド実装（競合なし）
-- ✅ ユニバーサル起動スクリプト（`./start.sh`）
+- ✅ Mac M1/M2/M3/M4 のネイティブ MPS バックエンド
+- ✅ マルチプラットフォームアーキテクチャ
 
-**🔧 技術的改善**：
-- ✅ モデルリビジョン：`1e3401a3d4603e9e71ea0ec850bfead602191ec4`（MPSサポート）
-- ✅ Transformers 4.46.3互換性
-- ✅ LlamaFlashAttention2インポート問題の修正
-- ✅ プラットフォーム間で統一されたモデル推論インターフェース
+### v3.2 (2025-11-04) - PDF サポート
 
-**📚 ドキュメント**：
-- ✅ マルチプラットフォームデプロイメントガイド
-- ✅ プラットフォーム互換性ドキュメント
-- ✅ 検証ツール（`verify_platform.sh`）
-
----
-
-### v3.2 (2025-11-04) - PDFサポートとModelScope自動切り替え
-
-**📄 新機能**：
-- ✅ PDFアップロードサポート（自動的に画像に変換）
-- ✅ 複数ページPDF変換、リアルタイム進行状況表示
-- ✅ ドラッグ＆ドロップPDFアップロード
-- ✅ ModelScope自動切り替え（HuggingFace利用不可時）
-- ✅ スマートネットワークエラー検出と再試行
-
-**🐛 バグ修正**：
-- ✅ PDF変換進行状況ログの修正
-- ✅ ボタンテキスト重複の国際化問題の修正
-- ✅ システム初期化ログ情報の修正
-
-**🔧 技術的改善**：
-- ✅ 高品質PDF変換のためのPyMuPDF統合（144 DPI）
-- ✅ リアルタイム進行状況のための非同期PDF処理
-- ✅ エラー処理とログ記録の強化
-
----
-
-### v3.1 (2025-10-22) - 多言語とバグ修正
-
-**🌐 新機能**：
-- ✅ 多言語サポートの追加（簡体字中国語、繁体字中国語、英語、日本語）
-- ✅ 言語セレクターUIコンポーネント
-- ✅ ローカリゼーション永続化ストレージ
-- ✅ 多言語ドキュメント（README）
-
-**🐛 バグ修正**：
-- ✅ モード切り替え問題の修正
-- ✅ バウンディングボックスが画像境界を超える問題の修正
-- ✅ 画像コンテナレイアウトの最適化
-- ✅ アライメント確保のためのレンダリング遅延の追加
-
-**🎨 UI最適化**：
-- ✅ 画像の中央表示
-- ✅ バウンディングボックスのレスポンシブ再描画
-- ✅ 言語スイッチャーの統合
-
----
-
-### v3.0 (2025-10-22) - Findモードと左右分割レイアウト
-
-**✨ 主要な更新**：
-- ✅ 新しいFindモード（検索と位置特定）
-- ✅ 専用の左右分割レイアウト
-- ✅ Canvasバウンディングボックス可視化
-- ✅ カラフルなネオンアノテーション効果
-
-**🔧 技術的改善**：
-- ✅ transformersエンジン（vLLMを置き換え）
-- ✅ 正確な座標変換アルゴリズム
-- ✅ レスポンシブデザインの最適化
+- ✅ PDF アップロードと変換
+- ✅ ModelScope 自動フォールバック
 
 ---
 
 ## 📖 ドキュメント
 
-### ユーザードキュメント
-
-- 📘 [クイックスタートガイド](./QUICK_START.md)
-- 📗 [Findモードガイド](./FIND_MODE_V2_GUIDE.md)
-- 📙 [拡張機能](./ENHANCED_FEATURES.md)
-- 📕 [バグ修正まとめ](./BUGFIX_SUMMARY.md)
-
-### 技術ドキュメント
-
-- 🔌 [完全な API ドキュメント](./API.md) - **REST API 使用ガイド、多言語クライアント例、ベストプラクティス**
-- 🔧 [デプロイメントまとめ](./DEPLOYMENT_SUMMARY.md)
-- 📝 [変更ログ](./CHANGELOG.md)
-- 🌐 [国際化実装](./I18N_IMPLEMENTATION.md)
+| ドキュメント | 説明 |
+|--------------|------|
+| [API.md](./API.md) | REST API リファレンス |
+| [MCP_SETUP.md](./MCP_SETUP.md) | MCP 統合ガイド |
+| [DOCKER_HUB.md](./DOCKER_HUB.md) | Docker デプロイ |
+| [CHANGELOG.md](./CHANGELOG.md) | バージョン履歴 |
 
 ---
 
-## 🎯 使用例
-
-### Findモードの例
-
-```bash
-シナリオ：請求書で「Total」金額を検索
-
-手順：
-1. "🔍 検索と位置特定" モードを選択
-2. 請求書画像をアップロード
-3. 検索語を入力：Total
-4. "🚀 検索開始" をクリック
-
-結果：
-✓ 画像上の "Total" が緑色の枠で強調表示
-✓ 1〜2件のマッチが見つかったことを表示
-✓ 正確な座標情報を提供
-```
-
-### バッチ処理の例
-
-```bash
-シナリオ：20件の契約書をバッチ認識
-
-手順：
-1. "📄 ドキュメントからMarkdown" モードを選択
-2. 20枚の画像をドラッグ＆ドロップでアップロード
-3. 順序を調整（オプション）
-4. "🚀 認識開始" をクリック
-
-結果：
-✓ 各画像を順次処理
-✓ リアルタイムで進行状況を表示
-✓ すべての結果を自動マージ
-✓ ワンクリックでコピーまたはダウンロード
-```
-
----
-
-## 🔧 設定
-
-### 環境変数
-
-```bash
-# docker-compose.yml
-API_HOST=0.0.0.0              # リスンアドレス
-MODEL_NAME=deepseek-ai/DeepSeek-OCR  # モデル名
-CUDA_VISIBLE_DEVICES=0        # GPUデバイス
-```
-
-### パフォーマンスチューニング
-
-```yaml
-# メモリ設定
-shm_size: "8g"                # 共有メモリ
-
-# GPU設定
-deploy:
-  resources:
-    reservations:
-      devices:
-        - driver: nvidia
-          count: 1
-          capabilities: [gpu]
-```
-
----
-
-## 🤝 貢献
-
-貢献を歓迎します！[貢献ガイド](./CONTRIBUTING.md)をご確認ください。
-
-### 貢献方法
-
-1. このリポジトリをフォーク
-2. 機能ブランチを作成 (`git checkout -b feature/AmazingFeature`)
-3. 変更をコミット (`git commit -m 'Add some AmazingFeature'`)
-4. ブランチにプッシュ (`git push origin feature/AmazingFeature`)
-5. プルリクエストを開く
-
----
-
-## 📞 サポート
-
-### 問題が発生しましたか？
-
-1. [トラブルシューティング](./TROUBLESHOOTING.md)を確認
-2. [既知の問題](./KNOWN_ISSUES.md)を確認
-3. [Issue](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues)を提出
-
-### 機能の提案？
-
-1. [ロードマップ](./ROADMAP.md)を確認
-2. [Feature Request](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues/new?template=feature_request.md)を提出
-
----
-
-## 📱 フォローする
+## 📈 Star 履歴
 
 <div align="center">
 
-![スキャンしてフォロー](./assets/qrcode_promo.png)
+[![Star History Chart](https://api.star-history.com/svg?repos=neosun100/DeepSeek-OCR-WebUI&type=Date)](https://star-history.com/#neosun100/DeepSeek-OCR-WebUI&Date)
 
-**スキャンして詳細情報を取得**
+**⭐ このプロジェクトが役に立ったら、Star をお願いします！⭐**
 
 </div>
 
 ---
 
+## 🤝 コントリビューション
+
+コントリビューション歓迎！以下の手順で：
+
+1. このリポジトリをフォーク
+2. 機能ブランチを作成（`git checkout -b feature/AmazingFeature`）
+3. 変更をコミット（`git commit -m 'Add AmazingFeature'`）
+4. ブランチにプッシュ（`git push origin feature/AmazingFeature`）
+5. プルリクエストを開く
+
+---
+
 ## 📄 ライセンス
 
-このプロジェクトは[MIT License](./LICENSE)の下でライセンスされています。
+このプロジェクトは [MIT ライセンス](./LICENSE) の下でライセンスされています。
 
 ---
 
 ## 🙏 謝辞
 
-- [DeepSeek-AI](https://github.com/deepseek-ai) - DeepSeek-OCRモデル
-- [deepseek_ocr_app](https://github.com/rdumasia303/deepseek_ocr_app) - 参考プロジェクト
-- すべての貢献者とユーザー
-
----
-
-## 🔗 関連リンク
-
-- 🏠 [プロジェクトホーム](https://github.com/neosun100/DeepSeek-OCR-WebUI)
-- 📖 [完全なドキュメント](https://github.com/neosun100/DeepSeek-OCR-WebUI/wiki)
-- 🐛 [問題トラッカー](https://github.com/neosun100/DeepSeek-OCR-WebUI/issues)
-- 💬 [ディスカッション](https://github.com/neosun100/DeepSeek-OCR-WebUI/discussions)
+- [DeepSeek-AI](https://github.com/deepseek-ai) - DeepSeek-OCR モデル
+- [@cloudman6](https://github.com/cloudman6) - Vue 3 フロントエンド開発
+- すべてのコントリビューターとユーザー
 
 ---
 
 <div align="center">
 
-**⭐ このプロジェクトが役に立った場合は、Starをください！⭐**
+**[neosun100](https://github.com/neosun100) と [cloudman6](https://github.com/cloudman6) が ❤️ を込めて作成**
 
-Made with ❤️ by [neosun100](https://github.com/neosun100)
-
-DeepSeek-OCR-WebUI v3.3 | © 2025
+DeepSeek-OCR-WebUI v3.5 | © 2026
 
 </div>
