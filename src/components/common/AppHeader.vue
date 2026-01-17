@@ -295,11 +295,61 @@ defineExpose({
 }
 
 @media (max-width: 768px) {
-  .github-text {
+  .app-header {
+    padding: 0 12px;
+    height: 56px;
+  }
+
+  .app-title {
+    font-size: 14px;
+    white-space: nowrap;
+  }
+
+  .header-center {
     display: none;
   }
+
   .github-links {
-    gap: 0;
+    display: none;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .header-actions .n-divider {
+    display: none;
+  }
+
+  .page-count-badge {
+    display: none;
+  }
+
+  .add-btn {
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .add-btn .n-button__content {
+    gap: 4px;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0 8px;
+  }
+
+  .header-brand {
+    gap: 8px;
+  }
+
+  .app-title {
+    font-size: 13px;
+  }
+
+  .add-btn span {
+    display: none;
   }
 }
 </style>
