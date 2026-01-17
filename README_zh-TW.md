@@ -70,7 +70,7 @@
 </td>
 <td align="center">
 <a href="https://github.com/neosun100">
-<img src="https://avatars.githubusercontent.com/u/neosun100" width="100px;" alt="neosun100"/>
+<img src="https://avatars.githubusercontent.com/u/13846998?v=4" width="100px;" alt="neosun100"/>
 <br />
 <sub><b>neosun100</b></sub>
 </a>
