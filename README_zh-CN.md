@@ -159,6 +159,15 @@ DeepSeek-OCR-WebUI 是一款基于 DeepSeek-OCR 模型的智能文档识别 Web 
 
 </div>
 
+### 快速入门指南
+<div align="center">
+
+![快速入门指南](./assets/vue3_quickstart.png)
+
+*操作步骤：导入文件 → 选择页面 → 选择 OCR 模式 → 获取结果*
+
+</div>
+
 ---
 
 ## 📦 快速开始

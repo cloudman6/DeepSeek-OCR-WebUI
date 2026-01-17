@@ -159,6 +159,15 @@ DeepSeek-OCR-WebUI は、DeepSeek-OCR モデルを搭載したインテリジェ
 
 </div>
 
+### クイックスタートガイド
+<div align="center">
+
+![クイックスタートガイド](./assets/vue3_quickstart.png)
+
+*操作手順：ファイルをインポート → ページを選択 → OCR モードを選択 → 結果を取得*
+
+</div>
+
 ---
 
 ## 📦 クイックスタート

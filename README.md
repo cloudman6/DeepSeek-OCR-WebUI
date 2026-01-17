@@ -159,6 +159,15 @@ DeepSeek-OCR-WebUI is an intelligent document recognition web application powere
 
 </div>
 
+### Quick Start Guide
+<div align="center">
+
+![Quick Start Guide](./assets/vue3_quickstart.png)
+
+*Step-by-step guide: Import files → Select pages → Choose OCR mode → Get results*
+
+</div>
+
 ---
 
 ## 📦 Quick Start
