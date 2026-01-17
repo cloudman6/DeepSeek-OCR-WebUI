@@ -17,7 +17,8 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps
 import uvicorn
@@ -127,6 +128,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Define frontend path
+BASE_DIR = Path(__file__).parent
+FRONTEND_DIST = BASE_DIR / "frontend" / "dist"
+# Mount all top-level directories in dist to root (assets, cmaps, etc.)
+if FRONTEND_DIST.exists():
+    for item in FRONTEND_DIST.iterdir():
+        if item.is_dir():
+            app.mount(f"/{item.name}", StaticFiles(directory=str(item)), name=item.name)
+        elif item.name != "index.html" and not item.name.startswith('.'):
+            # Also catch top-level files like scan2doc.svg
+            @app.get(f"/{item.name}")
+            async def serve_file(name=item.name):
+                return FileResponse(FRONTEND_DIST / name)
+
 def build_prompt(mode: str, custom_prompt: str = "", find_term: str = "") -> str:
     """Build prompt based on mode"""
     templates = {
@@ -183,13 +198,14 @@ def parse_detections(text: str, image_width: int, image_height: int) -> List[Dic
     
     return boxes
 
-@app.get("/", response_class=HTMLResponse)
+@app.get("/", response_class=FileResponse)
 async def root():
-    """Return Web UI"""
-    ui_file = Path(__file__).parent / "ocr_ui_modern.html"
-    if ui_file.exists():
-        return HTMLResponse(content=ui_file.read_text(encoding='utf-8'))
-    return HTMLResponse(content="<h1>DeepSeek-OCR</h1><p>UI not found</p>")
+    """Return Vue 3 Frontend"""
+    index_file = FRONTEND_DIST / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    return HTMLResponse(content="<h1>DeepSeek-OCR-WebUI</h1><p>Frontend dist not found.</p>")
 
 @app.get("/health")
 async def health_check():
