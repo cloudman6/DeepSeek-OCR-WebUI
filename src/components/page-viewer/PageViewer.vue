@@ -559,6 +559,7 @@ function handleInputSubmit(value: string) {
   submitOCR(targetInputMode.value, options)
 }
 
+// eslint-disable-next-line complexity
 async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: string; find_term?: string } = {}) {
   if (!props.currentPage || isPageProcessing.value) return
   
@@ -588,10 +589,14 @@ async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: st
     uiLogger.error('OCR Error:', error)
     const errorMsg = error instanceof Error ? error.message : String(error)
     
-    if (errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy) {
+    // Check for Unavailable or Full status
+    const isUnavailable = errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy
+    const isQueueFull = errorMsg.toLowerCase().includes('queue is full') || healthStore.isFull
+
+    if (isUnavailable || isQueueFull) {
       dialog.error({
-        title: t('errors.ocrServiceUnavailableTitle'),
-        content: t('errors.ocrServiceUnavailable'),
+        title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
+        content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
         positiveText: t('common.ok')
       })
     } else {

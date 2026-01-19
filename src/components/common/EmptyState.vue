@@ -132,7 +132,7 @@ defineEmits<{
 }
 
 .empty-state-footer a {
-  color: #18a058;
+  color: v-bind(PRIMARY_COLOR);
   text-decoration: none;
   font-weight: 500;
 }

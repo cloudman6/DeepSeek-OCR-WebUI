@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { reactive } from 'vue'
 import AppHeader from './AppHeader.vue'
-import { NLayoutHeader, NButton, NTag, NSpin, NIcon } from 'naive-ui'
+import { NLayoutHeader, NButton, NSpin, NIcon, NTooltip, NPopover } from 'naive-ui'
 import { i18n } from '../../../tests/setup'
 
 // Remove mock to improved coverage
@@ -63,9 +63,9 @@ describe('AppHeader', () => {
             components: {
                 NLayoutHeader,
                 NButton,
-                NTag,
                 NSpin,
-                NIcon
+                NIcon,
+                NTooltip
             },
             stubs: {
                 LanguageSelector: {
@@ -81,18 +81,20 @@ describe('AppHeader', () => {
                     template: '<div class="ocr-queue-popover-stub"><slot></slot></div>'
                 },
                 NPopover: {
+                    name: 'NPopover',
+                    props: ['show'],
+                    emits: ['update:show'],
                     template: '<div class="n-popover-stub"><slot name="trigger"></slot><slot></slot></div>'
                 },
                 NDropdown: {
                     template: '<div class="n-dropdown-stub"><slot></slot></div>'
                 },
                 NTooltip: {
-                    template: '<div class="n-tooltip-stub"><div class="trigger"><slot name="trigger"></slot></div><div class="content"><slot></slot></div></div>'
+                    template: '<div class="n-tooltip-stub"><slot name="trigger"></slot><div class="tooltip-content"><slot></slot></div></div>'
                 }
             }
         },
         props: {
-            pageCount: 0,
             ...props
         }
     })
@@ -109,15 +111,9 @@ describe('AppHeader', () => {
         expect(wrapper.find('.header-brand').exists()).toBe(true)
     })
 
-    it('displays correct page count', () => {
-        const wrapper = mount(AppHeader, createMountOptions({ pageCount: 5 }))
-        expect(wrapper.text()).toContain('5 Pages Loaded')
-    })
 
-    it('displays singular page text', () => {
-        const wrapper = mount(AppHeader, createMountOptions({ pageCount: 1 }))
-        expect(wrapper.text()).toContain('1 Page Loaded')
-    })
+
+
 
     it('emits add-files event when import button is clicked', async () => {
         const wrapper = mount(AppHeader, createMountOptions())
@@ -323,21 +319,7 @@ describe('AppHeader', () => {
         expect(vm.showQueue).toBe(true)
     })
 
-    it('handles 0 pages correctly in text', async () => {
-        const wrapper = mount(AppHeader, createMountOptions({ pageCount: 0 }))
-        // Access internal computed if possible, or verify rendered text (which is hidden)
-        // Since it's hidden, we can use the vm instance type to access it if we cast it, 
-        // strictly speaking pageCountText is not exposed, but we can check if it strictly crashes or anything.
-        // Actually, let's just assert that the badge is not there (already done), 
-        // but maybe try pageCount = 2 to cover > 1 branch explicitly again in a separate context if needed.
-        // We already have 5 and 1. 
-        // Let's try to verify the computed property value by inspecting the VM (if testing-utils allows access to setup state)
-        // wrapper.vm usually exposes setup bindings.
 
-        // Cast to any to access private setup bindings that vue-test-utils exposes
-        const vm = wrapper.vm as any
-        expect(vm.pageCountText).toBe('0 Page Loaded') // Assuming translation key returns this
-    })
 
     it('renders standalone OCRHealthIndicator when no tasks and queue hidden', async () => {
         mockStore.ocrTaskCount = 0
@@ -358,28 +340,20 @@ describe('AppHeader', () => {
         const wrapper = mount(AppHeader, createMountOptions())
         const vm = wrapper.vm as unknown as HeaderVM
 
-        // Force show queue (e.g. manually triggered via code, though UI prevents it if count 0)
-        // But the condition is v-if="store.ocrTaskCount === 0 && !showQueue"
+        // Force show queue
         vm.showQueue = true
         await vm.$nextTick()
 
-        // Standalone indicator should be gone
-        // But wait, the popover trigger logic is v-if="store.ocrTaskCount > 0 || showQueue"
-        // If showQueue is true, popover renders.
-        // Inside popover trigger, there is <OCRHealthIndicator compact />
-        // BUT popover trigger is slot #trigger. 
-        // The standalone one is outside popover.
-
-        // Check that the container for standalone one is gone or check logical existence.
-        // Since we mock OCRHealthIndicator, let's better check the surrounding logic if possible, 
-        // or just rely on multiple assertions.
-
-        // If showQueue is true, the standalone one should NOT be rendered.
-        // The one inside popover MIGHT be rendered if popover logic allows.
-
-        // Let's rely on line coverage. The v-if branch.
-
-        // Re-mount to ensure clean state
+        // Standalone indicator (v-if="!showQueue") should be hidden.
+        // Popover indicator (v-if="showQueue") should be shown.
+        // The one in popover has 'compact' prop.
+        const indicators = wrapper.findAllComponents({ name: 'OCRHealthIndicator' })
+        expect(indicators.length).toBe(1)
+        // Verify it is the compact one using attributes or props (depending on how stub/mock handles it)
+        // Since we shallow mount or use stubs, props are passed to stub.
+        expect(indicators[0]!.attributes('compact')).toBeDefined()
+        // Or if defined as prop in component
+        // expect(indicators[0].props('compact')).toBe(true) 
     })
 
     it('renders GitHub links and language selector', () => {
@@ -389,10 +363,7 @@ describe('AppHeader', () => {
         expect(wrapper.findComponent({ name: 'LanguageSelector' }).exists()).toBe(true)
     })
 
-    it('hides page count badge when pageCount is 0', () => {
-        const wrapper = mount(AppHeader, createMountOptions({ pageCount: 0 }))
-        expect(wrapper.find('.page-count-badge').exists()).toBe(false)
-    })
+
 
     it('displays both processing and queued counts', async () => {
         mockStore.activeOCRTasks = [{ id: '1', status: 'recognizing' }]
@@ -407,13 +378,7 @@ describe('AppHeader', () => {
         expect(text).toContain('Waiting: 2')
     })
 
-    it('updates page count text when prop changes', async () => {
-        const wrapper = mount(AppHeader, createMountOptions({ pageCount: 1 }))
-        expect(wrapper.text()).toContain('1 Page Loaded')
 
-        await wrapper.setProps({ pageCount: 5 })
-        expect(wrapper.text()).toContain('5 Pages Loaded')
-    })
 
     it('renders tooltip contents', () => {
         // NTooltip stub renders both slots, but sometimes default slot content (text) 
@@ -437,5 +402,42 @@ describe('AppHeader', () => {
         expect(contentComponent.exists()).toBe(true)
         const parentElement = contentComponent.element.parentElement
         expect(parentElement).not.toBeNull()
+    })
+
+    it('updates showQueue when NPopover emits update:show', async () => {
+        // Ensure clean state
+        mockStore.ocrTaskCount = 0
+        const wrapper = mount(AppHeader, createMountOptions())
+        const vm = wrapper.vm as any
+
+        // Step 1: Update store to satisfy v-if condition partly
+        mockStore.activeOCRTasks = [{ id: '1', status: 'recognizing' }]
+        mockStore.ocrTaskCount = 1
+        await vm.$nextTick()
+
+        // Verify store reactivity
+        const pill = wrapper.find('.status-pill')
+        expect(pill.exists()).toBe(true)
+
+        // Step 2: Open queue to satisfy full v-if condition
+        vm.showQueue = true
+        await vm.$nextTick()
+
+        // Step 3: Find component instance (Real or Stub)
+        // Note: wrapper.findComponent({ name: 'NPopover' }) might fail if name inference is tricky
+        // But finding by imported component definition is robust
+        const popover = wrapper.findComponent(NPopover)
+
+        if (!popover.exists()) {
+            console.error('NPopover not found. HTML:', wrapper.html())
+            // Debug info
+        }
+        expect(popover.exists()).toBe(true)
+
+        // Step 4: Emit update:show false
+        await popover.vm.$emit('update:show', false)
+        await vm.$nextTick()
+
+        expect(vm.showQueue).toBe(false)
     })
 })

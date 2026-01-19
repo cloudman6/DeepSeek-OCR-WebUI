@@ -4,6 +4,7 @@ import PageViewer from './PageViewer.vue'
 import { db } from '@/db'
 import { uiLogger } from '@/utils/logger'
 import { i18n } from '../../../tests/setup'
+import { ocrService } from '@/services/ocr'
 
 import { createTestingPinia } from '@pinia/testing'
 
@@ -26,6 +27,30 @@ vi.mock('@/utils/logger', () => ({
 vi.mock('@/services/ocr', () => ({
   ocrService: {
     queueOCR: vi.fn()
+  }
+}))
+
+// Mock Naive UI components
+// Hoist mocks for spying
+const mocks = vi.hoisted(() => ({
+  dialog: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn(),
+    create: vi.fn()
+  },
+  message: {
+    error: vi.fn(),
+    success: vi.fn(),
+    info: vi.fn(),
+    warning: vi.fn()
+  },
+  notification: {
+    success: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+    info: vi.fn()
   }
 }))
 
@@ -106,25 +131,9 @@ vi.mock('naive-ui', () => ({
     props: ['value', 'size'],
     template: '<input type="checkbox" :checked="value" />'
   },
-  useMessage: vi.fn(() => ({
-    error: vi.fn(),
-    success: vi.fn(),
-    info: vi.fn(),
-    warning: vi.fn()
-  })),
-  useNotification: vi.fn(() => ({
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn()
-  })),
-  useDialog: vi.fn(() => ({
-    success: vi.fn(),
-    error: vi.fn(),
-    warning: vi.fn(),
-    info: vi.fn(),
-    create: vi.fn()
-  }))
+  useMessage: vi.fn(() => mocks.message),
+  useNotification: vi.fn(() => mocks.notification),
+  useDialog: vi.fn(() => mocks.dialog)
 }))
 
 // Mock db
@@ -383,6 +392,23 @@ describe('PageViewer.vue', () => {
     await (wrapper.vm as any).submitOCR('document')
     const message = (wrapper.vm as any).message
     expect(message.error).toHaveBeenCalledWith('Could not retrieve image data')
+  })
+
+  it('handles submitOCR with queue full error', async () => {
+    vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['img'], { type: 'image/jpeg' }))
+    const error = new Error('OCR queue is full')
+    vi.mocked(ocrService.queueOCR).mockRejectedValue(error)
+
+    const wrapper = mountPageViewer({
+      currentPage: mockPage
+    })
+
+    await (wrapper.vm as any).submitOCR('document')
+
+    expect(mocks.dialog.error).toHaveBeenCalledWith(expect.objectContaining({
+      title: 'Queue Full',
+      content: 'OCR queue is full. Please try again later.',
+    }))
   })
 
   it('handles handleOCRRun branches', async () => {

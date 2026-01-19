@@ -57,7 +57,7 @@ import {
 } from '@vicons/ionicons5'
 import type { OCRPromptType } from '@/services/ocr'
 
-import { useHealthStore } from '@/stores/health'
+// import { useHealthStore } from '@/stores/health' // Removed unused
 
 interface Props {
   loading?: boolean
@@ -88,14 +88,14 @@ const MODE_CONFIG: Record<OCRPromptType, { key: string, icon: import('vue').Comp
   freeform: { key: 'ocr.customPrompt', icon: CreateOutline }
 }
 
-const healthStore = useHealthStore()
+// const healthStore = useHealthStore() // Removed unused
 
 const currentLabel = computed(() => t(MODE_CONFIG[selectedMode.value].key))
 const currentIcon = computed(() => MODE_CONFIG[selectedMode.value].icon)
 const buttonType = computed(() => props.loading ? 'info' : 'primary')
 
-const isQueueFull = computed(() => healthStore.isFull)
-const isDisabled = computed(() => props.disabled || isQueueFull.value)
+// const isQueueFull = computed(() => healthStore.isFull) // Removed unused
+const isDisabled = computed(() => props.disabled) // Allow clicking even if full to show Modal
 
 const menuOptions = computed<DropdownOption[]>(() => {
   return (Object.keys(MODE_CONFIG) as OCRPromptType[]).map(key => ({
