@@ -55,13 +55,24 @@ export class OCRService {
     imageData: Blob | string,
     options?: OCROptions
   ): Promise<void> {
-    // Check if OCR service is healthy before queuing
+    // Check OCR service availability before queuing
     const healthStore = useHealthStore()
+
+    // Reject if service is unavailable (network error, API down)
     if (!healthStore.isHealthy) {
       const error = new Error('OCR service is currently unavailable. Please try again later.')
       ocrEvents.emit('ocr:error', { pageId, error })
       throw error
     }
+
+    // Reject if queue is full (100% capacity)
+    if (healthStore.isFull) {
+      const error = new Error('OCR queue is full. Please wait for existing tasks to complete.')
+      ocrEvents.emit('ocr:error', { pageId, error })
+      throw error
+    }
+
+    // Allow submission for 'healthy' and 'busy' states
 
     ocrEvents.emit('ocr:queued', { pageId })
 

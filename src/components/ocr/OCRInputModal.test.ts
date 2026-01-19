@@ -17,6 +17,15 @@ vi.mock('naive-ui', () => ({
     }
 }))
 
+// Mock health store
+vi.mock('@/stores/health', () => ({
+    useHealthStore: () => ({
+        isHealthy: true,
+        isFull: false,
+        isBusy: false
+    })
+}))
+
 describe('OCRInputModal.vue', () => {
     it('renders correctly when show is true', () => {
         const wrapper = mount(OCRInputModal, {

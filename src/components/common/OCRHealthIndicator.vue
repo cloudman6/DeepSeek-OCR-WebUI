@@ -8,7 +8,7 @@
     <NTooltip
       v-bind="tooltipProps"
       :theme-overrides="{
-        color: isHealthy ? PRIMARY_COLOR : '#d03050',
+        color: statusColor,
         textColor: '#fff'
       }"
     >
@@ -33,7 +33,15 @@
         <template v-if="healthInfo">
           <div><strong>{{ $t('health.backend') }}:</strong> {{ healthInfo.backend }}</div>
           <div><strong>{{ $t('health.platform') }}:</strong> {{ healthInfo.platform }}</div>
-          <div><strong>{{ $t('health.modelLoaded') }}:</strong> {{ healthInfo.model_loaded ? $t('health.yes') : $t('health.no') }}</div>
+          <div v-if="healthInfo.ocr_queue">
+            <strong>Queue:</strong> {{ healthInfo.ocr_queue.depth }} / {{ healthInfo.ocr_queue.max_size }}
+          </div>
+          <div v-if="isBusy">
+            {{ $t('health.busyTooltip') }}
+          </div>
+          <div v-if="isFull">
+            {{ $t('health.fullTooltip') }}
+          </div>
         </template>
         <div
           v-if="lastCheckTime"
@@ -52,7 +60,7 @@ import { useI18n } from 'vue-i18n'
 import { NBadge, NButton, NIcon, NTooltip } from 'naive-ui'
 import { HeartOutline, AlertCircleOutline } from '@vicons/ionicons5'
 import { useHealthStore } from '@/stores/health'
-import { PRIMARY_COLOR } from '@/theme/vars'
+
 
 // No props needed
 defineProps<{
@@ -66,11 +74,18 @@ const isHealthy = computed(() => healthStore.isHealthy)
 const healthInfo = computed(() => healthStore.healthInfo)
 const lastCheckTime = computed(() => healthStore.lastCheckTime)
 
+const isBusy = computed(() => healthStore.isBusy)
+const isFull = computed(() => healthStore.isFull)
+
 const statusColor = computed(() => {
+  if (isFull.value) return '#d03050' // Red
+  if (isBusy.value) return '#f0a020' // Orange/Yellow
   return isHealthy.value ? '#18a058' : '#d03050'
 })
 
 const buttonType = computed(() => {
+  if (isFull.value) return 'error'
+  if (isBusy.value) return 'warning'
   return isHealthy.value ? 'success' : 'error'
 })
 
@@ -79,6 +94,8 @@ const StatusIcon = computed(() => {
 })
 
 const statusText = computed(() => {
+  if (isFull.value) return 'Full'
+  if (isBusy.value) return 'Busy'
   return isHealthy.value ? t('health.healthy') : t('health.unavailable')
 })
 

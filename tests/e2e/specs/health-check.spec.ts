@@ -27,11 +27,11 @@ test.describe('OCR Health Check & Queue Recovery', () => {
         // 1. 验证初始状态为健康 (success)
         expect(await app.getHealthStatusType()).toBe('success');
 
-        // 2. Mock 变为不健康
-        await apiMocks.mockHealth({ status: 'unhealthy' });
+        // 2. Mock 服务不可用 (网络错误或 HTTP 错误，导致 isHealthy = false)
+        await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
 
         // 3. 等待轮询周期 (5s) 并验证 UI 变化
-        // 我们在页面上等待指示器变为 error 类型
+        // 我们在页面上等待指示器变为 error  类型
         await expect.poll(async () => await app.getHealthStatusType(), {
             timeout: 10000,
             intervals: [1000]
@@ -42,9 +42,9 @@ test.describe('OCR Health Check & Queue Recovery', () => {
         expect(statusText).toContain('Unavailable');
     });
 
-    test('should block OCR requests when service is unhealthy', async ({ page }) => {
-        // 1. 设置服务不健康
-        await apiMocks.mockHealth({ status: 'unhealthy' });
+    test('should block OCR requests when service is unavailable', async ({ page }) => {
+        // 1. 设置服务不可用
+        await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
 
         // 等待轮询生效，使 Store 更新
         await expect.poll(async () => await app.getHealthStatusType(), { timeout: 10000 }).toBe('error');
@@ -69,7 +69,7 @@ test.describe('OCR Health Check & Queue Recovery', () => {
     test('should auto-resume queued tasks when service recovers', async ({ page }) => {
         // 1. 初始健康
         await apiMocks.mockHealth({ status: 'healthy' });
-        await apiMocks.mockOCR({ delay: 1000 }); // 让 OCR 慢一点
+        await apiMocks.mockOCR({ delay: 5000 }); // 让 OCR 慢一点
 
         // 2. 上传并触发第一个任务
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
@@ -78,8 +78,8 @@ test.describe('OCR Health Check & Queue Recovery', () => {
         await page.waitForTimeout(500); // 极短缓冲
         await expect(page.getByTestId('ocr-status-tag').first()).toBeVisible();
 
-        // 3. 在任务执行期间，服务变为不健康
-        await apiMocks.mockHealth({ status: 'unhealthy' });
+        // 3. 在任务执行期间，服务变为不可用
+        await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
 
         // 4. 上传第二个文件并尝试触发 (此时应该会因为健康检查失败而无法【开始执行】)
         // 注意：addOCRTask 内部会先等待健康检查。
@@ -95,6 +95,7 @@ test.describe('OCR Health Check & Queue Recovery', () => {
 
         // 6. 验证第二个任务最终成功
         await ocrPage.waitForOCRSuccess(1, 15000);
-        expect(await ocrPage.getPageStatus(1)).toBe('ocr_success');
+        // 验证 OCR 成功完成（状态可能是 ocr_success 或后续的生成状态）
+        expect(await ocrPage.isOCRCompleted(1)).toBeTruthy();
     });
 });

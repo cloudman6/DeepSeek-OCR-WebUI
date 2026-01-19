@@ -23,12 +23,19 @@ const IGNORED_PATTERNS = [
     '[DeepSeekOCRProvider] Process failed', // OCR error handling tests intentionally trigger this
     '[HealthCheckService] OCR service is unavailable',
     '[HealthCheckService] OCR service is unhealthy',
+    '[HealthCheckService] OCR service status', // busy/full status warnings are expected
     '[QueueManager] OCR service unavailable', // 模糊匹配，忽略变量
     '[QueueManager] OCR service recovered',
     'OCR service is currently unavailable. Please try again later.',
     'Uncaught (in promise) Error: OCR service is currently unavailable. Please try again later.',
     '[QueueManager] OCR service recovered',
     'OCR Error:',
+    // Rate limiting errors (429) are expected in rate-limiting tests
+    'Failed to load resource: the server responded with a status of 429',
+    'Queue Full:',
+    'Client Limit:',
+    'IP Limit:',
+    'Rate Limit Exceeded:',
 ];
 
 /**

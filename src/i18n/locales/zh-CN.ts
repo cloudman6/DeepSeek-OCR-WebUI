@@ -37,7 +37,9 @@ export default {
     unavailable: '不可用',
     justNow: '刚刚',
     ago: '{0}秒前',
-    minutesAgo: '{0}分钟前'
+    minutesAgo: '{0}分钟前',
+    busyTooltip: '系统繁忙 (排队中)',
+    fullTooltip: '队列已满 (无法提交)'
   },
 
   // Header
@@ -168,7 +170,10 @@ export default {
     activeTasks: '进行中',
     queuedTasks: '队列中',
     noActiveTasks: '无活跃 OCR 任务',
-    noQueuedTasks: '无排队 OCR 任务'
+    noQueuedTasks: '无排队 OCR 任务',
+    queuePosition: '排队中 (第 {0} 位)',
+    processing: '处理中 (第 {0} 位)',
+    submitting: '提交中...'
   },
 
   // Raw Text Panel

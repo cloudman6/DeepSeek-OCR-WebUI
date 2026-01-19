@@ -126,12 +126,13 @@ export class AppPage {
   }
 
   /**
-   * 获取健康指示器的颜色类型 (success/error)
+   * 获取健康指示器的颜色类型 (success/warning/error)
    */
-  async getHealthStatusType(): Promise<'success' | 'error'> {
+  async getHealthStatusType(): Promise<'success' | 'warning' | 'error'> {
     const button = this.page.locator('button').filter({ hasText: 'OCR Service' });
     const classList = await button.getAttribute('class') || '';
     if (classList.includes('n-button--success-type')) return 'success';
+    if (classList.includes('n-button--warning-type')) return 'warning';
     if (classList.includes('n-button--error-type')) return 'error';
     return 'success'; // 默认
   }

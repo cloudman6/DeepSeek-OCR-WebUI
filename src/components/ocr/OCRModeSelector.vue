@@ -6,7 +6,7 @@
         role="button"
         :type="buttonType"
         :loading="loading"
-        :disabled="disabled"
+        :disabled="isDisabled"
         class="trigger-btn keep-queue-open"
         @click="handleMainClick"
       >
@@ -26,7 +26,7 @@
           data-testid="ocr-mode-dropdown"
           role="button"
           :type="buttonType"
-          :disabled="disabled"
+          :disabled="isDisabled"
           class="dropdown-trigger keep-queue-open"
         >
           <template #icon>
@@ -57,6 +57,8 @@ import {
 } from '@vicons/ionicons5'
 import type { OCRPromptType } from '@/services/ocr'
 
+import { useHealthStore } from '@/stores/health'
+
 interface Props {
   loading?: boolean
   disabled?: boolean
@@ -86,9 +88,14 @@ const MODE_CONFIG: Record<OCRPromptType, { key: string, icon: import('vue').Comp
   freeform: { key: 'ocr.customPrompt', icon: CreateOutline }
 }
 
+const healthStore = useHealthStore()
+
 const currentLabel = computed(() => t(MODE_CONFIG[selectedMode.value].key))
 const currentIcon = computed(() => MODE_CONFIG[selectedMode.value].icon)
 const buttonType = computed(() => props.loading ? 'info' : 'primary')
+
+const isQueueFull = computed(() => healthStore.isFull)
+const isDisabled = computed(() => props.disabled || isQueueFull.value)
 
 const menuOptions = computed<DropdownOption[]>(() => {
   return (Object.keys(MODE_CONFIG) as OCRPromptType[]).map(key => ({

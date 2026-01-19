@@ -84,7 +84,7 @@
             <NSpin size="small" />
             <div class="file-details">
               <span class="file-name">{{ page.fileName }}</span>
-              <span class="status-text">{{ t('ocrQueuePopover.recognizing') }}</span>
+              <span class="status-text">{{ getTaskStatusText() }}</span>
             </div>
           </div>
           <NButton
@@ -179,10 +179,12 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePagesStore } from '@/stores/pages'
+import { useHealthStore } from '@/stores/health'
 import { NButton, NIcon, NBadge, NScrollbar, NEmpty, NCheckbox, NSpin, createDiscreteApi } from 'naive-ui'
 import { CloseCircleOutline, CloseCircle, TimeOutline } from '@vicons/ionicons5'
 
 const store = usePagesStore()
+const healthStore = useHealthStore()
 const { t } = useI18n()
 const { message } = createDiscreteApi(['message'])
 
@@ -202,7 +204,29 @@ const allTaskIds = computed(() => [
 
 const hasSelection = computed(() => selectedIds.value.size > 0)
 const isAllSelected = computed(() => allTaskIds.value.length > 0 && selectedIds.value.size === allTaskIds.value.length)
+
+
 const isPartiallySelected = computed(() => selectedIds.value.size > 0 && selectedIds.value.size < allTaskIds.value.length)
+
+
+
+// Dynamic Status Text
+function getTaskStatusText() {
+  const position = healthStore.queuePosition
+  
+  // Position 1 = currently processing
+  if (position === 1) {
+    return t('ocrQueue.processing', [position])
+  }
+  
+  // Position > 1 = in queue
+  if (position && position > 1) {
+    return t('ocrQueue.queuePosition', [position])
+  }
+  
+  // No position info = submitting to queue
+  return t('ocrQueue.submitting')
+}
 
 // Watcher to prune selectedIds when tasks are removed (e.g. completed)
 import { watch } from 'vue'

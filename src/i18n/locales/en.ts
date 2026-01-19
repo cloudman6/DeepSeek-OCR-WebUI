@@ -37,7 +37,9 @@ export default {
     unavailable: 'Unavailable',
     justNow: 'just now',
     ago: '{0}s ago',
-    minutesAgo: '{0}m ago'
+    minutesAgo: '{0}m ago',
+    busyTooltip: 'System Busy (Queued)',
+    fullTooltip: 'Queue Full (Cannot Submit)'
   },
 
   // Header
@@ -168,7 +170,10 @@ export default {
     activeTasks: 'Active',
     queuedTasks: 'Queued',
     noActiveTasks: 'No active OCR tasks',
-    noQueuedTasks: 'No queued OCR tasks'
+    noQueuedTasks: 'No queued OCR tasks',
+    queuePosition: 'Queued (#{0})',
+    processing: 'Processing (#1)',
+    submitting: 'Submitting...'
   },
 
   // Raw Text Panel
