@@ -24,11 +24,15 @@ vi.mock('@/services/queue', () => ({
   }
 }))
 
-// Mock health store to always return healthy
+// Mock health store - will be overridden in individual tests
+const mockHealthStore = {
+  isHealthy: true,
+  isFull: false,
+  isBusy: false
+}
+
 vi.mock('@/stores/health', () => ({
-  useHealthStore: () => ({
-    isHealthy: true
-  })
+  useHealthStore: () => mockHealthStore
 }))
 
 describe('OCRService', () => {
@@ -201,6 +205,125 @@ describe('OCRService', () => {
 
       expect(consoleSpy).toHaveBeenCalledWith(expect.stringContaining('Task error'), expect.any(Error))
       consoleSpy.mockRestore()
+    })
+
+    it('should reject when service is unavailable', async () => {
+      const service = new OCRService()
+      const pageId = 'unavailable-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      // Mock unhealthy service
+      mockHealthStore.isHealthy = false
+      mockHealthStore.isFull = false
+      mockHealthStore.isBusy = false
+
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      await expect(service.queueOCR(pageId, blob))
+        .rejects.toThrow('OCR service is currently unavailable. Please try again later.')
+
+      expect(emitSpy).toHaveBeenCalledWith('ocr:error', {
+        pageId,
+        error: expect.objectContaining({ message: expect.stringContaining('unavailable') })
+      })
+
+      // Restore for other tests
+      mockHealthStore.isHealthy = true
+    })
+
+    it('should reject when queue is full', async () => {
+      const service = new OCRService()
+      const pageId = 'full-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      // Mock full queue
+      mockHealthStore.isHealthy = true
+      mockHealthStore.isFull = true
+      mockHealthStore.isBusy = false
+
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      await expect(service.queueOCR(pageId, blob))
+        .rejects.toThrow('OCR queue is full. Please wait for existing tasks to complete.')
+
+      expect(emitSpy).toHaveBeenCalledWith('ocr:error', {
+        pageId,
+        error: expect.objectContaining({ message: expect.stringContaining('full') })
+      })
+
+      // Restore for other tests
+      mockHealthStore.isFull = false
+    })
+
+    it('should allow submission when service is busy', async () => {
+      const service = new OCRService()
+      service.registerProvider('deepseek', mockProvider)
+      const pageId = 'busy-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      // Mock busy state
+      mockHealthStore.isHealthy = true
+      mockHealthStore.isFull = false
+      mockHealthStore.isBusy = true
+
+      // Reset mock provider to success state (in case previous test modified it)
+      mockProvider.process = vi.fn().mockResolvedValue(mockResult)
+
+      let taskPromise: Promise<void> | undefined
+
+      vi.spyOn(queueManager, 'addOCRTask').mockImplementation((_id: string, task: (signal: AbortSignal) => Promise<void>) => {
+        const signal = new AbortController().signal
+        taskPromise = task(signal)
+        return Promise.resolve()
+      })
+      vi.spyOn(db, 'savePageOCR').mockResolvedValue(undefined)
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      await service.queueOCR(pageId, blob)
+
+      // Wait for task to complete
+      if (taskPromise) await taskPromise
+
+      // Should be queued successfully
+      expect(emitSpy).toHaveBeenCalledWith('ocr:queued', { pageId })
+      expect(emitSpy).toHaveBeenCalledWith('ocr:success', { pageId, result: mockResult })
+
+      // Restore for other tests
+      mockHealthStore.isBusy = false
+    })
+
+    it('should allow submission when service is healthy', async () => {
+      const service = new OCRService()
+      service.registerProvider('deepseek', mockProvider)
+      const pageId = 'healthy-page'
+      const blob = new Blob(['test'], { type: 'image/png' })
+
+      // Mock healthy state
+      mockHealthStore.isHealthy = true
+      mockHealthStore.isFull = false
+      mockHealthStore.isBusy = false
+
+      // Reset mock provider to success state (in case previous test modified it)
+      mockProvider.process = vi.fn().mockResolvedValue(mockResult)
+
+      let taskPromise: Promise<void> | undefined
+
+      vi.spyOn(queueManager, 'addOCRTask').mockImplementation((_id: string, task: (signal: AbortSignal) => Promise<void>) => {
+        const signal = new AbortController().signal
+        taskPromise = task(signal)
+        return Promise.resolve()
+      })
+      vi.spyOn(db, 'savePageOCR').mockResolvedValue(undefined)
+      const emitSpy = vi.spyOn(ocrEvents, 'emit')
+
+      await service.queueOCR(pageId, blob)
+
+      // Wait for task to complete
+      if (taskPromise) await taskPromise
+
+      // Should be queued successfully
+      expect(emitSpy).toHaveBeenCalledWith('ocr:queued', { pageId })
+      expect(emitSpy).toHaveBeenCalledWith('ocr:success', { pageId, result: mockResult })
     })
   })
 

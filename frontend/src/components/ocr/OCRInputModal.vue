@@ -4,6 +4,7 @@
     preset="dialog"
     :title="title"
     :positive-text="confirmText"
+    :positive-button-props="confirmButtonProps"
     :negative-text="t('common.cancel')"
     @update:show="$emit('update:show', $event)"
     @positive-click="handleSubmit"
@@ -38,13 +39,17 @@ interface Emits {
   (e: 'submit', value: string): void
 }
 
+import { useHealthStore } from '@/stores/health'
+
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const { t } = useI18n()
+const healthStore = useHealthStore()
 const inputValue = ref('')
 
 const isFind = computed(() => props.mode === 'find')
+const isQueueFull = computed(() => healthStore.isFull)
 
 const title = computed(() => isFind.value ? t('ocrInputModal.locateObject') : t('ocrInputModal.customPrompt'))
 const placeholder = computed(() => isFind.value
@@ -52,6 +57,10 @@ const placeholder = computed(() => isFind.value
   : t('ocrInputModal.promptPlaceholder')
 )
 const confirmText = computed(() => isFind.value ? t('ocrInputModal.locate') : t('ocrInputModal.runOCR'))
+
+const confirmButtonProps = computed(() => ({
+  disabled: isQueueFull.value
+}))
 
 // Reset input when opening
 watch(() => props.show, (val) => {
@@ -61,7 +70,7 @@ watch(() => props.show, (val) => {
 })
 
 function handleSubmit() {
-  if (!inputValue.value.trim()) return
+  if (!inputValue.value.trim() || isQueueFull.value) return
   emit('submit', inputValue.value)
   emit('update:show', false)
 }

@@ -74,7 +74,9 @@
               class="github-btn"
             >
               <template #icon>
-                <NIcon size="20"><LogoGithub /></NIcon>
+                <NIcon size="20">
+                  <LogoGithub />
+                </NIcon>
               </template>
               <span class="github-text">Star</span>
             </NButton>
@@ -92,7 +94,9 @@
               class="github-btn"
             >
               <template #icon>
-                <NIcon size="18"><ChatboxEllipsesOutline /></NIcon>
+                <NIcon size="18">
+                  <ChatboxEllipsesOutline />
+                </NIcon>
               </template>
               <span class="github-text">Issue</span>
             </NButton>
@@ -110,7 +114,9 @@
               class="github-btn"
             >
               <template #icon>
-                <NIcon size="18"><BookOutline /></NIcon>
+                <NIcon size="18">
+                  <BookOutline />
+                </NIcon>
               </template>
               <span class="github-text">Docs</span>
             </NButton>

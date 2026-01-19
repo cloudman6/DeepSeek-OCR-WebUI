@@ -38,6 +38,15 @@ vi.mock('@vicons/ionicons5', () => ({
     ChevronDownOutline: { name: 'ChevronDownOutline', render: () => h('svg') }
 }))
 
+// Mock health store
+vi.mock('@/stores/health', () => ({
+    useHealthStore: () => ({
+        isHealthy: true,
+        isFull: false,
+        isBusy: false
+    })
+}))
+
 describe('OCRModeSelector.vue', () => {
     it('renders default mode correctly', () => {
         const wrapper = mount(OCRModeSelector, {
