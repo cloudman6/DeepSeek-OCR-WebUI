@@ -34,7 +34,7 @@
           <div><strong>{{ $t('health.backend') }}:</strong> {{ healthInfo.backend }}</div>
           <div><strong>{{ $t('health.platform') }}:</strong> {{ healthInfo.platform }}</div>
           <div v-if="healthInfo.ocr_queue">
-            <strong>Queue:</strong> {{ healthInfo.ocr_queue.depth }} / {{ healthInfo.ocr_queue.max_size }}
+            <strong>{{ $t('health.queue') }}:</strong> {{ healthInfo.ocr_queue.depth }} / {{ healthInfo.ocr_queue.max_size }}
           </div>
           <div v-if="isBusy">
             {{ $t('health.busyTooltip') }}
@@ -60,6 +60,7 @@ import { useI18n } from 'vue-i18n'
 import { NBadge, NButton, NIcon, NTooltip } from 'naive-ui'
 import { HeartOutline, AlertCircleOutline } from '@vicons/ionicons5'
 import { useHealthStore } from '@/stores/health'
+import { PRIMARY_COLOR } from '@/theme/vars'
 
 
 // No props needed
@@ -80,7 +81,7 @@ const isFull = computed(() => healthStore.isFull)
 const statusColor = computed(() => {
   if (isFull.value) return '#d03050' // Red
   if (isBusy.value) return '#f0a020' // Orange/Yellow
-  return isHealthy.value ? '#18a058' : '#d03050'
+  return isHealthy.value ? PRIMARY_COLOR : '#d03050'
 })
 
 const buttonType = computed(() => {
@@ -94,8 +95,8 @@ const StatusIcon = computed(() => {
 })
 
 const statusText = computed(() => {
-  if (isFull.value) return 'Full'
-  if (isBusy.value) return 'Busy'
+  if (isFull.value) return t('health.full')
+  if (isBusy.value) return t('health.busy')
   return isHealthy.value ? t('health.healthy') : t('health.unavailable')
 })
 

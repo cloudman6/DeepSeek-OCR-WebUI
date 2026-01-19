@@ -110,8 +110,17 @@ test.describe('Enhanced Health Status Display', () => {
         // Tooltip should say "Full"
         await expect(page.getByText(/full/i).first()).toBeVisible({ timeout: 5000 });
 
-        // Verify OCR button is now disabled (frontend blocks submission)
-        await expect(ocrButton).toBeDisabled();
+        // Verify OCR button is now ENABLED (frontend allows submission to show explanation Modal)
+        await expect(ocrButton).toBeEnabled();
+
+        // Attempt to submit
+        await ocrButton.click();
+
+        // Expect Modal with "Queue Full" message
+        await expect(page.locator('.n-dialog').filter({ hasText: /Queue Full|Full/i })).toBeVisible();
+
+        // Optionally close the modal
+        // await page.locator('.n-dialog__action button').click();
     });
 
     test('should show queue position when user has tasks in queue', async ({ page }) => {

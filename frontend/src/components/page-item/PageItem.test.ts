@@ -24,6 +24,30 @@ vi.mock('@/db', () => ({
 }))
 
 // Mock Naive UI components to simplify testing
+// Hoist mocks for spying
+const mocks = vi.hoisted(() => ({
+    dialog: {
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn(),
+        create: vi.fn()
+    },
+    message: {
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn()
+    },
+    notification: {
+        success: vi.fn(),
+        error: vi.fn(),
+        warning: vi.fn(),
+        info: vi.fn()
+    }
+}))
+
+// Mock Naive UI components to simplify testing
 vi.mock('naive-ui', () => ({
     NButton: {
         name: 'NButton',
@@ -49,25 +73,9 @@ vi.mock('naive-ui', () => ({
         props: ['size', 'color'],
         template: '<span><slot></slot></span>'
     },
-    useMessage: () => ({
-        success: vi.fn(),
-        error: vi.fn(),
-        warning: vi.fn(),
-        info: vi.fn()
-    }),
-    useNotification: () => ({
-        success: vi.fn(),
-        error: vi.fn(),
-        warning: vi.fn(),
-        info: vi.fn()
-    }),
-    useDialog: () => ({
-        success: vi.fn(),
-        error: vi.fn(),
-        warning: vi.fn(),
-        info: vi.fn(),
-        create: vi.fn()
-    })
+    useMessage: () => mocks.message,
+    useNotification: () => mocks.notification,
+    useDialog: () => mocks.dialog
 }))
 
 describe('PageItem.vue', () => {
@@ -194,6 +202,26 @@ describe('PageItem.vue', () => {
 
         expect(consoleSpy).toHaveBeenCalled()
         consoleSpy.mockRestore()
+    })
+
+    it('handles Scan button error with queue full', async () => {
+        const wrapper = mount(PageItem, {
+            props: { page: mockPage },
+            global: { plugins: [pinia, i18n] }
+        })
+
+        vi.mocked(db.getPageImage).mockResolvedValue(new Blob(['img'], { type: 'image/jpeg' }))
+        const error = new Error('OCR queue is full')
+        vi.mocked(ocrService.queueOCR).mockRejectedValue(error)
+
+        const scanBtn = wrapper.findAllComponents(NButton).find(c => c.attributes('title') === 'Scan to Document')
+        await scanBtn!.trigger('click')
+        await flushPromises()
+
+        expect(mocks.dialog.error).toHaveBeenCalledWith(expect.objectContaining({
+            title: 'Queue Full',
+            content: 'OCR queue is full. Please try again later.', // using EN key value for test
+        }))
     })
 
     it('handles checkbox change', async () => {

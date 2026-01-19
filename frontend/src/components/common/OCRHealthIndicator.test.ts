@@ -76,7 +76,7 @@ describe('OCRHealthIndicator', () => {
 
         await wrapper.vm.$nextTick()
 
-        expect(wrapper.find('.health-status').text()).toContain('Busy')
+        expect(wrapper.find('.health-status').text()).toContain('health.busy')
         expect(wrapper.text()).toContain('health.busyTooltip')
     })
 
@@ -91,7 +91,7 @@ describe('OCRHealthIndicator', () => {
 
         await wrapper.vm.$nextTick()
 
-        expect(wrapper.find('.health-status').text()).toContain('Full')
+        expect(wrapper.find('.health-status').text()).toContain('health.full')
         expect(wrapper.text()).toContain('health.fullTooltip')
     })
 

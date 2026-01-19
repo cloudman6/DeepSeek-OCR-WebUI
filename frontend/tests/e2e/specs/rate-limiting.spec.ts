@@ -23,7 +23,7 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         await app.waitForAppReady();
     });
 
-    test('should disable OCR button and prevent submission when queue is full', async ({ page }) => {
+    test('should show modal and prevent submission when queue is full', async ({ page }) => {
         // Upload a test file first (before queue is full)
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
@@ -44,16 +44,26 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         const statusType = await app.getHealthStatusType();
         expect(statusType).toBe('error');
 
-        // Verify OCR button is now disabled due to queue full
-        await expect(ocrButton).toBeDisabled();
+        // Verify OCR button is STILL enabled (changed behavior)
+        await expect(ocrButton).toBeEnabled();
 
         // Hover over health indicator to see full status tooltip
+        // Do this BEFORE clicking the button, because the modal mask might intercept pointer events
         const healthBtn = page.locator('.health-indicator-btn');
         await healthBtn.hover();
         await expect(page.getByText(/full/i).first()).toBeVisible({ timeout: 5000 });
 
-        // This validates that frontend properly blocks submission when queue is full
-        // No API call should be possible because the button is disabled
+        // Move mouse away to close tooltip and ensure it doesn't block the button
+        await page.mouse.move(0, 0);
+        await expect(page.getByText(/full/i).first()).toBeHidden();
+
+        // Click the button
+        await ocrButton.click();
+
+        // Verify Modal appears with "Queue Full" message
+        // Since we are in English locale by default in tests
+        await expect(page.getByText('Queue Full', { exact: true })).toBeVisible();
+        await expect(page.getByText('OCR queue is full')).toBeVisible();
     });
 
     test('should handle Client Limit (429) error from API', async ({ page }) => {

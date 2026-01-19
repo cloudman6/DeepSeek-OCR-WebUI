@@ -211,6 +211,7 @@ function handleDelete() {
   emit('delete', props.page)
 }
 
+// eslint-disable-next-line complexity
 async function handleScan() {
   if (isScanning.value) return
   
@@ -236,10 +237,14 @@ async function handleScan() {
     const errorMsg = error instanceof Error ? error.message : String(error)
     const healthStore = useHealthStore()
     
-    if (errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy) {
+    // Check for Unavailable or Full status
+    const isUnavailable = errorMsg.toLowerCase().includes('unavailable') || !healthStore.isHealthy
+    const isQueueFull = errorMsg.toLowerCase().includes('queue is full') || healthStore.isFull
+
+    if (isUnavailable || isQueueFull) {
       dialog.error({
-        title: t('errors.ocrServiceUnavailableTitle'),
-        content: t('errors.ocrServiceUnavailable'),
+        title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
+        content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
         positiveText: t('common.ok')
       })
     } else {
