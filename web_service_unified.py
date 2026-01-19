@@ -255,7 +255,7 @@ app.add_middleware(
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=["*", "x-client-id", "x-forwarded-for"],
 )
 
 # Define frontend path
