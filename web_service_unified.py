@@ -15,18 +15,140 @@ import platform
 from typing import Optional, List, Dict, Any
 from contextlib import asynccontextmanager
 from pathlib import Path
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, File, UploadFile, Form, HTTPException
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Request
 from fastapi.responses import JSONResponse, HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from PIL import Image, ImageOps
 import uvicorn
 import fitz
+import threading
 
 # Global backend
 backend = None
 backend_type = None
+
+# ============ Concurrency Control ============
+MAX_OCR_QUEUE_SIZE = 8
+MAX_PDF_QUEUE_SIZE = 4
+
+# Per-client and per-IP rate limits
+MAX_CONCURRENT_PER_CLIENT = 1
+MAX_CONCURRENT_PER_IP = 4
+
+ocr_semaphore = None  # Will be initialized in lifespan
+pdf_semaphore = None
+
+ocr_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ocr-")
+pdf_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="pdf-")
+
+# Queue depth counters with thread-safe access
+_queue_lock = threading.Lock()
+ocr_queue_depth = 0
+pdf_queue_depth = 0
+
+# Track active requests per client and IP
+_active_clients: dict[str, int] = {}  # client_id -> active count
+_active_ips: dict[str, int] = {}  # ip -> active count
+
+# Ordered queue for tracking request position (OrderedDict maintains insertion order)
+# Key: request_id (UUID) to uniquely identify each request
+from collections import OrderedDict
+import time as time_module
+import uuid
+
+_request_queue: OrderedDict[str, dict] = OrderedDict()  # request_id -> {client_id, ip, timestamp}
+
+
+def get_client_identifier(request: Request) -> tuple[str | None, str]:
+    """Extract client ID from header and client IP."""
+    client_id = request.headers.get("X-Client-ID")
+    # Handle X-Forwarded-For for reverse proxy
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        client_ip = forwarded.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request.client else "unknown"
+    return client_id, client_ip
+
+
+def check_rate_limit(client_id: str | None, client_ip: str) -> tuple[bool, str]:
+    """Check if request should be rate limited. Returns (allowed, reason).
+    
+    Must be called while holding _queue_lock.
+    """
+    # 1. Check global queue
+    if ocr_queue_depth >= MAX_OCR_QUEUE_SIZE:
+        return False, "OCR queue full, please retry later"
+    
+    # 2. Check per-client limit (if client_id provided)
+    if client_id:
+        current = _active_clients.get(client_id, 0)
+        if current >= MAX_CONCURRENT_PER_CLIENT:
+            return False, f"Client at max concurrency ({MAX_CONCURRENT_PER_CLIENT})"
+    
+    # 3. Check per-IP limit (safety net against client_id spoofing)
+    ip_count = _active_ips.get(client_ip, 0)
+    if ip_count >= MAX_CONCURRENT_PER_IP:
+        return False, f"IP at max concurrency ({MAX_CONCURRENT_PER_IP})"
+    
+    return True, ""
+
+
+def register_active_request(client_id: str | None, client_ip: str) -> str:
+    """Register a new active request. Must be called while holding _queue_lock.
+    
+    Returns: request_id for later unregistration
+    """
+    global ocr_queue_depth
+    ocr_queue_depth += 1
+    if client_id:
+        _active_clients[client_id] = _active_clients.get(client_id, 0) + 1
+    _active_ips[client_ip] = _active_ips.get(client_ip, 0) + 1
+    
+    # Add ALL requests to ordered queue (with or without client_id)
+    request_id = str(uuid.uuid4())
+    _request_queue[request_id] = {
+        "client_id": client_id,
+        "ip": client_ip,
+        "timestamp": time_module.time()
+    }
+    return request_id
+
+
+def unregister_active_request(request_id: str, client_id: str | None, client_ip: str) -> None:
+    """Unregister an active request. Must be called while holding _queue_lock."""
+    global ocr_queue_depth
+    ocr_queue_depth -= 1
+    if client_id:
+        _active_clients[client_id] = _active_clients.get(client_id, 0) - 1
+        if _active_clients[client_id] <= 0:
+            del _active_clients[client_id]
+    _active_ips[client_ip] = _active_ips.get(client_ip, 0) - 1
+    if _active_ips[client_ip] <= 0:
+        del _active_ips[client_ip]
+    
+    # Remove from ordered queue
+    if request_id in _request_queue:
+        del _request_queue[request_id]
+
+
+def get_queue_position(client_id: str) -> tuple[int | None, int]:
+    """Get the queue position of a client's first request.
+    
+    Must be called while holding _queue_lock.
+    
+    Returns: (position (1-indexed, or None if not in queue), total_queued)
+    """
+    total = len(_request_queue)
+    for i, (_, info) in enumerate(_request_queue.items()):
+        if info["client_id"] == client_id:
+            return i + 1, total
+    return None, total
+
 
 def detect_platform() -> str:
     """Detect platform and return backend type"""
@@ -67,7 +189,7 @@ def detect_platform() -> str:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Load model based on platform"""
-    global backend, backend_type
+    global backend, backend_type, ocr_semaphore, pdf_semaphore
     
     print("="*50)
     print("🚀 DeepSeek-OCR Unified Service Starting...")
@@ -104,11 +226,19 @@ async def lifespan(app: FastAPI):
         raise RuntimeError("No supported backend available")
     
     print(f"✅ Backend loaded: {backend_type.upper()}")
+    
+    # Initialize semaphores
+    ocr_semaphore = asyncio.Semaphore(1)
+    pdf_semaphore = asyncio.Semaphore(2)
+    print("✅ Concurrency control initialized")
     print("="*50)
     
     yield
     
     print("🛑 Service shutting down...")
+    ocr_executor.shutdown(wait=True)
+    pdf_executor.shutdown(wait=True)
+    print("✅ Thread pools closed")
 
 app = FastAPI(
     title="DeepSeek-OCR Unified API",
@@ -208,27 +338,93 @@ async def root():
     return HTMLResponse(content="<h1>DeepSeek-OCR-WebUI</h1><p>Frontend dist not found.</p>")
 
 @app.get("/health")
-async def health_check():
-    """Health check"""
-    return {
-        "status": "healthy",
+async def health_check(request: Request):
+    """Health check with rate limit status and optional queue position"""
+    # Extract client ID if present
+    client_id = request.headers.get("X-Client-ID")
+    
+    # Read queue depths and active counts with lock
+    with _queue_lock:
+        ocr_depth = ocr_queue_depth
+        pdf_depth = pdf_queue_depth
+        active_clients_count = len(_active_clients)
+        active_ips_count = len(_active_ips)
+        
+        # Get queue position for this client if client_id provided
+        if client_id:
+            position, total = get_queue_position(client_id)
+        else:
+            position, total = None, len(_request_queue)
+    
+    # Determine status based on queue depth
+    if ocr_depth >= MAX_OCR_QUEUE_SIZE:
+        status = "full"
+    elif ocr_depth >= MAX_OCR_QUEUE_SIZE / 2:
+        status = "busy"
+    else:
+        status = "healthy"
+    
+    response = {
+        "status": status,
         "backend": backend_type,
         "platform": platform.system(),
         "machine": platform.machine(),
-        "model_loaded": backend is not None
+        "model_loaded": backend is not None,
+        # Queue status for front-end monitoring
+        "ocr_queue": {
+            "depth": ocr_depth,
+            "max_size": MAX_OCR_QUEUE_SIZE,
+            "is_full": ocr_depth >= MAX_OCR_QUEUE_SIZE,
+        },
+        "pdf_queue": {
+            "depth": pdf_depth,
+            "max_size": MAX_PDF_QUEUE_SIZE,
+            "is_full": pdf_depth >= MAX_PDF_QUEUE_SIZE,
+        },
+        # Rate limit configuration and status
+        "rate_limits": {
+            "max_per_client": MAX_CONCURRENT_PER_CLIENT,
+            "max_per_ip": MAX_CONCURRENT_PER_IP,
+            "active_clients": active_clients_count,
+            "active_ips": active_ips_count,
+        },
     }
+    
+    # Add client-specific queue info if client_id was provided
+    if client_id:
+        response["your_queue_status"] = {
+            "client_id": client_id,
+            "position": position,  # 1-indexed, None if not in queue
+            "total_queued": total,
+        }
+    
+    return response
 
 @app.post("/ocr")
 async def ocr_endpoint(
+    request: Request,
     file: UploadFile = File(...),
     prompt_type: str = Form("document"),
     find_term: str = Form(""),
     custom_prompt: str = Form(""),
     grounding: bool = Form(False)
 ):
-    """OCR endpoint"""
+    """OCR endpoint with per-client rate limiting"""
     if backend is None:
         raise HTTPException(status_code=503, detail="Backend not loaded")
+    
+    if ocr_semaphore is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+    
+    # Extract client identifier
+    client_id, client_ip = get_client_identifier(request)
+    
+    # Composite rate limit check
+    with _queue_lock:
+        allowed, reason = check_rate_limit(client_id, client_ip)
+        if not allowed:
+            raise HTTPException(status_code=429, detail=reason)
+        request_id = register_active_request(client_id, client_ip)
     
     tmp_file = None
     
@@ -247,8 +443,18 @@ async def ocr_endpoint(
         # Build prompt
         prompt = build_prompt(prompt_type, custom_prompt, find_term)
         
-        # Run inference
-        text = backend.infer(prompt=prompt, image_path=tmp_file)
+        # Acquire semaphore and run inference in thread pool
+        await ocr_semaphore.acquire()
+        try:
+            loop = asyncio.get_running_loop()
+            text = await loop.run_in_executor(
+                ocr_executor,
+                backend.infer,
+                prompt,
+                tmp_file
+            )
+        finally:
+            ocr_semaphore.release()
         
         # Parse boxes
         boxes = parse_detections(text, orig_w, orig_h) if "<|det|>" in text else []
@@ -278,12 +484,54 @@ async def ocr_endpoint(
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
         
     finally:
+        with _queue_lock:
+            unregister_active_request(request_id, client_id, client_ip)
         if tmp_file and os.path.exists(tmp_file):
             os.remove(tmp_file)
+
+def _render_pdf_pages(pdf_path: str) -> list:
+    """Synchronous function: Render all PDF pages to images"""
+    images = []
+    pdf_doc = fitz.open(pdf_path)
+    zoom = 144 / 72.0
+    matrix = fitz.Matrix(zoom, zoom)
+    
+    for page_num in range(pdf_doc.page_count):
+        page = pdf_doc[page_num]
+        pixmap = page.get_pixmap(matrix=matrix, alpha=False)
+        img_data = pixmap.tobytes("png")
+        img = Image.open(io.BytesIO(img_data)).convert('RGB')
+        
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format='PNG', optimize=True)
+        img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
+        
+        images.append({
+            "data": f"data:image/png;base64,{img_base64}",
+            "name": f"page_{page_num + 1}.png",
+            "width": img.size[0],
+            "height": img.size[1],
+            "page_number": page_num + 1
+        })
+    
+    pdf_doc.close()
+    return images
+
 
 @app.post("/pdf-to-images")
 async def pdf_to_images_endpoint(file: UploadFile = File(...)):
     """Convert PDF to images"""
+    global pdf_queue_depth
+    
+    if pdf_semaphore is None:
+        raise HTTPException(status_code=503, detail="Service initializing")
+    
+    # Queue capacity check with lock
+    with _queue_lock:
+        if pdf_queue_depth >= MAX_PDF_QUEUE_SIZE:
+            raise HTTPException(status_code=503, detail="PDF queue full, please retry later")
+        pdf_queue_depth += 1
+    
     tmp_file = None
     
     try:
@@ -295,31 +543,14 @@ async def pdf_to_images_endpoint(file: UploadFile = File(...)):
             tmp.write(pdf_data)
             tmp_file = tmp.name
         
-        # Convert PDF
-        images = []
-        pdf_doc = fitz.open(tmp_file)
-        zoom = 144 / 72.0
-        matrix = fitz.Matrix(zoom, zoom)
-        
-        for page_num in range(pdf_doc.page_count):
-            page = pdf_doc[page_num]
-            pixmap = page.get_pixmap(matrix=matrix, alpha=False)
-            img_data = pixmap.tobytes("png")
-            img = Image.open(io.BytesIO(img_data)).convert('RGB')
-            
-            img_buffer = io.BytesIO()
-            img.save(img_buffer, format='PNG', optimize=True)
-            img_base64 = base64.b64encode(img_buffer.getvalue()).decode('utf-8')
-            
-            images.append({
-                "data": f"data:image/png;base64,{img_base64}",
-                "name": f"page_{page_num + 1}.png",
-                "width": img.size[0],
-                "height": img.size[1],
-                "page_number": page_num + 1
-            })
-        
-        pdf_doc.close()
+        # Acquire semaphore and run in thread pool
+        async with pdf_semaphore:
+            loop = asyncio.get_running_loop()
+            images = await loop.run_in_executor(
+                pdf_executor,
+                _render_pdf_pages,
+                tmp_file
+            )
         
         return JSONResponse({
             "success": True,
@@ -334,6 +565,8 @@ async def pdf_to_images_endpoint(file: UploadFile = File(...)):
         return JSONResponse({"success": False, "error": str(e)}, status_code=500)
         
     finally:
+        with _queue_lock:
+            pdf_queue_depth -= 1
         if tmp_file and os.path.exists(tmp_file):
             os.remove(tmp_file)
 
