@@ -6,7 +6,7 @@
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/version-v3.5-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v3.6-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-neosun/deepseek--ocr-brightgreen.svg)](https://hub.docker.com/r/neosun/deepseek-ocr)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://vuejs.org/)
@@ -17,6 +17,23 @@
 [Features](#-features) • [Quick Start](#-quick-start) • [Screenshots](#-screenshots) • [Contributors](#-contributors)
 
 </div>
+
+---
+
+## 🎉 v3.6 Update: Backend Concurrency & Rate Limiting!
+
+**🚀 Performance optimization with smart queue management and rate limiting!**
+
+### ✨ What's New in v3.6
+
+- ⚡ **Backend Concurrency Optimization** - Non-blocking inference with ThreadPoolExecutor
+- 🔒 **Rate Limiting** - Per-client and per-IP request limits (X-Client-ID header support)
+- 📊 **Queue Management** - Real-time queue status with position tracking
+- 🏥 **Enhanced Health API** - Queue depth, status (healthy/busy/full), and rate limit info
+- 🌐 **New Languages** - Added Traditional Chinese (zh-TW) and Japanese (ja-JP)
+- 🎯 **429 Error Handling** - Graceful handling when queue is full or rate limited
+
+**🙏 Contributors:** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
 
 ---
 
@@ -176,13 +193,13 @@ DeepSeek-OCR-WebUI is an intelligent document recognition web application powere
 
 ```bash
 # Pull and run
-docker pull neosun/deepseek-ocr:v3.5
+docker pull neosun/deepseek-ocr:v3.6
 docker run -d \
   --name deepseek-ocr \
   --gpus all \
   -p 8001:8001 \
   --shm-size=8g \
-  neosun/deepseek-ocr:v3.5
+  neosun/deepseek-ocr:v3.6
 
 # Access: http://localhost:8001
 ```
@@ -191,9 +208,9 @@ docker run -d \
 
 | Tag | Description |
 |-----|-------------|
-| `latest` | Latest stable (= v3.5) |
+| `latest` | Latest stable (= v3.6) |
+| `v3.6` | Backend concurrency & rate limiting |
 | `v3.5` | Vue 3 frontend version |
-| `v3.5-vue3-frontend` | Vue 3 frontend (explicit) |
 | `v3.3.1-fix-bfloat16` | BFloat16 compatibility fix |
 
 ### 🍎 Mac (Apple Silicon)
@@ -293,6 +310,19 @@ Switch language via the selector in the top-right corner.
 ---
 
 ## 📊 Version History
+
+### v3.6 (2026-01-20) - Backend Concurrency & Rate Limiting
+
+**⚡ Performance Optimization:**
+- ✅ Non-blocking inference with ThreadPoolExecutor
+- ✅ Concurrency control with asyncio.Semaphore (OCR: 1, PDF: 2)
+- ✅ Queue system with MAX_OCR_QUEUE_SIZE and dynamic status
+- ✅ Per-IP and per-Client-ID rate limiting (X-Client-ID header)
+- ✅ 429 error handling (queue full, client limit, IP limit)
+- ✅ Health indicator with 3 status colors (green/yellow/red)
+- ✅ OCR queue popover with real-time position display
+
+**🙏 Contributors:** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
 
 ### v3.5 (2026-01-17) - Vue 3 Frontend
 
