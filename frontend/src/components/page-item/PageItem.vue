@@ -1,5 +1,5 @@
 <template>
-  <div
+  <div 
     :class="['page-item', { active: isActive, dragging: isDragging, selected: isSelected }]"
     role="listitem"
     :data-testid="`page-item-${page.id}`"
