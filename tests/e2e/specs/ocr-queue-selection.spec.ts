@@ -4,6 +4,7 @@ import { PageListPage } from '../pages/PageListPage';
 import { OCRQueuePopoverPage } from '../pages/OCRQueuePopoverPage';
 import { TestData } from '../data/TestData';
 import { APIMocks } from '../mocks/APIMocks';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('OCR Queue Selection State', () => {
     let app: AppPage;
@@ -17,6 +18,7 @@ test.describe('OCR Queue Selection State', () => {
         queuePopover = new OCRQueuePopoverPage(page);
         apiMocks = new APIMocks(page);
 
+        await apiMocks.mockHealth({ status: 'healthy' });
         await app.goto();
         await app.waitForAppReady();
         await app.clearDatabase();
@@ -27,7 +29,7 @@ test.describe('OCR Queue Selection State', () => {
         await apiMocks.unmockOCR();
     });
 
-    test('should keep "Select All" checked when a selected task completes', async ({ page: _page }) => {
+    test('should keep "Select All" checked when a selected task completes', async ({ page }) => {
         // 1. Upload 3 files
         await pageList.uploadAndWaitReady([
             TestData.files.samplePNG(),
@@ -41,6 +43,7 @@ test.describe('OCR Queue Selection State', () => {
         // Or just a general delay. Let's use 3000ms.
         await apiMocks.mockOCR({ delay: 3000 });
         await pageList.selectAll();
+        await waitForHealthyService(page);
         await pageList.clickBatchOCR();
 
         // 3. Open Queue

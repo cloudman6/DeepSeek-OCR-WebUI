@@ -44,7 +44,7 @@ describe('Health Store', () => {
 
     it('should initialize with default state', () => {
         const store = useHealthStore()
-        expect(store.isHealthy).toBe(true)
+        expect(store.isAvailable).toBe(false)
         expect(store.healthInfo).toBeNull()
         expect(store.lastCheckTime).toBeNull()
         expect(store.error).toBeNull()
@@ -62,7 +62,7 @@ describe('Health Store', () => {
         store.startHealthCheck()
 
         // Initial update
-        expect(store.isHealthy).toBe(true)
+        expect(store.isAvailable).toBe(true)
         expect(store.healthInfo).toEqual({ status: 'healthy' })
 
         // Change mock implementation
@@ -71,7 +71,7 @@ describe('Health Store', () => {
         // Fast forward time
         vi.advanceTimersByTime(1000)
 
-        expect(store.isHealthy).toBe(false)
+        expect(store.isAvailable).toBe(false)
     })
 
     it('should stop health check service', () => {
@@ -191,7 +191,7 @@ describe('Health Store', () => {
 
         // Update without starting
         expect(() => store.updateStatus()).not.toThrow()
-        expect(store.isHealthy).toBe(true) // Should remain default
+        expect(store.isAvailable).toBe(false) // Should remain default
     })
 
     it('should handle computed properties when healthInfo is null', () => {

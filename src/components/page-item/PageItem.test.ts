@@ -107,6 +107,11 @@ describe('PageItem.vue', () => {
             initialState: {
                 pages: {
                     selectedPageIds: []
+                },
+                health: {
+                    isAvailable: true,
+                    isFull: false,
+                    isBusy: false
                 }
             }
         })

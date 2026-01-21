@@ -112,7 +112,7 @@ vi.mock('@/utils/logger', () => ({
 // Mock health store
 vi.mock('@/stores/health', () => ({
   useHealthStore: vi.fn(() => ({
-    isHealthy: true,
+    isAvailable: true,
     isFull: false,
     startHealthCheck: vi.fn(),
     stopHealthCheck: vi.fn()
@@ -834,7 +834,7 @@ describe('PageList.vue', () => {
     it('shows error dialog when queue is full', async () => {
       const { useHealthStore } = await import('@/stores/health')
       vi.mocked(useHealthStore).mockReturnValue({
-        isHealthy: true,
+        isAvailable: true,
         isFull: true,
         startHealthCheck: vi.fn(),
         stopHealthCheck: vi.fn()

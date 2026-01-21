@@ -164,9 +164,14 @@ describe('PageViewer.vue', () => {
               pages: {
                 showOverlay: true,
                 ...piniaInitialState
+              },
+              health: {
+                isAvailable: true,
+                isFull: false,
+                isBusy: false
               }
             },
-            stubActions: false
+            stubActions: true
           })
         ]
       },
@@ -425,6 +430,7 @@ describe('PageViewer.vue', () => {
 
     // Branch 2: other -> direct submit (triggers logger)
     await (wrapper.vm as any).handleOCRRun('document')
+    await flushPromises()
     expect(uiLogger.info).toHaveBeenCalledWith(expect.stringContaining('Adding page to OCR Queue'), mockPage.id)
   })
 
@@ -436,11 +442,13 @@ describe('PageViewer.vue', () => {
       // Case 1: find
       ; (wrapper.vm as any).targetInputMode = 'find'
     await (wrapper.vm as any).handleInputSubmit('test-find')
+    await flushPromises()
     expect(uiLogger.info).toHaveBeenCalledWith(expect.stringContaining('(find)'), mockPage.id)
 
       // Case 2: freeform
       ; (wrapper.vm as any).targetInputMode = 'freeform'
     await (wrapper.vm as any).handleInputSubmit('test-prompt')
+    await flushPromises()
     expect(uiLogger.info).toHaveBeenCalledWith(expect.stringContaining('(freeform)'), mockPage.id)
   })
 

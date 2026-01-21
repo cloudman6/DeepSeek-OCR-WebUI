@@ -4,6 +4,7 @@ import { PageListPage } from '../pages/PageListPage';
 import { OCRPage } from '../pages/OCRPage';
 import { APIMocks } from '../mocks/APIMocks';
 import { TestData } from '../data/TestData';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('Concurrent Operations', () => {
   let app: AppPage;
@@ -17,6 +18,7 @@ test.describe('Concurrent Operations', () => {
     ocrPage = new OCRPage(page);
     apiMocks = new APIMocks(page);
 
+    await apiMocks.mockHealth({ status: 'healthy' });
     await app.goto();
   });
 
@@ -28,6 +30,7 @@ test.describe('Concurrent Operations', () => {
     await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
     // 触发 OCR
+    await waitForHealthyService(page);
     await ocrPage.triggerOCR(0);
 
     // 等待状态变为 recognizing
@@ -82,13 +85,14 @@ test.describe('Concurrent Operations', () => {
     expect(await pageList.getPageCount()).toBe(3);
   });
 
-  test('should handle deletion during OCR', async ({ page: _page }) => {
+  test('should handle deletion during OCR', async ({ page }) => {
     // 设置长时间 OCR
     await apiMocks.mockOCR({ delay: 5000 });
 
     await pageList.uploadAndWaitReady([TestData.files.samplePNG(), TestData.files.sampleJPG()]);
 
     // 触发第一个页面的 OCR
+    await waitForHealthyService(page);
     await ocrPage.triggerOCR(0);
 
     // 等待状态变为 recognizing

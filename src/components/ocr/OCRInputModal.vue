@@ -74,11 +74,14 @@ watch(() => props.show, (val) => {
  * Handle form submission with health check
  * @returns false to prevent modal from auto-closing, undefined to allow closing
  */
-function handleSubmit() {
+async function handleSubmit() {
   if (!inputValue.value.trim()) return false
   
+  // Force update status from service to ensure we have the absolute latest state
+  await healthStore.refreshStatus()
+  
   // Second layer defense: check health status before submitting
-  const isUnavailable = !healthStore.isHealthy
+  const isUnavailable = !healthStore.isAvailable
   const isQueueFull = healthStore.isFull
   
   if (isUnavailable || isQueueFull) {

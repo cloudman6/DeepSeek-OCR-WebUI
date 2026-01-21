@@ -6,7 +6,7 @@ const healthLogger = consola.withTag('Health')
 
 export class HealthCheckService {
     private intervalId: number | null = null
-    private isHealthy: boolean = true
+    private isAvailable: boolean = false
     private lastCheckTime: Date | null = null
     private healthInfo: HealthResponse | null = null
     private readonly checkInterval: number = 5000 // 5 seconds
@@ -73,7 +73,7 @@ export class HealthCheckService {
      * Get current health status
      */
     getStatus(): boolean {
-        return this.isHealthy
+        return this.isAvailable
     }
 
     /**
@@ -88,6 +88,13 @@ export class HealthCheckService {
      */
     getLastCheckTime(): Date | null {
         return this.lastCheckTime
+    }
+
+    /**
+     * Perform a single health check (Public version for manual refreshes)
+     */
+    async refresh(): Promise<void> {
+        await this.performCheck()
     }
 
     /**
@@ -118,10 +125,10 @@ export class HealthCheckService {
 
             // Service is healthy if it responds successfully
             // Even 'busy' and 'full' states mean the service is operational
-            if (!this.isHealthy) {
+            if (!this.isAvailable) {
                 healthLogger.success('[HealthCheckService] OCR service recovered')
             }
-            this.isHealthy = true
+            this.isAvailable = true
             this.healthInfo = data
 
             // Log status changes for monitoring
@@ -132,11 +139,11 @@ export class HealthCheckService {
             // Update state
             this.lastCheckTime = new Date()
 
-            if (this.isHealthy) {
+            if (this.isAvailable) {
                 healthLogger.error('[HealthCheckService] OCR service is unavailable', error)
             }
 
-            this.isHealthy = false
+            this.isAvailable = false
             this.healthInfo = null
         }
     }

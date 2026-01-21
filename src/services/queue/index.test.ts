@@ -4,7 +4,7 @@ import { queueLogger } from '@/utils/logger'
 
 // Mock health store
 const mockHealthStore = {
-    isHealthy: true
+    isAvailable: true
 }
 vi.mock('@/stores/health', () => ({
     useHealthStore: () => mockHealthStore
@@ -214,7 +214,7 @@ describe('QueueManager', () => {
 
     it('should wait for healthy service', async () => {
         // Mock unhealthy
-        mockHealthStore.isHealthy = false
+        mockHealthStore.isAvailable = false
 
         const taskFn = vi.fn()
 
@@ -226,7 +226,7 @@ describe('QueueManager', () => {
         expect(taskFn).not.toHaveBeenCalled()
 
         // Make healthy
-        mockHealthStore.isHealthy = true
+        mockHealthStore.isAvailable = true
 
         // Should finish now
         await vi.waitFor(() => {

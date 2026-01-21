@@ -27,9 +27,17 @@ vi.mock('naive-ui', () => ({
 const { mockHealthStore } = vi.hoisted(() => {
     return {
         mockHealthStore: {
-            isHealthy: true,
+            isAvailable: true,
             isFull: false,
-            isBusy: false
+            isBusy: false,
+            refreshStatus: vi.fn(),
+            healthInfo: {
+                status: 'healthy',
+                backend: 'local',
+                platform: 'darwin',
+                model_loaded: true
+            },
+            $patch: vi.fn() // Mock $patch method
         }
     }
 })
@@ -40,9 +48,10 @@ vi.mock('@/stores/health', () => ({
 
 describe('OCRInputModal.vue', () => {
     beforeEach(() => {
-        mockHealthStore.isHealthy = true
+        mockHealthStore.isAvailable = true
         mockHealthStore.isFull = false
         mockHealthStore.isBusy = false
+        mockHealthStore.refreshStatus = vi.fn()
         vi.clearAllMocks()
     })
 
@@ -169,7 +178,7 @@ describe('OCRInputModal.vue', () => {
     })
 
     it('shows error and blocks submit when service unavailable', async () => {
-        mockHealthStore.isHealthy = false
+        mockHealthStore.isAvailable = false
         const wrapper = mount(OCRInputModal, {
             props: {
                 show: true,

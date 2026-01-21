@@ -4,6 +4,7 @@ import { PageListPage } from '../pages/PageListPage';
 import { OCRPage } from '../pages/OCRPage';
 import { APIMocks } from '../mocks/APIMocks';
 import { TestData } from '../data/TestData';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('OCR Retry Logic', () => {
     let app: AppPage;
@@ -49,6 +50,7 @@ test.describe('OCR Retry Logic', () => {
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
         // 3. Trigger OCR
+        await waitForHealthyService(page);
         await ocrPage.triggerOCR(0);
 
         // 4. Verify status stays in processing/recognizing (NOT error)

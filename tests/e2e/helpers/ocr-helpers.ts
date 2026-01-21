@@ -3,6 +3,15 @@
  */
 
 import type { Page } from '@playwright/test';
+import { expect } from '@playwright/test';
+
+/**
+ * Wait for OCR health service to become available
+ * This should be called before triggering OCR in tests where health mock is set
+ */
+export async function waitForHealthyService(page: Page, timeout: number = 10000): Promise<void> {
+  await expect(page.getByTestId('ocr-health-available')).toBeVisible({ timeout });
+}
 
 /**
  * 检查页面是否已完成 OCR
@@ -12,7 +21,7 @@ export async function checkPagePastOCR(page: Page, idx: number): Promise<boolean
     const pages = window.pagesStore?.pages || [];
     const status = pages[index]?.status;
     return ['ocr_success', 'pending_gen', 'generating_markdown', 'markdown_success',
-            'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(status || '');
+      'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(status || '');
   }, idx);
 }
 
@@ -22,7 +31,7 @@ export async function checkPagePastOCR(page: Page, idx: number): Promise<boolean
 export async function checkProcessingPagesCount(page: Page, expectedCount: number): Promise<boolean> {
   return await page.evaluate((count) => {
     const pages = window.pagesStore?.pages || [];
-    const processingCount = pages.filter(p => 
+    const processingCount = pages.filter(p =>
       p.status === 'pending_ocr' || p.status === 'recognizing'
     ).length;
     return processingCount === count;
@@ -37,7 +46,7 @@ export async function checkAllPagesCompletedOCR(page: Page): Promise<boolean> {
     const pages = window.pagesStore?.pages || [];
     return pages.every(p =>
       ['ocr_success', 'pending_gen', 'generating_markdown', 'markdown_success',
-       'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(p.status)
+        'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(p.status)
     );
   });
 }
@@ -50,7 +59,7 @@ export async function waitForAllOCRComplete(page: Page, timeout: number = 30000)
     const pages = window.pagesStore?.pages || [];
     return pages.every(p =>
       ['ocr_success', 'pending_gen', 'generating_markdown', 'markdown_success',
-       'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(p.status)
+        'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(p.status)
     );
   }, { timeout });
 }
@@ -65,7 +74,7 @@ export async function waitForOCRSuccessByPageId(
   timeout: number = 30000
 ): Promise<void> {
   const startTime = Date.now();
-  
+
   // 首先等待 OCR 开始（避免在 OCR 还没开始时就开始等待完成）
   try {
     await page.waitForFunction(
@@ -75,9 +84,9 @@ export async function waitForOCRSuccessByPageId(
         if (!targetPage) return false;
         // 等待状态变成处理中或完成状态
         const status = targetPage.status;
-        return ['pending_ocr', 'recognizing', 'ocr_success', 'pending_gen', 
-                'generating_markdown', 'markdown_success', 'generating_pdf', 
-                'pdf_success', 'generating_docx', 'completed', 'error'].includes(status);
+        return ['pending_ocr', 'recognizing', 'ocr_success', 'pending_gen',
+          'generating_markdown', 'markdown_success', 'generating_pdf',
+          'pdf_success', 'generating_docx', 'completed', 'error'].includes(status);
       },
       pageId,
       { timeout: 10000 } // OCR 应该在 10 秒内开始
@@ -88,11 +97,11 @@ export async function waitForOCRSuccessByPageId(
 
   // 然后等待 OCR 完成或失败
   const remainingTimeout = Math.max(timeout - (Date.now() - startTime), 5000);
-  
+
   // 使用轮询方式检查状态，同时检查错误
   const pollInterval = 500; // 每 500ms 检查一次
   const maxPolls = Math.floor(remainingTimeout / pollInterval);
-  
+
   for (let i = 0; i < maxPolls; i++) {
     const pageInfo = await page.evaluate((id) => {
       const pages = window.pagesStore?.pages || [];
@@ -100,10 +109,10 @@ export async function waitForOCRSuccessByPageId(
       if (!targetPage) {
         return { status: 'not_found', errorMessage: 'Page not found', fileName: '' };
       }
-      
+
       const status = targetPage.status;
       const logs = targetPage.logs?.filter(l => l.level === 'error') || [];
-      
+
       return {
         status,
         errorMessage: logs.length > 0 ? logs[0].message : '',
@@ -113,7 +122,7 @@ export async function waitForOCRSuccessByPageId(
 
     // 检查是否是成功状态
     if (['ocr_success', 'pending_gen', 'generating_markdown', 'markdown_success',
-         'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(pageInfo.status)) {
+      'generating_pdf', 'pdf_success', 'generating_docx', 'completed'].includes(pageInfo.status)) {
       return; // 成功，退出
     }
 

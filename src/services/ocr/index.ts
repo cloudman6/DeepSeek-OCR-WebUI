@@ -27,47 +27,26 @@ export class OCRService {
 
   /**
    * Queue an OCR task for a page
+   * Tasks are enqueued regardless of current service state.
+   * Retry logic for both "queue full" and "service unavailable" is handled
+   * uniformly in executeWithRetry.
    */
   async queueOCR(
     pageId: string,
     imageData: Blob | string,
     options?: OCROptions
   ): Promise<void> {
-    // Check OCR service availability before queuing
-    const healthStore = useHealthStore()
-
-    // Reject if service is unavailable (network error, API down)
-    if (!healthStore.isHealthy) {
-      const error = new Error('OCR service is currently unavailable. Please try again later.')
-      ocrEvents.emit('ocr:error', { pageId, error })
-      throw error
-    }
-
     ocrEvents.emit('ocr:queued', { pageId })
 
     // Fire and forget - processing happens in queue
     queueManager.addOCRTask(pageId, async (signal) => {
-      await this.processOCRWithRetry(pageId, imageData, options, signal)
+      await this.executeWithRetry(pageId, imageData, options, signal)
     }).catch(err => {
       ocrLogger.error(`[OCRService] Task error for ${pageId}:`, err)
     })
   }
 
-  /**
-   * Process OCR with automatic retry on queue full
-   */
-  private async processOCRWithRetry(
-    pageId: string,
-    imageData: Blob | string,
-    options: OCROptions | undefined,
-    signal: AbortSignal
-  ): Promise<void> {
-    if (signal.aborted) return
-
-    ocrEvents.emit('ocr:start', { pageId })
-
-    await this.executeWithRetry(pageId, imageData, options, signal)
-  }
+  // ...
 
   /**
    * Execute OCR with retry logic
@@ -84,8 +63,12 @@ export class OCRService {
     while (true) {
       if (signal.aborted) return
 
-      if (healthStore.isFull) {
-        ocrLogger.info(`[OCRService] Server queue is full, waiting ${retryInterval}ms for page ${pageId}`)
+      // Unified retry for queue full OR service unavailable
+      if (healthStore.isFull || !healthStore.isAvailable) {
+        const reason = healthStore.isFull
+          ? 'queue is full'
+          : 'service is unavailable'
+        ocrLogger.info(`[OCRService] Server ${reason}, waiting ${retryInterval}ms for page ${pageId}`)
         await this.delayWithSignal(retryInterval, signal)
         continue
       }
@@ -106,6 +89,7 @@ export class OCRService {
     retryInterval: number
   ): Promise<boolean> {
     try {
+      ocrEvents.emit('ocr:start', { pageId })
       const result = await this.processImage(imageData, 'deepseek', { ...options, signal })
       if (signal.aborted) return false
 
@@ -115,8 +99,8 @@ export class OCRService {
     } catch (error) {
       if (signal.aborted) return false
 
-      if (error instanceof QueueFullError) {
-        ocrLogger.warn(`[OCRService] OCR task for page ${pageId} failed with 429, retrying in ${retryInterval}ms...`)
+      if (this.isRetryableError(error)) {
+        ocrLogger.warn(`[OCRService] OCR task for page ${pageId} failed, retrying in ${retryInterval}ms...`, error)
         await this.delayWithSignal(retryInterval, signal)
         return true
       }
@@ -125,6 +109,46 @@ export class OCRService {
       ocrEvents.emit('ocr:error', { pageId, error: err })
       throw err
     }
+  }
+
+  /**
+   * Check if error is retryable
+   */
+  private isRetryableError(error: unknown): boolean {
+    if (error instanceof QueueFullError) return true
+
+    if (error instanceof Error) {
+      const message = error.message.toLowerCase()
+
+      // Exclude generic rate limit errors
+      if (message.includes('limit') || message.includes('at max')) {
+        return false
+      }
+
+      return this.isNetworkError(message) ||
+        this.isServerError(message) ||
+        this.isTimeoutError(message, error)
+    }
+
+    return false
+  }
+
+  private isNetworkError(message: string): boolean {
+    return (
+      message.includes('failed to fetch') ||
+      message.includes('load failed') ||
+      message.includes('network error') ||
+      message.includes('connection refused') ||
+      message.includes('dns_probe_finished')
+    )
+  }
+
+  private isServerError(message: string): boolean {
+    return message.includes(' 5') && (message.includes('error') || message.includes('api'))
+  }
+
+  private isTimeoutError(message: string, error: Error): boolean {
+    return message.includes('timeout') && error.name !== 'AbortError'
   }
 
   /**

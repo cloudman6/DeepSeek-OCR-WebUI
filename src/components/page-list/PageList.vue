@@ -270,7 +270,7 @@ async function handleBatchOCR() {
   const healthStore = useHealthStore()
   
   // Check for Unavailable or Full status
-  if (!healthStore.isHealthy || healthStore.isFull) {
+  if (!healthStore.isAvailable || healthStore.isFull) {
     const isFull = healthStore.isFull
     dialog.error({
       title: isFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
