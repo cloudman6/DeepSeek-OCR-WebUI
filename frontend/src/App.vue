@@ -518,9 +518,11 @@ onMounted(async () => {
     uiLogger.error('Error resuming PDF processing:', error)
   }
 
-  // Expose store for E2E testing observability
+  // Expose stores for E2E testing observability
   if (typeof window !== 'undefined') {
-    (window as unknown as { pagesStore: typeof pagesStore }).pagesStore = pagesStore
+    const win = window
+    win.pagesStore = pagesStore
+    win.healthStore = healthStore
     
     // Handle page refresh/close - this is critical for cleaning up queues
     window.addEventListener('beforeunload', () => {

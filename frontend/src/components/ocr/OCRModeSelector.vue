@@ -93,8 +93,10 @@ const currentLabel = computed(() => t(MODE_CONFIG[selectedMode.value].key))
 const currentIcon = computed(() => MODE_CONFIG[selectedMode.value].icon)
 const buttonType = computed(() => props.loading ? 'info' : 'primary')
 
-// const isQueueFull = computed(() => healthStore.isFull) // Removed unused
-const isDisabled = computed(() => props.disabled) // Allow clicking even if full to show Modal
+// 按钮应保持启用状态，即使服务不可用或队列满
+// 点击时由 checkHealth() 进行拦截并显示对话框
+const isDisabled = computed(() => props.disabled) // 只尊重外部传入的 disabled 属性
+
 
 const menuOptions = computed<DropdownOption[]>(() => {
   return (Object.keys(MODE_CONFIG) as OCRPromptType[]).map(key => ({
@@ -107,13 +109,13 @@ const menuOptions = computed<DropdownOption[]>(() => {
   }))
 })
 
-function handleMainClick() {
-  if (!checkHealth()) return
+async function handleMainClick() {
+  if (!await checkHealth()) return
   emit('run', selectedMode.value)
 }
 
-function handleSelect(key: OCRPromptType) {
-  if (!checkHealth()) return
+async function handleSelect(key: OCRPromptType) {
+  if (!await checkHealth()) return
   selectedMode.value = key
   emit('run', key)
 }
@@ -122,9 +124,21 @@ function handleSelect(key: OCRPromptType) {
  * Check OCR service health status and show error dialog if unavailable
  * @returns true if healthy, false otherwise
  */
-function checkHealth(): boolean {
-  const isUnavailable = !healthStore.isHealthy
+async function checkHealth(): Promise<boolean> {
+  // Force update status from service to ensure we have the absolute latest state
+  // This eliminates the 1s sync lag between service and store in E2E tests
+  await healthStore.refreshStatus()
+  
+  const isUnavailable = !healthStore.isAvailable
   const isQueueFull = healthStore.isFull
+  
+  // Debug logging for E2E tests
+  console.log('[OCRModeSelector] checkHealth called:', {
+    isAvailable: healthStore.isAvailable,
+    isFull: isQueueFull,
+    isUnavailable,
+    healthInfo: healthStore.healthInfo
+  })
   
   if (isUnavailable || isQueueFull) {
     dialog.error({

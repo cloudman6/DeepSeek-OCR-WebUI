@@ -25,7 +25,7 @@ export interface HealthResponse {
 }
 
 export interface HealthCheckState {
-    isHealthy: boolean
+    isAvailable: boolean
     lastCheckTime: Date | null
     healthInfo: HealthResponse | null
     error: Error | null

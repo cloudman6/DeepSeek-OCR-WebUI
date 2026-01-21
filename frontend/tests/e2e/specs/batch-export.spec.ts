@@ -61,6 +61,9 @@ test.describe('Batch Export (Refactored)', () => {
       const pageItems = page.locator('[data-testid^="page-item-"]');
       await expect(pageItems).toHaveCount(3, { timeout: 30000 });
 
+      // Ensure health check is passed before proceeding
+      await expect(page.getByTestId('ocr-health-available')).toBeVisible({ timeout: 10000 });
+
       // 2. 触发前 2 页的 OCR
       for (let i = 0; i < 2; i++) {
         const pageId = await pageItems.nth(i).getAttribute('data-page-id');
@@ -155,6 +158,9 @@ test.describe('Batch Export (Refactored)', () => {
       // 等待页面项出现
       const pageItems = page.locator('[data-testid^="page-item-"]');
       await expect(pageItems).toHaveCount(2, { timeout: 30000 });
+
+      // Ensure health check is passed before proceeding
+      await expect(page.getByTestId('ocr-health-available')).toBeVisible({ timeout: 10000 });
 
       // 2. 触发所有页面的 OCR
       for (let i = 0; i < 2; i++) {

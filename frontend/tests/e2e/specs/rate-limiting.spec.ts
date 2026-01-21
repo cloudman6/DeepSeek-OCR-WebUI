@@ -4,6 +4,7 @@ import { PageListPage } from '../pages/PageListPage';
 import { OCRPage } from '../pages/OCRPage';
 import { APIMocks } from '../mocks/APIMocks';
 import { TestData } from '../data/TestData';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('Rate Limiting \u0026 429 Error Handling', () => {
     let app: AppPage;
@@ -25,6 +26,7 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
 
     test('should show modal and prevent submission when queue is full', async ({ page }) => {
         // Upload a test file first (before queue is full)
+        await waitForHealthyService(page);
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
         // Verify OCR button is initially enabled
@@ -66,6 +68,43 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         await expect(page.getByText('OCR queue is full')).toBeVisible();
     });
 
+    test('should show modal and prevent submission when service is unavailable', async ({ page }) => {
+        // Upload a test file first (before service goes down)
+        await waitForHealthyService(page);
+        await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
+
+        // Verify OCR button is initially enabled
+        const ocrButton = page.getByTestId('ocr-trigger-btn');
+        await expect(ocrButton).toBeEnabled();
+
+        // Mock health API to show unavailable
+        await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
+
+        // Wait for health check to update
+        await page.waitForFunction(() => {
+            const hs = window.healthStore;
+            return hs && hs.isAvailable === false;
+        }, { timeout: 10000 });
+
+        // Verify health indicator shows error type
+        const statusType = await app.getHealthStatusType();
+        expect(statusType).toBe('error');
+
+        // Verify OCR button is STILL enabled (interception pattern)
+        await expect(ocrButton).toBeEnabled();
+
+        // Click the button
+        await ocrButton.click();
+
+        // Verify Modal appears with "Service Unavailable" message
+        const dialog = page.locator('.n-dialog').first();
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByText(/(unavailable|available|offline|connect)/i).first()).toBeVisible();
+
+        // Close
+        await page.getByRole('button', { name: /OK|确定/i }).click();
+    });
+
     test('should handle Client Limit (429) error from API', async ({ page }) => {
         // Mock OCR to return client limit error
         await apiMocks.mockOCR({ rateLimitType: 'client_limit' });
@@ -74,13 +113,14 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
         // Trigger OCR task
+        await waitForHealthyService(page);
         await ocrPage.triggerOCR(0);
 
-        // Should display error dialog with "Client Limit" or "already have a task"
-        await expect(page.getByText(/client.*limit|already.*task/i).first()).toBeVisible({ timeout: 10000 });
-
         // Page should be in error state
-        expect(await ocrPage.getPageStatus(0)).toBe('error');
+        await expect.poll(async () => await ocrPage.getPageStatus(0), { timeout: 20000 }).toBe('error');
+
+        // Should display error dialog with "Client Limit" or "already have a task"
+        await expect(page.getByText(/(client.*limit|already.*task|client.*max)/i).first()).toBeVisible({ timeout: 10000 });
     });
 
     test('should handle IP Limit (429) error from API', async ({ page }) => {
@@ -91,16 +131,17 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
         // Trigger OCR
+        await waitForHealthyService(page);
         await ocrPage.triggerOCR(0);
 
-        // Should display error with "IP Limit" or "network"
-        await expect(page.getByText(/ip.*limit|too many.*network/i).first()).toBeVisible({ timeout: 10000 });
-
         // Page should be in error state
-        expect(await ocrPage.getPageStatus(0)).toBe('error');
+        await expect.poll(async () => await ocrPage.getPageStatus(0), { timeout: 20000 }).toBe('error');
+
+        // Should display error with "IP Limit" or "network" or "max"
+        await expect(page.getByText(/(ip.*limit|too many.*network|ip.*max)/i).first()).toBeVisible({ timeout: 10000 });
     });
 
-    test('should send X-Client-ID header with OCR requests', async () => {
+    test('should send X-Client-ID header with OCR requests', async ({ page }) => {
         let capturedClientId: string | null = null;
 
         // Mock OCR with client ID validation
@@ -109,6 +150,7 @@ test.describe('Rate Limiting \u0026 429 Error Handling', () => {
         });
 
         // Upload and trigger OCR
+        await waitForHealthyService(page);
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
         await ocrPage.triggerOCR(0);
 

@@ -48,9 +48,10 @@ vi.mock('@vicons/ionicons5', () => ({
 const { mockHealthStore } = vi.hoisted(() => {
     return {
         mockHealthStore: {
-            isHealthy: true,
+            isAvailable: true,
             isFull: false,
-            isBusy: false
+            isBusy: false,
+            refreshStatus: vi.fn(),
         }
     }
 })
@@ -62,9 +63,10 @@ vi.mock('@/stores/health', () => ({
 describe('OCRModeSelector.vue', () => {
     // Reset mock before each test
     beforeEach(() => {
-        mockHealthStore.isHealthy = true
+        mockHealthStore.isAvailable = true
         mockHealthStore.isFull = false
         mockHealthStore.isBusy = false
+        mockHealthStore.refreshStatus = vi.fn()
         vi.clearAllMocks()
     })
 
@@ -145,13 +147,13 @@ describe('OCRModeSelector.vue', () => {
     })
 
     it('shows error dialog when service is unavailable on main click', async () => {
-        mockHealthStore.isHealthy = false
+        mockHealthStore.isAvailable = false
+
         const wrapper = mount(OCRModeSelector, {
             global: {
                 plugins: [i18n]
             }
         })
-
         await wrapper.find('.trigger-btn').trigger('click')
 
         // Should NOT emit run

@@ -248,7 +248,7 @@ describe('HealthCheckService', () => {
 
     describe('getStatus and getHealthInfo', () => {
         it('should return current status', () => {
-            expect(service.getStatus()).toBe(true) // Default state
+            expect(service.getStatus()).toBe(false) // Default state is now unavailable
         })
 
         it('should return health info after successful check', async () => {

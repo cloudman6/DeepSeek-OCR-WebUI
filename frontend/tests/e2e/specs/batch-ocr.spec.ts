@@ -18,6 +18,7 @@ test.describe('Batch OCR', () => {
     ocrPage = new OCRPage(page);
     apiMocks = new APIMocks(page);
 
+    await apiMocks.mockHealth({ status: 'healthy' });
     await app.goto();
   });
 
@@ -36,6 +37,7 @@ test.describe('Batch OCR', () => {
       await pageList.selectAll();
 
       // Click batch OCR button
+      await ocrHelpers.waitForHealthyService(page);
       await pageList.clickBatchOCR();
 
       // Verify success notification appears
@@ -77,6 +79,7 @@ test.describe('Batch OCR', () => {
       const firstBatchCount = await pageList.getPageCount();
 
       // Select all and do batch OCR
+      await ocrHelpers.waitForHealthyService(page);
       await pageList.selectAll();
       await pageList.clickBatchOCR();
 
@@ -102,6 +105,7 @@ test.describe('Batch OCR', () => {
       await pageList.selectAll();
 
       // Click batch OCR
+      await ocrHelpers.waitForHealthyService(page);
       await pageList.clickBatchOCR();
 
       // Verify notification appears (skipped pages notification)
@@ -129,6 +133,7 @@ test.describe('Batch OCR', () => {
       const pageCount = await pageList.getPageCount();
 
       // Do batch OCR
+      await ocrHelpers.waitForHealthyService(page);
       await pageList.selectAll();
       await pageList.clickBatchOCR();
 
@@ -139,6 +144,7 @@ test.describe('Batch OCR', () => {
       }).toPass({ timeout: 20000 });
 
       // All pages are now in OCR queue - try batch OCR again
+      await ocrHelpers.waitForHealthyService(page);
       await pageList.clickBatchOCR();
 
       // Verify warning notification appears
@@ -150,6 +156,71 @@ test.describe('Batch OCR', () => {
 
       // Wait for all pages to complete OCR
       await ocrPage.waitForAllOCRComplete();
+    });
+  });
+
+  test.describe('Error Handling', () => {
+    test('should handle queue full gracefully during batch OCR', async ({ page }) => {
+      // 1. Mock Health as Full
+      await apiMocks.mockHealth({ status: 'full' });
+      await apiMocks.mockOCR({ shouldFail: false }); // Should not be called
+
+      // 2. Upload and select files
+      await pageList.uploadAndWaitReady(TestData.files.samplePDF());
+      await pageList.selectAll();
+
+      // 3. Click batch OCR
+      // Wait for health store to be in sync (though click logic does force refresh)
+      await page.waitForFunction(() => {
+        const hs = window.healthStore;
+        return hs && hs.isFull === true;
+      });
+
+      await pageList.clickBatchOCR();
+
+      // 4. Verify Queue Full Dialog
+      const dialog = page.locator('.n-dialog').first();
+      await expect(dialog).toBeVisible();
+      await expect(dialog.getByText('Queue Full')).toBeVisible();
+
+      // 5. Verify no OCR request sent (indirectly by page status remaining ready)
+      await page.getByRole('button', { name: /ok|确定/i }).click();
+      await expect(dialog).not.toBeVisible();
+
+      const status = await ocrPage.getPageStatus(0);
+      expect(status).toBe('ready');
+    });
+
+    test('should block batch OCR when service is unavailable', async ({ page }) => {
+      // 1. Mock Health as Unavailable
+      await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
+      await apiMocks.mockOCR({ shouldFail: true, statusCode: 503 });
+
+      // 2. Upload and select files
+      await pageList.uploadAndWaitReady(TestData.files.samplePDF());
+      await pageList.selectAll();
+
+      // 3. Click batch OCR
+      // Wait for health store to be in sync
+      await page.waitForFunction(() => {
+        const hs = window.healthStore;
+        return hs && hs.isAvailable === false;
+      }, { timeout: 10000 });
+
+      await pageList.clickBatchOCR();
+
+      // 4. Verify Service Unavailable Dialog
+      const dialog = page.locator('.n-dialog').first();
+      await expect(dialog).toBeVisible();
+      // Use logic similar to health-check.spec.ts to avoid strict mode issues
+      await expect(dialog.getByText(/(unavailable|available|offline|connect)/i).first()).toBeVisible();
+
+      // 5. Verify no OCR request
+      await page.getByRole('button', { name: /ok|确定/i }).click();
+      await expect(dialog).not.toBeVisible();
+
+      const status = await ocrPage.getPageStatus(0);
+      expect(status).toBe('ready');
     });
   });
 });

@@ -261,7 +261,7 @@ import { NCard, NSpace, NButton, NButtonGroup, NSpin, NEmpty, NResult, NText, NS
 import { ColorWand, ColorWandOutline } from '@vicons/ionicons5'
 import { db } from '@/db'
 import { ocrService, type OCRResult, type OCRPromptType } from '@/services/ocr'
-import { useMessage, useNotification, useDialog } from 'naive-ui'
+import { useMessage, useDialog, useNotification } from 'naive-ui'
 import { usePagesStore } from '@/stores/pages'
 import { useHealthStore } from '@/stores/health'
 import OCRModeSelector from '@/components/ocr/OCRModeSelector.vue'
@@ -562,26 +562,28 @@ function handleInputSubmit(value: string) {
 // eslint-disable-next-line complexity
 async function submitOCR(mode: OCRPromptType, extraOptions: { custom_prompt?: string; find_term?: string } = {}) {
   if (!props.currentPage || isPageProcessing.value) return
+
+  // Force update status from service to ensure we have the absolute latest state
+  await healthStore.refreshStatus()
+  
+  // Pre-check for Unavailable or Full status
+  const isUnavailable = !healthStore.isAvailable
+  const isQueueFull = healthStore.isFull
+
+  if (isUnavailable || isQueueFull) {
+    dialog.error({
+      title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
+      content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
+      positiveText: t('common.ok')
+    })
+    return
+  }
   
   try {
     const imageBlob = await db.getPageImage(props.currentPage.id)
 
     if (!imageBlob) {
       message.error(t('ocr.couldNotRetrieveImage'))
-      return
-    }
-
-
-    // Pre-check for Unavailable or Full status
-    const isUnavailable = !healthStore.isHealthy
-    const isQueueFull = healthStore.isFull
-
-    if (isUnavailable || isQueueFull) {
-      dialog.error({
-        title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
-        content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
-        positiveText: t('common.ok')
-      })
       return
     }
 

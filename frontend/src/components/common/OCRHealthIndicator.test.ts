@@ -51,7 +51,7 @@ describe('OCRHealthIndicator', () => {
         const store = useHealthStore()
 
         // Mock healthy state
-        store.isHealthy = true
+        store.isAvailable = true
         store.healthInfo = {
             status: 'healthy',
             backend: 'cuda',
@@ -69,7 +69,7 @@ describe('OCRHealthIndicator', () => {
         const wrapper = mount(OCRHealthIndicator, globalMountOptions)
         const store = useHealthStore()
 
-        store.isHealthy = true
+        store.isAvailable = true
         store.healthInfo = {
             status: 'busy',
         } as any
@@ -84,7 +84,7 @@ describe('OCRHealthIndicator', () => {
         const wrapper = mount(OCRHealthIndicator, globalMountOptions)
         const store = useHealthStore()
 
-        store.isHealthy = true
+        store.isAvailable = true
         store.healthInfo = {
             status: 'full',
         } as any
@@ -99,7 +99,7 @@ describe('OCRHealthIndicator', () => {
         const wrapper = mount(OCRHealthIndicator, globalMountOptions)
         const store = useHealthStore()
 
-        store.isHealthy = false
+        store.isAvailable = false
         store.healthInfo = null
 
         await wrapper.vm.$nextTick()

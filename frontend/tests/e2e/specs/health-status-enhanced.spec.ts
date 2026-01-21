@@ -4,6 +4,7 @@ import { PageListPage } from '../pages/PageListPage';
 import { OCRPage } from '../pages/OCRPage';
 import { APIMocks } from '../mocks/APIMocks';
 import { TestData } from '../data/TestData';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('Enhanced Health Status Display', () => {
     let app: AppPage;
@@ -61,6 +62,7 @@ test.describe('Enhanced Health Status Display', () => {
         await apiMocks.mockOCR({ delay: 500 });
 
         // Should be able to trigger OCR
+        await waitForHealthyService(page);
         await ocrPage.triggerOCR(0);
 
         // Wait for OCR to complete
@@ -74,6 +76,7 @@ test.describe('Enhanced Health Status Display', () => {
 
     test('should display "Full" status and block OCR submission when queue is at capacity', async ({ page }) => {
         // Upload test file first (before full)
+        await waitForHealthyService(page);
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
 
         // Verify button is initially enabled
@@ -114,6 +117,7 @@ test.describe('Enhanced Health Status Display', () => {
         await expect(ocrButton).toBeEnabled();
 
         // Attempt to submit
+        await waitForHealthyService(page);
         await ocrButton.click();
 
         // Expect Modal with "Queue Full" message
@@ -144,6 +148,7 @@ test.describe('Enhanced Health Status Display', () => {
         await apiMocks.mockOCR({ delay: 10000 });
 
         // Upload and trigger OCR
+        await waitForHealthyService(page);
         await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
         await ocrPage.triggerOCR(0);
 

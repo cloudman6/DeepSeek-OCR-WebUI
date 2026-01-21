@@ -214,26 +214,27 @@ function handleDelete() {
 async function handleScan() {
   if (isScanning.value) return
   
+  const healthStore = useHealthStore()
+  // Force update status from service to ensure we have the absolute latest state
+  await healthStore.refreshStatus()
+  
+  const isUnavailable = !healthStore.isAvailable
+  const isQueueFull = healthStore.isFull
+
+  if (isUnavailable || isQueueFull) {
+    dialog.error({
+      title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
+      content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
+      positiveText: t('common.ok')
+    })
+    return
+  }
+  
   try {
     const imageBlob = await db.getPageImage(props.page.id)
     
     if (!imageBlob) {
       message.error('Could not retrieve image data')
-      return
-    }
-
-    const healthStore = useHealthStore()
-    
-    // Pre-check for Unavailable or Full status
-    const isUnavailable = !healthStore.isHealthy
-    const isQueueFull = healthStore.isFull
-
-    if (isUnavailable || isQueueFull) {
-      dialog.error({
-        title: isQueueFull ? t('errors.ocrQueueFullTitle') : t('errors.ocrServiceUnavailableTitle'),
-        content: isQueueFull ? t('errors.ocrQueueFull') : t('errors.ocrServiceUnavailable'),
-        positiveText: t('common.ok')
-      })
       return
     }
 

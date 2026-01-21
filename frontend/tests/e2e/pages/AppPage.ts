@@ -48,8 +48,10 @@ export class AppPage {
     await this.page.waitForFunction(() => {
       interface WindowWithStore extends Window {
         pagesStore?: unknown;
+        healthStore?: unknown;
       }
-      return (window as WindowWithStore).pagesStore !== undefined;
+      const win = window as WindowWithStore;
+      return win.pagesStore !== undefined && win.healthStore !== undefined;
     }, { timeout: 10000 });
   }
 

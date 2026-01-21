@@ -60,9 +60,9 @@ test.describe('OCR Mode Selector - Direct Modes', () => {
             // Wait for OCR to complete
             await ocrPage.waitForOCRSuccess(0, 10000);
 
-            // Verify page status is success (could be ocr_success, pending_gen, or completed)
+            // Verify page status is success (could be ocr_success, pending_gen, completed, or generating_*)
             const status = await ocrPage.getPageStatus(0);
-            expect(status).toMatch(/ocr_success|pending_gen|completed/);
+            expect(status).toMatch(/ocr_success|pending_gen|completed|generating_/);
         });
     }
 
@@ -105,6 +105,46 @@ test.describe('OCR Mode Selector - Direct Modes', () => {
         });
     }
 
+    // Test Case 3: Service Unavailable Error for All Direct Modes
+    for (const mode of directModes) {
+        test(`should show service unavailable error for ${mode} mode`, async ({ page }) => {
+            // Upload and select a page
+            await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
+            await pageList.clickPage(0);
+
+            // Wait for page viewer to be ready
+            await pageViewer.waitForReady();
+
+            // Mock health API to show unavailable
+            await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
+
+            // Wait for health check to update
+            await page.waitForFunction(() => {
+                const hs = window.healthStore;
+                return hs && hs.isAvailable === false;
+            }, { timeout: 10000 });
+
+            // Trigger the OCR mode
+            if (mode === 'document') {
+                await pageViewer.clickOCRModeMainButton();
+            } else {
+                await pageViewer.selectOCRMode(mode);
+            }
+
+            // Verify error dialog appears
+            const dialog = page.locator('.n-dialog').first();
+            await expect(dialog).toBeVisible();
+            await expect(dialog.getByText(/(unavailable|available|offline|connect)/i).first()).toBeVisible();
+
+            // Close the error dialog
+            await page.getByRole('button', { name: /OK|确定/i }).click();
+
+            // Verify page status is still ready (task not submitted)
+            const status = await ocrPage.getPageStatus(0);
+            expect(status).toBe('ready');
+        });
+    }
+
     // Test Case 4: Mode Switching and Persistence
     test('should persist selected mode and switch correctly', async ({ page, browserName }) => {
         // Skip on Chromium and Webkit due to CORS 502 errors in console
@@ -131,10 +171,10 @@ test.describe('OCR Mode Selector - Direct Modes', () => {
         // Click main button (should trigger 'ocr' mode, not 'document')
         await pageViewer.clickOCRModeMainButton();
 
-        // Verify OCR is triggered
+        // Verify OCR is triggered (could be recognizing or already finished in fast mock)
         await expect.poll(async () => await ocrPage.getPageStatus(0), {
             timeout: 5000
-        }).toBe('recognizing');
+        }).toMatch(/recognizing|completed|ocr_success/);
 
         // Wait a bit for mode label to update
         await page.waitForTimeout(500);

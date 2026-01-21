@@ -135,22 +135,36 @@ export class PageViewerPage {
       freeform: 'Custom Prompt'
     };
 
-    // Open dropdown
-    await this.clickOCRModeDropdown();
+    // Ensure we are in a clean state
+    const dropdownMenuSelector = '.n-dropdown-menu';
 
-    // Wait for dropdown menu to appear (increased timeout for browser compatibility)
-    await this.page.waitForSelector('.n-dropdown-menu', { state: 'visible', timeout: 10000 });
+    // Robustly open the dropdown
+    await this.page.getByTestId('ocr-mode-dropdown').click();
 
-    // Additional wait for dropdown to be fully rendered  
-    await this.page.waitForTimeout(500);
+    try {
+      // Wait for dropdown to be visible
+      await this.page.waitForSelector(dropdownMenuSelector, { state: 'visible', timeout: 5000 });
+    } catch {
+      // Retry opening if it failed (sometimes click might be swallowed)
+      // Ignoring error as we are explicitly retrying
+      console.log('Dropdown not visible, retrying click...');
+      await this.page.getByTestId('ocr-mode-dropdown').click({ force: true });
+      await this.page.waitForSelector(dropdownMenuSelector, { state: 'visible', timeout: 5000 });
+    }
 
-    // Click the menu item within dropdown menu only (avoid matching button text)
-    const dropdownMenu = this.page.locator('.n-dropdown-menu');
+    // Additional stabilization wait
+    await this.page.waitForTimeout(300);
+
+    // Click the menu item within dropdown menu only
+    const dropdownMenu = this.page.locator(dropdownMenuSelector);
     const menuItem = dropdownMenu.getByText(modeTextMap[mode], { exact: true });
+
+    // Ensure item is visible/enabled before clicking
+    await menuItem.waitFor({ state: 'visible', timeout: 3000 });
     await menuItem.click();
 
-    // Wait for dropdown to close and mode to be applied
-    await this.page.waitForTimeout(300);
+    // Verify dropdown closes
+    await this.page.waitForSelector(dropdownMenuSelector, { state: 'hidden', timeout: 3000 });
   }
 
   /**

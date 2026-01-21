@@ -2,7 +2,7 @@
   <NBadge
     :dot="true"
     :color="statusColor"
-    :processing="!isHealthy"
+    :processing="!isAvailable"
     :offset="compact ? [-2, 2] : [0, 0]"
   >
     <NTooltip
@@ -19,6 +19,7 @@
           :type="buttonType"
           class="health-indicator-btn"
           :class="{ 'is-compact': compact }"
+          :data-testid="isAvailable ? 'ocr-health-available' : 'ocr-health-unavailable'"
         >
           <template #icon>
             <NIcon :component="StatusIcon" />
@@ -71,7 +72,7 @@ defineProps<{
 const { t } = useI18n()
 const healthStore = useHealthStore()
 
-const isHealthy = computed(() => healthStore.isHealthy)
+const isAvailable = computed(() => healthStore.isAvailable)
 const healthInfo = computed(() => healthStore.healthInfo)
 const lastCheckTime = computed(() => healthStore.lastCheckTime)
 
@@ -81,23 +82,23 @@ const isFull = computed(() => healthStore.isFull)
 const statusColor = computed(() => {
   if (isFull.value) return '#d03050' // Red
   if (isBusy.value) return '#f0a020' // Orange/Yellow
-  return isHealthy.value ? PRIMARY_COLOR : '#d03050'
+  return isAvailable.value ? PRIMARY_COLOR : '#d03050'
 })
 
 const buttonType = computed(() => {
   if (isFull.value) return 'error'
   if (isBusy.value) return 'warning'
-  return isHealthy.value ? 'success' : 'error'
+  return isAvailable.value ? 'success' : 'error'
 })
 
 const StatusIcon = computed(() => {
-  return isHealthy.value ? HeartOutline : AlertCircleOutline
+  return isAvailable.value ? HeartOutline : AlertCircleOutline
 })
 
 const statusText = computed(() => {
   if (isFull.value) return t('health.full')
   if (isBusy.value) return t('health.busy')
-  return isHealthy.value ? t('health.healthy') : t('health.unavailable')
+  return isAvailable.value ? t('health.healthy') : t('health.unavailable')
 })
 
 function formatTime(date: Date): string {

@@ -2,8 +2,9 @@ import { test, expect } from '../fixtures/base-test';
 import { AppPage } from '../pages/AppPage';
 import { PageListPage } from '../pages/PageListPage';
 import { OCRQueuePopoverPage } from '../pages/OCRQueuePopoverPage';
-import { TestData } from '../data/TestData';
 import { APIMocks } from '../mocks/APIMocks';
+import { TestData } from '../data/TestData';
+import { waitForHealthyService } from '../helpers/ocr-helpers';
 
 test.describe('OCR Queue Cancellation via Toolbar', () => {
   let app: AppPage;
@@ -17,6 +18,7 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
     queuePopover = new OCRQueuePopoverPage(page);
     apiMocks = new APIMocks(page);
 
+    await apiMocks.mockHealth({ status: 'healthy' });
     await app.goto();
     await app.waitForAppReady();
     // Ensure we start with a clean state
@@ -45,6 +47,7 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
     await test.step('Start OCR with simulated delay', async () => {
       await apiMocks.mockOCR({ delay: 5000 });
       await pageList.selectAll();
+      await waitForHealthyService(page);
       await pageList.clickBatchOCR();
 
       // Give it a moment to show up in the queue
@@ -100,6 +103,7 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
     await test.step('Start all OCR tasks', async () => {
       await apiMocks.mockOCR({ delay: 5000 });
       await pageList.selectAll();
+      await waitForHealthyService(page);
       await pageList.clickBatchOCR();
       await page.waitForTimeout(1000);
     });
@@ -139,6 +143,7 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
     ]);
     await apiMocks.mockOCR({ delay: 5000 });
     await pageList.selectAll();
+    await waitForHealthyService(page);
     await pageList.clickBatchOCR();
     await page.waitForTimeout(1000);
 
@@ -172,6 +177,7 @@ test.describe('OCR Queue Cancellation via Toolbar', () => {
     ]);
     await apiMocks.mockOCR({ delay: 5000 });
     await pageList.selectAll();
+    await waitForHealthyService(page);
     await pageList.clickBatchOCR();
     await page.waitForTimeout(1000);
 

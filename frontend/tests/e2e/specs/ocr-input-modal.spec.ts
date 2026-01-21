@@ -307,9 +307,59 @@ test.describe('OCR Input Modal - Input Modes', () => {
                 timeout: 3000
             }).toBe(true);
 
-            // Verify input is empty
             const value = await pageViewer.getInputModalValue();
             expect(value).toBe('');
+        });
+    }
+
+    // Test Case 9: Service Unavailable Interception for Input Modes
+    const testInputModes: OCRPromptType[] = ['find', 'freeform'];
+
+    for (const mode of testInputModes) {
+        test(`should block submission in ${mode} mode when service unavailable`, async ({ browserName, page }) => {
+            // Skip on Firefox/Webkit
+            test.skip(browserName !== 'chromium', 'Modal opening only reliable on Chromium');
+
+            // Setup: Upload, Select Page, Open Modal
+            await pageList.uploadAndWaitReady([TestData.files.samplePNG()]);
+            await pageList.clickPage(0);
+            await pageViewer.waitForReady();
+            await pageViewer.selectOCRMode(mode);
+
+            // Wait for modal
+            await expect.poll(async () => await pageViewer.isInputModalVisible(), { timeout: 3000 }).toBe(true);
+
+            // Mock Unavailable
+            await apiMocks.mockHealth({ status: 'healthy', shouldFail: true });
+
+            // Type something
+            await pageViewer.typeInInputModal('test-input');
+
+            // Wait for health store update
+            await page.waitForFunction(() => {
+                const hs = window.healthStore;
+                return hs && hs.isAvailable === false;
+            }, { timeout: 10000 });
+
+            // Click Submit
+            await pageViewer.clickInputModalSubmit();
+
+            // Verify Error Dialog (on top of Input Modal)
+            const errorDialog = page.locator('.n-dialog').filter({ hasText: /(unavailable|available|offline|connect)/i });
+            await expect(errorDialog).toBeVisible();
+
+            // Verify Input Modal is STILL visible and has value
+            const inputModal = page.locator('.n-dialog').filter({ hasText: mode === 'find' ? 'Locate Object' : 'Custom Prompt' });
+            await expect(inputModal).toBeVisible();
+            const value = await pageViewer.getInputModalValue();
+            expect(value).toBe('test-input');
+
+            // Close Error Dialog
+            await errorDialog.getByRole('button', { name: /OK|确定/i }).click();
+            await expect(errorDialog).not.toBeVisible();
+
+            // Input Modal should still be open
+            await expect(inputModal).toBeVisible();
         });
     }
 });

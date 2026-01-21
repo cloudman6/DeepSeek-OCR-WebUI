@@ -6,7 +6,7 @@ import { config } from '@/config'
 
 export const useHealthStore = defineStore('health', () => {
     // State
-    const isHealthy = ref(true)
+    const isAvailable = ref(false)
     const healthInfo = ref<HealthResponse | null>(null)
     const lastCheckTime = ref<Date | null>(null)
     const error = ref<Error | null>(null)
@@ -58,9 +58,19 @@ export const useHealthStore = defineStore('health', () => {
     function updateStatus() {
         if (!healthService) return
 
-        isHealthy.value = healthService.getStatus()
+        isAvailable.value = healthService.getStatus()
         healthInfo.value = healthService.getHealthInfo()
         lastCheckTime.value = healthService.getLastCheckTime()
+    }
+
+    /**
+     * Force a fresh health check and update status.
+     * Use this before critical operations.
+     */
+    async function refreshStatus() {
+        if (!healthService) return
+        await healthService.refresh()
+        updateStatus()
     }
 
     // Computed properties for easy access
@@ -94,7 +104,8 @@ export const useHealthStore = defineStore('health', () => {
 
     return {
         // State
-        isHealthy,
+        // State
+        isAvailable,
         healthInfo,
         lastCheckTime,
         error,
@@ -112,6 +123,7 @@ export const useHealthStore = defineStore('health', () => {
         // Actions
         startHealthCheck,
         stopHealthCheck,
-        updateStatus
+        updateStatus,
+        refreshStatus
     }
 })
