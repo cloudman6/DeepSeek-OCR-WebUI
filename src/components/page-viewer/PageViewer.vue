@@ -1,5 +1,5 @@
 <template>
-  <div 
+  <div
     data-testid="page-viewer"
     :data-current-page-id="currentPage?.id"
     class="page-viewer"
