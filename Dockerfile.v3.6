@@ -1,0 +1,58 @@
+# DeepSeek-OCR All-in-One Docker Image v3.6
+# PR #41: Backend concurrency optimization, rate limiting, new locales (zh-TW, ja-JP)
+# Features:
+# - ThreadPoolExecutor for non-blocking inference
+# - asyncio.Semaphore for concurrency control (OCR: 1, PDF: 2)
+# - Queue system with MAX_OCR_QUEUE_SIZE and dynamic status
+# - Per-IP and per-Client-ID rate limiting
+# - Traditional Chinese (zh-TW) and Japanese (ja-JP) support
+# - Health indicator with queue status
+
+FROM nvcr.io/nvidia/pytorch:25.09-py3
+
+ENV PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    VLLM_USE_V1=0 \
+    CUDA_VISIBLE_DEVICES=0 \
+    LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH \
+    CUDA_HOME=/usr/local/cuda \
+    HF_HOME=/app/models \
+    TRANSFORMERS_CACHE=/app/models
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y wget curl git && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.txt .
+COPY DeepSeek-OCR-master ./DeepSeek-OCR-master
+
+RUN pip install --upgrade pip && pip install -r requirements.txt
+
+RUN pip install \
+    fastapi==0.119.1 \
+    uvicorn[standard]==0.38.0 \
+    python-multipart==0.0.20 \
+    python-decouple==3.8
+
+# Pre-download model
+RUN python -c "from transformers import AutoModel, AutoProcessor; \
+    model = AutoModel.from_pretrained('deepseek-ai/DeepSeek-OCR', trust_remote_code=True); \
+    processor = AutoProcessor.from_pretrained('deepseek-ai/DeepSeek-OCR', trust_remote_code=True); \
+    print('Model downloaded successfully')"
+
+COPY web_service_unified.py .
+COPY web_service.py .
+COPY web_service_gpu.py .
+COPY gpu_manager.py .
+COPY ocr_ui_modern.html .
+COPY backends ./backends
+COPY i18n.js .
+COPY frontend/dist ./frontend/dist
+
+EXPOSE 8001
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5m --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
+
+CMD ["python", "web_service_unified.py"]

@@ -6,7 +6,7 @@
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/バージョン-v3.5-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/バージョン-v3.6-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-neosun/deepseek--ocr-brightgreen.svg)](https://hub.docker.com/r/neosun/deepseek-ocr)
 [![License](https://img.shields.io/badge/ライセンス-MIT-green.svg)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://vuejs.org/)
@@ -17,6 +17,23 @@
 [機能](#-機能) • [クイックスタート](#-クイックスタート) • [スクリーンショット](#-スクリーンショット) • [コントリビューター](#-コントリビューター)
 
 </div>
+
+---
+
+## 🎉 v3.6 アップデート：バックエンド並行処理とレート制限！
+
+**🚀 スマートなキュー管理とレート制限によるパフォーマンス最適化！**
+
+### ✨ v3.6 の新機能
+
+- ⚡ **バックエンド並行処理最適化** - ThreadPoolExecutor によるノンブロッキング推論
+- 🔒 **レート制限** - クライアントごと・IPごとのリクエスト制限（X-Client-ID ヘッダー対応）
+- 📊 **キュー管理** - リアルタイムのキュー状態と位置追跡
+- 🏥 **強化されたヘルス API** - キュー深度、状態（healthy/busy/full）、レート制限情報
+- 🌐 **新言語追加** - 繁体字中国語（zh-TW）と日本語（ja-JP）を追加
+- 🎯 **429 エラー処理** - キュー満杯またはレート制限時の適切な処理
+
+**🙏 コントリビューター：** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
 
 ---
 
@@ -176,13 +193,13 @@ DeepSeek-OCR-WebUI は、DeepSeek-OCR モデルを搭載したインテリジェ
 
 ```bash
 # プルして実行
-docker pull neosun/deepseek-ocr:v3.5
+docker pull neosun/deepseek-ocr:v3.6
 docker run -d \
   --name deepseek-ocr \
   --gpus all \
   -p 8001:8001 \
   --shm-size=8g \
-  neosun/deepseek-ocr:v3.5
+  neosun/deepseek-ocr:v3.6
 
 # アクセス：http://localhost:8001
 ```
@@ -191,9 +208,9 @@ docker run -d \
 
 | タグ | 説明 |
 |------|------|
-| `latest` | 最新安定版 (= v3.5) |
+| `latest` | 最新安定版 (= v3.6) |
+| `v3.6` | バックエンド並行処理とレート制限 |
 | `v3.5` | Vue 3 フロントエンドバージョン |
-| `v3.5-vue3-frontend` | Vue 3 フロントエンド（明示的） |
 | `v3.3.1-fix-bfloat16` | BFloat16 互換性修正 |
 
 ### 🍎 Mac（Apple Silicon）
@@ -294,6 +311,19 @@ Claude Desktop などの AI アシスタントで OCR を使用可能に：
 
 ## 📊 バージョン履歴
 
+### v3.6 (2026-01-20) - バックエンド並行処理とレート制限
+
+**⚡ パフォーマンス最適化：**
+- ✅ ThreadPoolExecutor によるノンブロッキング推論
+- ✅ asyncio.Semaphore による並行制御（OCR: 1, PDF: 2）
+- ✅ MAX_OCR_QUEUE_SIZE と動的状態を持つキューシステム
+- ✅ IP およびクライアント ID ごとのレート制限（X-Client-ID ヘッダー）
+- ✅ 429 エラー処理（キュー満杯、クライアント制限、IP 制限）
+- ✅ 3 つの状態色（緑/黄/赤）を持つヘルスインジケーター
+- ✅ リアルタイム位置表示付き OCR キューポップオーバー
+
+**🙏 コントリビューター：** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
+
 ### v3.5 (2026-01-17) - Vue 3 フロントエンド
 
 **🎨 完全な UI 刷新：**
@@ -376,6 +406,6 @@ Claude Desktop などの AI アシスタントで OCR を使用可能に：
 
 **[neosun100](https://github.com/neosun100) と [cloudman6](https://github.com/cloudman6) が ❤️ を込めて作成**
 
-DeepSeek-OCR-WebUI v3.5 | © 2026
+DeepSeek-OCR-WebUI v3.6 | © 2026
 
 </div>

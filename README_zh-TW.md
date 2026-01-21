@@ -6,7 +6,7 @@
 
 **🌐 [English](./README.md) | [简体中文](./README_zh-CN.md) | [繁體中文](./README_zh-TW.md) | [日本語](./README_ja.md)**
 
-[![Version](https://img.shields.io/badge/版本-v3.5-blue.svg)](./CHANGELOG.md)
+[![Version](https://img.shields.io/badge/版本-v3.6-blue.svg)](./CHANGELOG.md)
 [![Docker](https://img.shields.io/badge/docker-neosun/deepseek--ocr-brightgreen.svg)](https://hub.docker.com/r/neosun/deepseek-ocr)
 [![License](https://img.shields.io/badge/授權-MIT-green.svg)](./LICENSE)
 [![Vue](https://img.shields.io/badge/Vue-3.x-4FC08D.svg)](https://vuejs.org/)
@@ -17,6 +17,23 @@
 [功能特性](#-功能特性) • [快速開始](#-快速開始) • [介面截圖](#-介面截圖) • [貢獻者](#-貢獻者)
 
 </div>
+
+---
+
+## 🎉 v3.6 更新：後端並發優化與限流！
+
+**🚀 智慧佇列管理和限流帶來的效能優化！**
+
+### ✨ v3.6 新特性
+
+- ⚡ **後端並發優化** - 使用 ThreadPoolExecutor 實現非阻塞推理
+- 🔒 **限流機制** - 支援按客戶端和 IP 限制請求（X-Client-ID 標頭支援）
+- 📊 **佇列管理** - 即時佇列狀態和位置追蹤
+- 🏥 **增強健康 API** - 佇列深度、狀態（健康/繁忙/滿載）和限流資訊
+- 🌐 **新增語言** - 添加繁體中文（zh-TW）和日語（ja-JP）
+- 🎯 **429 錯誤處理** - 佇列滿或限流時的優雅處理
+
+**🙏 貢獻者：** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
 
 ---
 
@@ -176,13 +193,13 @@ DeepSeek-OCR-WebUI 是一款基於 DeepSeek-OCR 模型的智慧文件識別 Web 
 
 ```bash
 # 拉取並執行
-docker pull neosun/deepseek-ocr:v3.5
+docker pull neosun/deepseek-ocr:v3.6
 docker run -d \
   --name deepseek-ocr \
   --gpus all \
   -p 8001:8001 \
   --shm-size=8g \
-  neosun/deepseek-ocr:v3.5
+  neosun/deepseek-ocr:v3.6
 
 # 存取：http://localhost:8001
 ```
@@ -191,9 +208,9 @@ docker run -d \
 
 | 標籤 | 描述 |
 |------|------|
-| `latest` | 最新穩定版 (= v3.5) |
+| `latest` | 最新穩定版 (= v3.6) |
+| `v3.6` | 後端並發優化與限流 |
 | `v3.5` | Vue 3 前端版本 |
-| `v3.5-vue3-frontend` | Vue 3 前端（明確標籤） |
 | `v3.3.1-fix-bfloat16` | BFloat16 相容性修復 |
 
 ### 🍎 Mac（Apple Silicon）
@@ -294,6 +311,19 @@ with open("document.pdf", "rb") as f:
 
 ## 📊 版本歷史
 
+### v3.6 (2026-01-20) - 後端並發優化與限流
+
+**⚡ 效能優化：**
+- ✅ 使用 ThreadPoolExecutor 實現非阻塞推理
+- ✅ asyncio.Semaphore 並發控制（OCR: 1, PDF: 2）
+- ✅ 佇列系統，支援 MAX_OCR_QUEUE_SIZE 和動態狀態
+- ✅ 按 IP 和客戶端 ID 限流（X-Client-ID 標頭）
+- ✅ 429 錯誤處理（佇列滿、客戶端限制、IP 限制）
+- ✅ 健康指示器，3 種狀態顏色（綠/黃/紅）
+- ✅ OCR 佇列彈窗，即時顯示位置
+
+**🙏 貢獻者：** [@cloudman6](https://github.com/cloudman6) ([PR #41](https://github.com/neosun100/DeepSeek-OCR-WebUI/pull/41))
+
 ### v3.5 (2026-01-17) - Vue 3 前端
 
 **🎨 全面 UI 重構：**
@@ -376,6 +406,6 @@ with open("document.pdf", "rb") as f:
 
 **由 [neosun100](https://github.com/neosun100) 和 [cloudman6](https://github.com/cloudman6) 用 ❤️ 打造**
 
-DeepSeek-OCR-WebUI v3.5 | © 2026
+DeepSeek-OCR-WebUI v3.6 | © 2026
 
 </div>
